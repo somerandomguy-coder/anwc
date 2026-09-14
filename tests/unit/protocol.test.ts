@@ -14,6 +14,12 @@ describe('ANWC protocol 0.1', () => {
     expect(parseRawCapture(JSON.parse(JSON.stringify(partialRawCaptureFixture))).coverage).toMatchObject({ complete: false, skippedNodes: 1 });
   });
 
+  test('allows a site id while source lookup is unavailable', () => {
+    const capture = JSON.parse(JSON.stringify(validRawCaptureFixture));
+    capture.nodes[3].siteId = 's_known_but_unresolved';
+    expect(parseRawCapture(capture).nodes[3]?.source).toBeNull();
+  });
+
   test.each([
     ['an incompatible version', (capture: any) => { capture.schemaVersion = '0.2'; }],
     ['a negative rectangle dimension', (capture: any) => { capture.nodes[0].box.width = -1; }],

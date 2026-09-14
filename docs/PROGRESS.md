@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, and compiler ready. Implementation 3/11 tasks complete.**
+**Current state: workspace, protocol, compiler, and browser capture ready. Implementation 4/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -15,6 +15,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Architecture and tonight's scope | done | [PLAN](PLAN.md) |
 | Shared protocol contract (T01) | done | `@anwc/protocol` Zod schemas, exported TypeScript types, synthetic fixtures |
 | JSX instrumentation compiler (T02) | done | parser-based source-preserving host-element annotation and source maps |
+| Browser capture and identity (T04) | done | read-only browser collector with per-document IDs and explicit unknowns |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -36,10 +37,10 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T00 | Workspace/toolchain | done | A | none | pending commit: workspace setup |
 | T01 | Protocol/schema | done | A; B reviews | T00 | pending commit: protocol contract |
 | T02 | Source compiler | done | A | T01 | pending commit: JSX compiler |
-| T03 | Vite integration | queued | A | T02, runtime entry | compiler interface ready; runtime entry pending T04 |
-| T04 | Browser capture | ready | B | T01 | unclaimed |
-| T05 | Text/clip geometry | queued | first available | T04 | unclaimed |
-| T06 | Pointer/rules | queued | B | T04; T05 for final rules | unclaimed |
+| T03 | Vite integration | ready | A | T02, runtime entry | compiler and runtime interfaces ready |
+| T04 | Browser capture | done | B | T01 | pending commit: browser capture |
+| T05 | Text/clip geometry | ready | first available | T04 | unclaimed |
+| T06 | Pointer/rules | ready (partial) | B | T04; T05 for final rules | capture interface ready; full rules wait for T05 |
 | T07 | CLI/serializer | queued | A | T03–T06 | unclaimed |
 | T08 | Demo and controls | queued | B | T00/T01; T07 for integration | unclaimed |
 | T09 | Integration/freeze | queued | both; one integrator | T02–T08 | unclaimed |
@@ -141,3 +142,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: this is a pure Node transform only. T03 must connect it to a real Vite/React render and verify HMR, manifest lookup, and runtime behavior. There is no ref injection, component wrapping, or live-node identity here.
 - Next task now unblocked: the transform side of T03; T04 remains independently ready.
 - Reviewer and review outcome: self-reviewed; parser and map assertions pass with original JSX expressions retained verbatim.
+
+### T04 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add browser capture runtime`
+- Owned files changed: `packages/runtime/**`, browser runtime test bridge, `tests/browser/runtime-capture.spec.ts`, protocol validation clarification, README, and this handoff board.
+- Interface changes: `capture(options)` returns read-only `RawCapture`; `configureRuntime` optionally joins a source manifest. Per-document WeakMap identity yields stable IDs within a page and a new session after navigation.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (12 tests); `npm run build` passed; `npm run test:browser` passed (2 Chromium tests). Browser assertions cover repeated source sites, source-null blocker nodes, portal content, post-render mutation, zero-size targets, hidden descendants, caps/incomplete coverage, navigation isolation, and no DOM/focus/scroll or input-value mutation.
+- Actual evidence/artifact paths: `packages/runtime/src/index.ts` and `tests/browser/runtime-capture.spec.ts`.
+- Unsupported cases or remaining failures: clipping and text fragments are explicitly unknown until T05; pointer samples until T06; paint visibility remains unknown in v0. The test-only runtime entry is never imported by the ordinary shop and production output remains clean.
+- Next task now unblocked: T03 Vite adapter, T05 geometry/text, and the capture half of T06.
+- Reviewer and review outcome: self-reviewed; real Chromium captures passed without screenshot APIs or page interaction.

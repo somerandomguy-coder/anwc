@@ -9,6 +9,7 @@ Status: frozen in T01. The executable TypeScript types and Zod validators live i
 - Source lines/columns: one-based. Files: repository-relative, forward slashes.
 - `siteId`: source location identity, repeatable for unchanged input only.
 - `nodeId`: live DOM identity, unique within one document session. Repeated JSX sites do not collapse instances.
+- A node may retain a `siteId` while `source` is `null` when the runtime has source-site metadata but no matching manifest entry. This is source linkage unavailable, not a fabricated source location.
 - `sessionId`: regenerated after document navigation; `captureId`: unique for each capture.
 - `null`: no value known. Do not use `0`, an empty string, or a made-up selector as a replacement.
 - Findings describe a captured state. They do not grant permission to act and are not durable action handles.

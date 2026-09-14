@@ -86,7 +86,6 @@ export const measurementSchema = z.object({
   }).strict()
 }).strict().superRefine((node, context) => {
   if (node.source && node.siteId !== node.source.siteId) context.addIssue({ code: z.ZodIssueCode.custom, message: 'siteId must match source.siteId' });
-  if (node.source === null && node.siteId !== null) context.addIssue({ code: z.ZodIssueCode.custom, message: 'source-null node must have siteId null' });
 });
 
 export const diagnosticEvidenceSchema = z.discriminatedUnion('kind', [
@@ -181,6 +180,10 @@ export const errorEnvelopeSchema = z.object({
 
 export type Rect = z.infer<typeof rectSchema>;
 export type SourceRef = z.infer<typeof sourceRefSchema>;
+export type Assessment<T> =
+  | { status: 'known'; value: T; method: string; limitations: string[] }
+  | { status: 'estimated'; value: T; method: string; limitations: string[] }
+  | { status: 'unknown'; value: null; method: string; limitations: string[] };
 export type Measurement = z.infer<typeof measurementSchema>;
 export type DiagnosticEvidence = z.infer<typeof diagnosticEvidenceSchema>;
 export type Finding = z.infer<typeof findingSchema>;
