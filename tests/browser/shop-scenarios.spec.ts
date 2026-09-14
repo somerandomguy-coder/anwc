@@ -47,3 +47,10 @@ test('ANWC reports the supported defect codes independently from scenario setup'
     expect(diagnose(capture as Parameters<typeof diagnose>[0]).some((finding) => finding.code === code)).toBe(true);
   }
 });
+
+test('the clean scenario has no unacknowledged ANWC findings', async ({ page }) => {
+  await page.goto('/?scenario=clean');
+  const capture = await captureFindings(page);
+  expect(diagnose(capture as Parameters<typeof diagnose>[0])).toEqual([]);
+  expect((capture as { page: { scenario: string | null } }).page.scenario).toBe('clean');
+});

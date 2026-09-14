@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: T00–T08 are complete: workspace, protocol, compiler, Vite adapter, browser capture, geometry/text, pointer diagnostics, CLI, and the defect shop. The integration freeze remains.
+Status on 2026-09-15: T00–T09 are complete: the source-linked compiler/runtime MVP and its integration freeze. The remaining work is the paired-agent experiment described in the benchmark protocol.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 
@@ -27,6 +27,7 @@ npm run typecheck
 npm run test:unit
 npm run test:browser
 npm run build
+npm run test:integration
 ```
 
 The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
@@ -62,4 +63,4 @@ npm run anwc -- inspect http://127.0.0.1:5173 --viewport 1440x900 --format text
 
 Claim a task in `docs/PROGRESS.md`, implement only its owned paths, attach command output to the task's evidence entry, and move it to `review` before calling it complete. Schema changes require a coordinated update to producers, consumers, and examples. Suggested roles are placeholders until the two collaborators choose them.
 
-This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. The planning handoff and T00 are published to the shared remote. Each completed task is recorded in `docs/PROGRESS.md` and committed separately.
+This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. T00–T09 are published to the shared remote. Each completed task is recorded in `docs/PROGRESS.md` and committed separately.

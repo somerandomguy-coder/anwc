@@ -2,9 +2,9 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop ready. Implementation 9/11 tasks complete.**
+**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. Implementation 10/11 tasks complete.**
 
-SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
+SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
 ## Current deliverables
 
@@ -25,9 +25,9 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
 | Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
-| Compiler/runtime/demo | not started | No implementation claimed |
+| Compiler/runtime/demo | done | T02–T08, verified by typecheck, unit, Chromium, build, and CLI checks |
 | Actual benchmark/cost results | not started | No results claimed |
-| Publish planning files to GitHub | done | `main` at `6b32850` |
+| Publish completed tasks to GitHub | done | `main` includes T00–T09 commits |
 
 ## Status vocabulary
 
@@ -48,27 +48,27 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T06 | Pointer/rules | done | B | T04; T05 | pending commit: pointer rules |
 | T07 | CLI/serializer | done | A | T03–T06 | pending commit: CLI inspector |
 | T08 | Demo and controls | done | B | T00/T01; T07 | pending commit: defect shop |
-| T09 | Integration/freeze | ready | both; one integrator | T02–T08 | unclaimed |
-| T10 | Paired experiment | queued | evaluator | T09 | unclaimed |
+| T09 | Integration/freeze | done | Codex | T02–T08 | pending commit: freeze MVP integration candidate |
+| T10 | Paired experiment | ready | evaluator | T09 | unclaimed |
 
 ## Tonight's gates
 
 | Gate | Acceptance | Status | Evidence to attach |
 | --- | --- | --- | --- |
 | G0 | Clean app builds/runs, toolchain pinned | passed | Node 24.18.0, npm 11.13.0, TypeScript 5.7.3, Vite 6.1.0, React 19.0.0, Vitest 3.0.7, Playwright 1.51.1 / Chromium build 1161 |
-| G1 | JSX site links to live node and original source | not run | Actual capture and compiler tests |
-| G2 | Supported text/clip/pointer rules pass independent checks | not run | Browser test output |
-| G3 | CLI emits valid JSON + bounded text and cleans up | not run | Actual reports and error-path tests |
-| G4 | Six supported defects + six controls, two widths | not run | Fixture matrix and independent assertions |
-| G5 | Production clean; instrumentation preserves app behavior | not run | Production output check and behavior tests |
-| G6 | Reproducible benchmark candidate frozen | not run | Commit/version manifest and setup steps |
+| G1 | JSX site links to live node and original source | passed | Vite source-link and HMR Chromium tests |
+| G2 | Supported text/clip/pointer rules pass independent checks | passed | Geometry, pointer, and scenario Chromium tests |
+| G3 | CLI emits valid JSON + bounded text and cleans up | passed | CLI unit/integration coverage and runtime-only check |
+| G4 | Six supported defects + six controls, two widths | passed | Scenario fixture and CLI tests at desktop/mobile |
+| G5 | Production clean; instrumentation preserves app behavior | passed | Production build and clean cart behavior test |
+| G6 | Reproducible benchmark candidate frozen | passed | `npm run test:integration`; sanitized reports under ignored `artifacts/integration/` |
 
 “Done tonight” requires G0–G6, or a clearly documented reduced scope with unmet gates. These boxes are not progress estimates. Do not mark a gate passed because code was written or because an agent says it works.
 
 ## Next three actions
 
-1. Implement and review T01 before separate modules create competing snapshot formats.
-2. Build the first source-linked button capture; then add one defect and one healthy control before expanding the shop.
+1. Run T10 as a paired-agent evaluation using the frozen fixture matrix and benchmark protocol.
+2. Keep evaluation answers isolated from the repair agent and record timing/cost separately from quality.
 3. Keep every completed task in a separate commit with its evidence recorded here.
 
 ## Collaboration workflow
@@ -113,7 +113,7 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - 2026-09-15: Reviewed three user-supplied concept notes; verified authenticated SSH connection; cloned an empty repository.
 - 2026-09-15: Chose React/Vite plugin + browser runtime as the first slice, with compiler/source mapping separated from actual layout observations.
 - 2026-09-15: Added detailed module briefs, protocol proposal, collaboration board, scoped visibility limits, and fair benchmark design.
-- 2026-09-15: Prepared local shareable planning artifacts. No implementation, tests, benchmark results, commits or remote publication performed.
+- 2026-09-15: Prepared local shareable planning artifacts before implementation began. The later T00–T09 entries record the implementation and verification evidence.
 
 ### T00 — 2026-09-15 — Codex
 - Status: done
@@ -213,3 +213,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: scenario IDs intentionally describe the condition in this development checkout, so they must be materialized into hidden evaluator revisions for a blinded experiment. The demo currently has three products rather than the six suggested in the planning matrix; this does not affect the six defect/control gates.
 - Next task now unblocked: T09 integration/freeze.
 - Reviewer and review outcome: self-reviewed; supported findings are independently reproduced and then verified through the actual CLI without screenshots.
+
+### T09 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `chore: freeze MVP integration candidate`
+- Owned files changed: root integration command, runtime text-clip precision and report metadata, clean-scenario regression coverage, README, and this handoff board.
+- Interface changes: coverage now advertises the implemented clipping, text-fragment, and pointer-sample capabilities. Captures report the active `data-anwc-scenario` from the rendered application tree.
+- Acceptance commands and outcomes: `npm run test:integration` passed: TypeScript, 19 unit tests, 9 Chromium tests, and a production build. The new clean-scenario regression confirms no unacknowledged findings.
+- Actual evidence/artifact paths: ignored sanitized reports at `artifacts/integration/clean-desktop.json` (1440×900; complete; no findings) and `artifacts/integration/blocked-mobile.json` (390×844; complete; `POINTER_BLOCKED_AT_SAMPLES`). Reports are generated through the regular Vite plugin and CLI, with no screenshot call.
+- Unsupported cases or remaining failures: results are the candidate fixture evidence, not a paired-agent benchmark or a cost measurement. Paint visibility, non-rectangular clipping, and transformed geometry remain explicitly unsupported.
+- Next task now unblocked: T10 paired experiment.
+- Reviewer and review outcome: self-reviewed. The final integration run surfaced an initial false-positive text clip caused by glyph overhang; T09 now intersects text Range rectangles only with actual clip ancestors and own overflow clips, and the clean regression passed.

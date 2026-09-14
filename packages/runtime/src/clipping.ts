@@ -70,7 +70,14 @@ export function observeAncestorClip(element: Element, box: Rect | null, nodeIdFo
 
 export function observeOwnTextClip(element: Element, fragment: Rect, ancestorClip: Assessment<ClipValue>): Assessment<Rect | null> {
   if (ancestorClip.status === 'unknown') return { status: 'unknown', value: null, method: 'text-fragment-clip', limitations: ancestorClip.limitations };
-  let visible = ancestorClip.value.intersection === null ? null : applyAxis(fragment, ancestorClip.value.intersection, true, true);
+  // A Range rectangle can extend beyond its own element's box because glyph ink,
+  // line-height, or inline layout overhangs. That does not mean it is clipped.
+  // Intersect the text with the actual clipping ancestors instead of the measured
+  // element box, which is only a summary of the element's visible geometry.
+  let visible: Rect | null = fragment;
+  for (const ancestor of ancestorClip.value.ancestors) {
+    visible = visible && applyAxis(visible, ancestor.box, ancestor.axes.includes('x'), ancestor.axes.includes('y'));
+  }
   if (element instanceof HTMLElement) {
     const style = getComputedStyle(element);
     const x = clipAxis(style.overflowX);

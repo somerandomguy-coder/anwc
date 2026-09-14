@@ -211,7 +211,7 @@ export async function capture(options: CaptureOptions = {}): Promise<RawCapture>
   const selected = discovered.slice(0, limits.maxNodes);
   const selectedSet = new Set(selected);
   const nodes = selected.map((element) => measure(element, selectedSet, state, limits.textLimit));
-  const documentElement = document.documentElement;
+  const scenarioElement = document.querySelector('[data-anwc-scenario]');
 
   return {
     schemaVersion: '0.1',
@@ -222,14 +222,15 @@ export async function capture(options: CaptureOptions = {}): Promise<RawCapture>
       url: location.href, title: document.title,
       viewport: { width: window.innerWidth, height: window.innerHeight }, scroll: { x: window.scrollX, y: window.scrollY },
       devicePixelRatio: window.devicePixelRatio, visualViewportScale: window.visualViewport?.scale ?? 1,
-      scenario: documentElement.getAttribute('data-anwc-scenario')
+      scenario: scenarioElement?.getAttribute('data-anwc-scenario') ?? null
     },
     environment: { browser: navigator.userAgent, browserVersion: navigator.userAgent, compilerVersion: null, runtimeVersion: state.configuration.runtimeVersion ?? '0.0.0' },
     readiness,
     coverage: {
       complete: discovered.length <= limits.maxNodes, discoveredNodes: discovered.length, inspectedNodes: selected.length, skippedNodes: discovered.length - selected.length,
-      reasons: discovered.length <= limits.maxNodes ? [] : ['max node cap reached'], capabilities: ['rectangles', 'computed-style', 'overflow', 'best-effort-label'],
-      unsupportedFeatures: ['ancestor-clipping', 'text-fragments', 'pointer-samples', 'paint-visibility']
+      reasons: discovered.length <= limits.maxNodes ? [] : ['max node cap reached'],
+      capabilities: ['rectangles', 'computed-style', 'overflow', 'best-effort-label', 'ancestor-clipping', 'text-fragments', 'pointer-samples'],
+      unsupportedFeatures: ['paint-visibility', 'non-rectangular-clipping', 'transformed-geometry']
     },
     timingsMs: { capture: Math.round(performance.now() - started), serialize: 0 },
     nodes
