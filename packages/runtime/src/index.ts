@@ -1,4 +1,6 @@
 import type { Assessment, Measurement, RawCapture, SourceRef } from '@anwc/protocol';
+import { observeAncestorClip } from './clipping.js';
+import { observeText } from './text.js';
 
 export type CaptureOptions = {
   maxNodes?: number;
@@ -150,6 +152,7 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
   const visible = hasBox ? intersection(rect, viewport) : null;
   const { label, labelMethod, textTruncated } = labelFor(element, textLimit);
   const { siteId, source } = sourceFor(element, state.configuration.sourceLookup);
+  const clip = observeAncestorClip(element, box, (candidate) => selected.has(candidate) ? nodeId(candidate, state) : null);
   const role = element.getAttribute('role');
   const semanticKey = element.getAttribute('data-anwc-key');
   const expected = element.getAttribute('data-anwc-expect');
@@ -162,12 +165,12 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
     tag: element.tagName.toLowerCase(), semanticKey, role, label, labelMethod, textTruncated, box,
     render: renderState(element),
     viewport: known({ intersection: visible, boxFraction: hasBox ? boxFraction(rect, visible) : 0 }, 'viewport-rectangle'),
-    clip: unknown('t04-not-implemented', ['Ancestor clipping is collected by T05.']),
+    clip,
     overflow: hasBox ? {
       clientWidth: element.clientWidth, clientHeight: element.clientHeight, scrollWidth: element.scrollWidth, scrollHeight: element.scrollHeight,
       scrollableX: element.scrollWidth > element.clientWidth, scrollableY: element.scrollHeight > element.clientHeight
     } : null,
-    text: unknown('t04-not-implemented', ['Text fragments and line observations are collected by T05.']),
+    text: observeText(element, clip),
     pointer: unknown('t04-not-implemented', ['Pointer samples are collected by T06.']),
     interaction: { candidate: isInteractiveCandidate(element), disabled: isDisabled(element), inert: isInert(element), pointerEvents: getComputedStyle(element).pointerEvents },
     paintVisibility: unknown('v0', ['Paint visibility is unsupported in v0.']),
