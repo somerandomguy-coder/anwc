@@ -1,6 +1,8 @@
 # Tomorrow's experiment: does ANWC reduce agent repair work?
 
-Status: protocol only. No benchmark has been run and no cost/performance results exist. Freeze the fixture revision and scoring rules before the evaluated agent sees the tasks.
+Status: development fixture implementation exists; no benchmark has been run and no cost/performance results exist. Freeze the fixture revision and scoring rules before the evaluated agent sees the tasks.
+
+The current public development scenarios are `clean`, `horizontal-overflow`, `ancestor-clip`, `line-budget`, `hidden-checkout`, `blocked-checkout`, `partial-checkout`, and `combined`. They are deterministic local URLs using `?scenario=ID`; the six isolated defects are verified by ordinary DOM/layout assertions and then separately through the CLI at 1440×900 and 390×844. These are development fixtures, not a blinded evaluator corpus.
 
 ## 1. The comparison that answers the product question
 

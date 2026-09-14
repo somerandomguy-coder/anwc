@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: T00–T07 are complete: workspace, protocol, compiler, Vite adapter, browser capture, geometry/text, pointer diagnostics, and CLI. The defect demo and integration freeze remain.
+Status on 2026-09-15: T00–T08 are complete: workspace, protocol, compiler, Vite adapter, browser capture, geometry/text, pointer diagnostics, CLI, and the defect shop. The integration freeze remains.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 
@@ -29,7 +29,7 @@ npm run test:browser
 npm run build
 ```
 
-The shop currently renders only a clean shell. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
+The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
 
 ## Tonight's target
 

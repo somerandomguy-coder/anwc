@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, and CLI ready. Implementation 8/11 tasks complete.**
+**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop ready. Implementation 9/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -20,6 +20,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Geometry and text observations (T05) | done | supported client-box clipping and direct-text Range fragments |
 | Pointer sampling and diagnostics (T06) | done | 5×5 browser hit tests and pure normalized findings |
 | CLI and serializer (T07) | done | isolated Playwright inspection, JSON, bounded text, and runtime-only injection |
+| Defect shop and controls (T08) | done | local e-commerce fixture with six isolated supported defects |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -46,8 +47,8 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T05 | Text/clip geometry | done | first available | T04 | pending commit: geometry and text observations |
 | T06 | Pointer/rules | done | B | T04; T05 | pending commit: pointer rules |
 | T07 | CLI/serializer | done | A | T03–T06 | pending commit: CLI inspector |
-| T08 | Demo and controls | queued | B | T00/T01; T07 for integration | unclaimed |
-| T09 | Integration/freeze | queued | both; one integrator | T02–T08 | unclaimed |
+| T08 | Demo and controls | done | B | T00/T01; T07 | pending commit: defect shop |
+| T09 | Integration/freeze | ready | both; one integrator | T02–T08 | unclaimed |
 | T10 | Paired experiment | queued | evaluator | T09 | unclaimed |
 
 ## Tonight's gates
@@ -201,3 +202,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: no scenario runner exists yet, so CLI inspection does not set up app state; it only reads the state it reaches. Runtime-only captures have source-null nodes by design. The runtime-missing detection wait is capped at two seconds inside the caller's overall timeout.
 - Next task now unblocked: T08 defect shop and then T09 integration/freeze.
 - Reviewer and review outcome: self-reviewed; output is schema-validated, browser/context cleanup is in `finally`, and implementation contains no screenshot, click, fill, scroll, or style-mutation calls.
+
+### T08 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add deterministic defect shop`
+- Owned files changed: shop application, scenario registry, local styles, clean-shop behavior test, scenario DOM/ANWC tests, CLI scenario test, README, benchmark note, and this handoff board.
+- Interface changes: public `?scenario=` IDs select `clean`, six isolated supported defects, or `combined`. No network assets or third-party services are used.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (19 tests); `npm run test:browser` passed (8 Chromium tests); `npm run build` passed. Clean cart/modal behavior works. Each defect has an ordinary DOM/layout assertion before its ANWC check; CLI inspection finds the expected code at 390×844, while the browser fixture checks every scenario at both 1440×900 and 390×844.
+- Actual evidence/artifact paths: `examples/shop/src/main.tsx`, `examples/shop/src/scenarios.ts`, `examples/shop/src/styles.css`, `tests/browser/shop-scenarios.spec.ts`, and `tests/unit/cli.test.ts`.
+- Unsupported cases or remaining failures: scenario IDs intentionally describe the condition in this development checkout, so they must be materialized into hidden evaluator revisions for a blinded experiment. The demo currently has three products rather than the six suggested in the planning matrix; this does not affect the six defect/control gates.
+- Next task now unblocked: T09 integration/freeze.
+- Reviewer and review outcome: self-reviewed; supported findings are independently reproduced and then verified through the actual CLI without screenshots.

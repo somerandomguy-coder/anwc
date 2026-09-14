@@ -45,4 +45,15 @@ describe('ANWC CLI', () => {
     expect(missingExit).toBe(2);
     expect(JSON.parse(stdout.pop()!)).toMatchObject({ error: { code: 'RUNTIME_MISSING' } });
   }, 20_000);
+
+  test('reports each public shop defect through the CLI inspection path', async () => {
+    const expected = [
+      ['horizontal-overflow', 'HORIZONTAL_OVERFLOW'], ['ancestor-clip', 'CLIPPED_BY_ANCESTOR'], ['line-budget', 'TEXT_LINE_BUDGET_EXCEEDED'],
+      ['hidden-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'], ['blocked-checkout', 'POINTER_BLOCKED_AT_SAMPLES'], ['partial-checkout', 'POINTER_PARTIALLY_BLOCKED']
+    ] as const;
+    for (const [scenario, code] of expected) {
+      const snapshot = await inspect(parseArguments(['inspect', `${url}/?scenario=${scenario}`, '--viewport', '390x844', '--format', 'json']));
+      expect(snapshot.findings.some((finding) => finding.code === code)).toBe(true);
+    }
+  }, 30_000);
 });

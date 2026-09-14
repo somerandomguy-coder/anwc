@@ -1,15 +1,47 @@
-:root {
-  color: #192333;
-  background: #f7f8fb;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-}
-
-body {
-  margin: 0;
-}
-
-main {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 3rem 1.5rem;
-}
+:root { color: #21302a; background: #f7f5ef; font-family: ui-sans-serif, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, a { font: inherit; }
+button { cursor: pointer; }
+.shop-shell { min-height: 100vh; }
+.site-nav, .hero, .catalog, .cart, footer, .defect-panel { width: min(70rem, calc(100% - 2rem)); margin-inline: auto; }
+.site-nav { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 0; }
+.site-nav a { color: inherit; font-weight: 700; text-decoration: none; }
+.site-nav div { display: flex; gap: 1rem; align-items: center; }
+.site-nav button { border: 0; background: none; color: inherit; padding: 0; }
+.hero { padding: 5rem 0; max-width: 52rem; margin-left: max(1rem, calc((100% - 70rem) / 2)); }
+.hero p, .section-heading p, .product-card > p, footer { color: #647168; }
+.hero h1 { max-width: 42rem; margin: .4rem 0 1.5rem; font-family: Georgia, serif; font-size: clamp(2.8rem, 7vw, 5.8rem); font-weight: 500; line-height: .98; letter-spacing: -.05em; }
+.primary-link, .product-card button, .cart button, .obstacle-fixture button { display: inline-block; border: 0; border-radius: 999px; background: #27493e; color: white; padding: .75rem 1rem; text-decoration: none; }
+.catalog { padding: 2rem 0 4rem; }
+.section-heading h2 { margin-top: .25rem; font-family: Georgia, serif; font-size: 2rem; font-weight: 500; }
+.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.product-card { background: white; border-radius: 1rem; padding: .8rem; }
+.product-image { aspect-ratio: 1.15; border-radius: .7rem; }
+.peach { background: linear-gradient(135deg, #f7be91, #ed7f72); }
+.mint { background: linear-gradient(135deg, #b9ddca, #67ab91); }
+.lilac { background: linear-gradient(135deg, #c6c0ef, #8179cf); }
+.product-card h3 { margin: .9rem 0 .1rem; }
+.product-card p { margin: 0 0 .9rem; }
+.product-card button { background: #e8eee9; color: #21302a; width: 100%; }
+.cart { display: flex; justify-content: space-between; align-items: center; background: #dfe9d7; border-radius: 1rem; padding: 1rem 1.25rem; margin-bottom: 4rem; }
+.cart p { margin: 0; }
+.cart button:disabled { cursor: not-allowed; opacity: .45; }
+footer { border-top: 1px solid #d4d9d1; padding: 2rem 0; font-size: .9rem; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: #14231d66; }
+.product-modal { position: relative; width: min(26rem, calc(100% - 2rem)); background: white; border-radius: 1rem; padding: 2rem; }
+.close { position: absolute; top: .5rem; right: .75rem; border: 0; background: none; font-size: 1.5rem; }
+.defect-panel { display: grid; gap: 1.2rem; margin-bottom: 3rem; }
+.overflow-fixture { display: flex; gap: 2rem; width: 100%; overflow-x: auto; white-space: nowrap; border: 1px solid #d98665; border-radius: .7rem; padding: 1rem; }
+.overflow-fixture span { flex: 0 0 16rem; }
+.clip-fixture { width: 14rem; overflow: hidden; border: 2px solid #d98665; border-radius: .7rem; }
+.clip-action { width: 28rem; border: 0; background: #d98665; color: #2d1b16; padding: 1rem; text-align: left; }
+.line-fixture { width: 12rem; border: 1px solid #d98665; border-radius: .7rem; padding: 1rem; }
+.line-fixture p { margin: 0; color: #905033; }
+.line-fixture h2 { margin: .5rem 0 0; font-size: 1.1rem; }
+.hidden-checkout { display: none; }
+.obstacle-fixture { position: relative; width: 16rem; height: 4.5rem; }
+.obstacle-fixture > button { width: 100%; height: 100%; }
+.cookie-obstacle { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; border-radius: .8rem; background: #1f2937; color: white; }
+.partial .cookie-obstacle { inset: 0 auto 0 0; width: 48%; background: #b95942cc; }
+@media (max-width: 640px) { .site-nav div a { display: none; } .hero { padding: 3.5rem 0; } .product-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 3.25rem; } }
