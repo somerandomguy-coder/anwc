@@ -3,5 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "exports": "./src/index.ts"
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@anwc/compiler": "0.0.0",
+    "@anwc/protocol": "0.0.0",
+    "@anwc/runtime": "0.0.0"
+  },
+  "peerDependencies": {
+    "vite": "^6.1.0"
+  }
 }

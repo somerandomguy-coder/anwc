@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, compiler, and browser capture ready. Implementation 4/11 tasks complete.**
+**Current state: workspace, protocol, compiler, Vite integration, and browser capture ready. Implementation 5/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -16,6 +16,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Shared protocol contract (T01) | done | `@anwc/protocol` Zod schemas, exported TypeScript types, synthetic fixtures |
 | JSX instrumentation compiler (T02) | done | parser-based source-preserving host-element annotation and source maps |
 | Browser capture and identity (T04) | done | read-only browser collector with per-document IDs and explicit unknowns |
+| Vite adapter and source manifest (T03) | done | development-only compiler/runtime injection with HMR manifest refresh |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -37,7 +38,7 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T00 | Workspace/toolchain | done | A | none | pending commit: workspace setup |
 | T01 | Protocol/schema | done | A; B reviews | T00 | pending commit: protocol contract |
 | T02 | Source compiler | done | A | T01 | pending commit: JSX compiler |
-| T03 | Vite integration | ready | A | T02, runtime entry | compiler and runtime interfaces ready |
+| T03 | Vite integration | done | A | T02, runtime entry | pending commit: Vite adapter |
 | T04 | Browser capture | done | B | T01 | pending commit: browser capture |
 | T05 | Text/clip geometry | ready | first available | T04 | unclaimed |
 | T06 | Pointer/rules | ready (partial) | B | T04; T05 for final rules | capture interface ready; full rules wait for T05 |
@@ -153,3 +154,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: clipping and text fragments are explicitly unknown until T05; pointer samples until T06; paint visibility remains unknown in v0. The test-only runtime entry is never imported by the ordinary shop and production output remains clean.
 - Next task now unblocked: T03 Vite adapter, T05 geometry/text, and the capture half of T06.
 - Reviewer and review outcome: self-reviewed; real Chromium captures passed without screenshot APIs or page interaction.
+
+### T03 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add Vite source-link adapter`
+- Owned files changed: `packages/vite-plugin/**`, shop Vite configuration and HMR probe, browser source-link tests, README, and this handoff board.
+- Interface changes: `anwc({ sourceRoot? })` is a Vite `pre` transform. It injects development-only source IDs, serves a versioned virtual runtime module, and exposes `window.__ANWC__` with `capture` and `sourceForSite`.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (12 tests); `npm run test:browser` passed (4 Chromium tests); `npm run build` passed. Browser tests resolve an actual rendered `h1` to `examples/shop/src/main.tsx` and change a JSX `<p>` to `<button>` through HMR, then verify the refreshed source manifest. A production-output search found no `data-anwc-site`, `__ANWC__`, or virtual runtime strings.
+- Actual evidence/artifact paths: `packages/vite-plugin/src/index.ts` and `tests/browser/vite-plugin.spec.ts`.
+- Unsupported cases or remaining failures: this is Vite development integration only. Production instrumentation requires explicit future configuration; lazy-route coverage is not yet separately tested because the demo has no routes. Next.js integration remains deferred by ADR-015.
+- Next task now unblocked: T05 geometry/text and the complete T06 rule layer; T07 waits for their output.
+- Reviewer and review outcome: self-reviewed; development source links, HMR refresh, and production stripping all passed in the real toolchain.

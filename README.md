@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: T00 workspace/toolchain, T01 shared protocol, T02 JSX compiler, and T04 browser capture are complete. The Vite adapter, text/clip and pointer diagnostics, CLI, and defect demo remain unimplemented.
+Status on 2026-09-15: T00 workspace/toolchain, T01 shared protocol, T02 JSX compiler, T03 Vite adapter, and T04 browser capture are complete. Text/clip and pointer diagnostics, CLI, and defect demo remain unimplemented.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 

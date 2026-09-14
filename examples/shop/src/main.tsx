@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HmrProbe } from './HmrProbe.js';
 import './styles.css';
 
 function App() {
@@ -7,6 +8,7 @@ function App() {
     <main>
       <h1>ANWC shop starter</h1>
       <p>A clean React shell for the later defect scenarios.</p>
+      <HmrProbe />
     </main>
   );
 }
