@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace/toolchain ready. Implementation 1/11 tasks complete.**
+**Current state: workspace and protocol ready. Implementation 2/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -13,7 +13,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Read supplied concept notes | done | Three pasted attachments reviewed |
 | Connect to repository | done | SSH clone succeeded; remote empty on initial inspection |
 | Architecture and tonight's scope | done | [PLAN](PLAN.md) |
-| Shared protocol proposal | ready for T01 review | [PROTOCOL](PROTOCOL.md) |
+| Shared protocol contract (T01) | done | `@anwc/protocol` Zod schemas, exported TypeScript types, synthetic fixtures |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -33,10 +33,10 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | ID | Module | Status | Suggested role | Dependencies | Branch / evidence |
 | --- | --- | --- | --- | --- | --- |
 | T00 | Workspace/toolchain | done | A | none | pending commit: workspace setup |
-| T01 | Protocol/schema | ready | A; B reviews | T00 | unclaimed |
-| T02 | Source compiler | queued | A | T01 | unclaimed |
+| T01 | Protocol/schema | done | A; B reviews | T00 | pending commit: protocol contract |
+| T02 | Source compiler | ready | A | T01 | unclaimed |
 | T03 | Vite integration | queued | A | T02, runtime entry | unclaimed |
-| T04 | Browser capture | queued | B | T01 | unclaimed |
+| T04 | Browser capture | ready | B | T01 | unclaimed |
 | T05 | Text/clip geometry | queued | first available | T04 | unclaimed |
 | T06 | Pointer/rules | queued | B | T04; T05 for final rules | unclaimed |
 | T07 | CLI/serializer | queued | A | T03–T06 | unclaimed |
@@ -118,3 +118,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: `npm audit` reports 6 transitive development-dependency advisories (2 moderate, 3 high, 1 critical); no automatic upgrade was applied because the first priority is the pinned, verified baseline. `npm run anwc` exits with an explicit unavailable message until T07.
 - Next task now unblocked: T01 protocol/schema.
 - Reviewer and review outcome: self-reviewed; source tree typecheck, build, unit test, and browser smoke test all passed.
+
+### T01 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: freeze protocol contract`
+- Owned files changed: `packages/protocol/src/**`, `packages/protocol/package.json`, `tests/unit/protocol.test.ts`, `docs/PROTOCOL.md`, and this handoff board.
+- Interface changes: protocol `0.1` is frozen. `RawCapture` has capture/serialization timings only; `Snapshot` adds diagnostic findings and rule timing. Findings use discriminated evidence for the six planned v0 rule families.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (7 tests across 2 files); `npm run build` passed. Tests round-trip JSON and reject incompatible versions, negative geometry, inconsistent pointer totals, and unresolved references.
+- Actual evidence/artifact paths: `packages/protocol/src/schema.ts`, `packages/protocol/src/fixtures.ts`, and `tests/unit/protocol.test.ts`.
+- Unsupported cases or remaining failures: this freezes shape and validation only; no browser producer, compiler transform, diagnostic algorithm, or CLI exists. A generic evidence variant remains reserved for rule codes introduced later.
+- Next task now unblocked: T02 compiler and T04 browser capture can proceed independently.
+- Reviewer and review outcome: self-reviewed; exported package typechecks and validated fixture round-trips.

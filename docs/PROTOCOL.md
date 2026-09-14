@@ -1,6 +1,6 @@
-# ANWC v0 protocol proposal
+# ANWC v0.1 protocol contract
 
-Status: proposed contract to freeze in T01. These types describe the intended implementation; no package exists yet. All producers and consumers must use one shared protocol package. Unknown and incomplete are first-class outcomes.
+Status: frozen in T01. The executable TypeScript types and Zod validators live in `@anwc/protocol`; all producers and consumers must import this package rather than copying its shapes. Unknown and incomplete are first-class outcomes.
 
 ## 1. Core conventions
 
@@ -101,7 +101,7 @@ type Finding = {
   nodeId: string;
   source: SourceRef | null;
   message: string;
-  evidence: Record<string, unknown>;
+  evidence: DiagnosticEvidence;
   relatedNodeIds: string[];
   limitations: string[];
   acknowledged: boolean;
@@ -144,7 +144,7 @@ type Snapshot = {
 };
 ```
 
-T01 should replace `Record<string, unknown>` with discriminated evidence types for the first six rule codes once T04–T06 agree the exact measurements. Keep a validating schema alongside TypeScript types so CLI JSON cannot silently drift. Do not add a dozen unused abstraction layers before the first capture works.
+`evidence` is now a discriminated union covering the first six planned rule families, plus a deliberately marked generic escape hatch for later rule work. The shared Zod schema validates JSON before a producer or consumer accepts it, so CLI JSON cannot silently drift. T04–T06 may narrow a rule's evidence only through a coordinated protocol change.
 
 `paintVisibility` is unknown in v0 even when hit samples reach the target. `render` describes non-paint facts that callers may use independently. This avoids implying that pointer tests detect opaque overlays with `pointer-events:none`.
 
@@ -187,7 +187,7 @@ diagnose(capture: RawCapture): Finding[];
 inspect(options: InspectOptions): Promise<Snapshot>;
 ```
 
-T01 defines the named aliases referenced above. `RawCapture` contains page/readiness/coverage/nodes and capture timing, without rule output. Compiler manifest joins belong in the capture orchestration path; diagnostics should not fetch source files. In Vite dev, `window.__ANWC__` exposes versioned `capture` and source lookup for the current page. In runtime-only mode, inject the same bundled capture implementation once.
+T01 defines the named aliases referenced above. `RawCapture` contains page/readiness/coverage/nodes and `{ capture, serialize }` timing, without rule output. `Snapshot` adds findings and rule timing. Compiler manifest joins belong in the capture orchestration path; diagnostics should not fetch source files. In Vite dev, `window.__ANWC__` exposes versioned `capture` and source lookup for the current page. In runtime-only mode, inject the same bundled capture implementation once.
 
 Every capture creates a consistent session context. If navigation or teardown occurs mid-capture, fail explicitly or mark the capture incomplete. Do not concatenate node lists from different document sessions.
 
