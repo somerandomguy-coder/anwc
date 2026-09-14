@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: planning handoff complete; implementation has not started. The GitHub repository was empty when inspected. Nothing in this README claims that the proposed commands or packages already work.
+Status on 2026-09-15: T00 workspace/toolchain is complete. The protocol, compiler, browser runtime, CLI, and defect demo remain unimplemented.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 
@@ -16,6 +16,20 @@ The browser still performs layout. The compiler adds source identity and optiona
 4. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
 5. [Benchmark protocol](docs/BENCHMARK.md): defect fixtures, controls, fair comparison, scoring, cost measurement.
 6. [Decision log](docs/DECISIONS.md): agreed planning defaults and questions to revisit after the experiment.
+
+## Run the current workspace
+
+```sh
+npm install
+npx playwright install chromium
+npm run dev
+npm run typecheck
+npm run test:unit
+npm run test:browser
+npm run build
+```
+
+The shop currently renders only a clean shell. `npm run anwc` deliberately exits with an unavailable message until T07 implements the CLI.
 
 ## Tonight's target
 
@@ -48,4 +62,4 @@ npm run anwc -- inspect http://127.0.0.1:5173 --viewport 1440x900 --format text
 
 Claim a task in `docs/PROGRESS.md`, implement only its owned paths, attach command output to the task's evidence entry, and move it to `review` before calling it complete. Schema changes require a coordinated update to producers, consumers, and examples. Suggested roles are placeholders until the two collaborators choose them.
 
-This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. Planning files are local until explicitly published to the shared remote. No application dependencies, commits, or remote changes were created as part of the planning handoff.
+This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. The planning handoff and T00 are published to the shared remote. Each completed task is recorded in `docs/PROGRESS.md` and committed separately.

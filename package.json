@@ -1,0 +1,29 @@
+{
+  "name": "anwc",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "npm@11.6.1",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@anwc/shop",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "tsc --build",
+    "test:unit": "vitest run",
+    "test:browser": "playwright test",
+    "anwc": "node scripts/anwc-unavailable.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.51.1",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.7.3",
+    "vite": "6.1.0",
+    "vitest": "3.0.7"
+  }
+}

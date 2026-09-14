@@ -2,9 +2,9 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: planning handoff ready. Implementation 0/11 tasks complete.**
+**Current state: workspace/toolchain ready. Implementation 1/11 tasks complete.**
 
-SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. No application packages, lockfile, compiler, browser runtime, demo, or tests exist yet. No commits or pushes were made during the planning task.
+SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
 ## Current deliverables
 
@@ -17,9 +17,10 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
+| Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
 | Compiler/runtime/demo | not started | No implementation claimed |
 | Actual benchmark/cost results | not started | No results claimed |
-| Publish planning files to GitHub | not performed | Local planning handoff only |
+| Publish planning files to GitHub | done | `main` at `6b32850` |
 
 ## Status vocabulary
 
@@ -31,8 +32,8 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 | ID | Module | Status | Suggested role | Dependencies | Branch / evidence |
 | --- | --- | --- | --- | --- | --- |
-| T00 | Workspace/toolchain | ready | A | none | unclaimed |
-| T01 | Protocol/schema | queued | A; B reviews | T00 | unclaimed |
+| T00 | Workspace/toolchain | done | A | none | pending commit: workspace setup |
+| T01 | Protocol/schema | ready | A; B reviews | T00 | unclaimed |
 | T02 | Source compiler | queued | A | T01 | unclaimed |
 | T03 | Vite integration | queued | A | T02, runtime entry | unclaimed |
 | T04 | Browser capture | queued | B | T01 | unclaimed |
@@ -47,7 +48,7 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 | Gate | Acceptance | Status | Evidence to attach |
 | --- | --- | --- | --- |
-| G0 | Clean app builds/runs, toolchain pinned | not run | Version log and commands |
+| G0 | Clean app builds/runs, toolchain pinned | passed | Node 24.18.0, npm 11.13.0, TypeScript 5.7.3, Vite 6.1.0, React 19.0.0, Vitest 3.0.7, Playwright 1.51.1 / Chromium build 1161 |
 | G1 | JSX site links to live node and original source | not run | Actual capture and compiler tests |
 | G2 | Supported text/clip/pointer rules pass independent checks | not run | Browser test output |
 | G3 | CLI emits valid JSON + bounded text and cleans up | not run | Actual reports and error-path tests |
@@ -59,9 +60,9 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 ## Next three actions
 
-1. Choose Builder A/Builder B and claim T00. If only one person is coding, follow the same task order sequentially.
-2. Implement and review T01 before separate modules create competing snapshot formats.
-3. Build the first source-linked button capture; then add one defect and one healthy control before expanding the shop.
+1. Implement and review T01 before separate modules create competing snapshot formats.
+2. Build the first source-linked button capture; then add one defect and one healthy control before expanding the shop.
+3. Keep every completed task in a separate commit with its evidence recorded here.
 
 ## Collaboration workflow
 
@@ -106,3 +107,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - 2026-09-15: Chose React/Vite plugin + browser runtime as the first slice, with compiler/source mapping separated from actual layout observations.
 - 2026-09-15: Added detailed module briefs, protocol proposal, collaboration board, scoped visibility limits, and fair benchmark design.
 - 2026-09-15: Prepared local shareable planning artifacts. No implementation, tests, benchmark results, commits or remote publication performed.
+
+### T00 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; `chore: set up ANWC workspace`
+- Owned files changed: root package/tooling configuration; package skeleton manifests; clean `examples/shop`; smoke tests.
+- Interface changes: none. Package names reserve the imports planned in the protocol.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (1 test); `npm run build` passed; `npm run test:browser` passed (1 Chromium test). `npm install` created `package-lock.json`; `npx playwright install chromium` installed Playwright Chromium build 1161.
+- Actual evidence/artifact paths: local terminal output; `tests/unit/workspace.test.ts`; `tests/browser/shop.spec.ts`.
+- Unsupported cases or remaining failures: `npm audit` reports 6 transitive development-dependency advisories (2 moderate, 3 high, 1 critical); no automatic upgrade was applied because the first priority is the pinned, verified baseline. `npm run anwc` exits with an explicit unavailable message until T07.
+- Next task now unblocked: T01 protocol/schema.
+- Reviewer and review outcome: self-reviewed; source tree typecheck, build, unit test, and browser smoke test all passed.

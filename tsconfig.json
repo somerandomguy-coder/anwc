@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/compiler" },
+    { "path": "./packages/runtime" },
+    { "path": "./packages/diagnostics" },
+    { "path": "./packages/vite-plugin" },
+    { "path": "./packages/cli" },
+    { "path": "./examples/shop" }
+  ]
+}
