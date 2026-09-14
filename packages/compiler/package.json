@@ -3,5 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "exports": "./src/index.ts"
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@anwc/protocol": "0.0.0",
+    "@babel/parser": "7.27.0",
+    "magic-string": "0.30.17"
+  }
 }

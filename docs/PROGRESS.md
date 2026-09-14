@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace and protocol ready. Implementation 2/11 tasks complete.**
+**Current state: workspace, protocol, and compiler ready. Implementation 3/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -14,6 +14,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Connect to repository | done | SSH clone succeeded; remote empty on initial inspection |
 | Architecture and tonight's scope | done | [PLAN](PLAN.md) |
 | Shared protocol contract (T01) | done | `@anwc/protocol` Zod schemas, exported TypeScript types, synthetic fixtures |
+| JSX instrumentation compiler (T02) | done | parser-based source-preserving host-element annotation and source maps |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -34,8 +35,8 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | --- | --- | --- | --- | --- | --- |
 | T00 | Workspace/toolchain | done | A | none | pending commit: workspace setup |
 | T01 | Protocol/schema | done | A; B reviews | T00 | pending commit: protocol contract |
-| T02 | Source compiler | ready | A | T01 | unclaimed |
-| T03 | Vite integration | queued | A | T02, runtime entry | unclaimed |
+| T02 | Source compiler | done | A | T01 | pending commit: JSX compiler |
+| T03 | Vite integration | queued | A | T02, runtime entry | compiler interface ready; runtime entry pending T04 |
 | T04 | Browser capture | ready | B | T01 | unclaimed |
 | T05 | Text/clip geometry | queued | first available | T04 | unclaimed |
 | T06 | Pointer/rules | queued | B | T04; T05 for final rules | unclaimed |
@@ -129,3 +130,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: this freezes shape and validation only; no browser producer, compiler transform, diagnostic algorithm, or CLI exists. A generic evidence variant remains reserved for rule codes introduced later.
 - Next task now unblocked: T02 compiler and T04 browser capture can proceed independently.
 - Reviewer and review outcome: self-reviewed; exported package typechecks and validated fixture round-trips.
+
+### T02 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add JSX instrumentation compiler`
+- Owned files changed: `packages/compiler/**`, compiler dependencies in the lockfile, `tests/unit/compiler.test.ts`, README, and this handoff board.
+- Interface changes: `instrument(code, { filename, root, mode })` returns an `InstrumentResult` or `null` for production/unrelated inputs. It injects deterministic `data-anwc-site` attributes only into lowercase non-SVG host elements.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (11 tests across 3 files); `npm run build` passed. Tests cover TSX, fragments/custom/member components, spreads, query suffixes, Windows paths, SVG, collisions, repeat transform, site-id separation, and source-map file lookup.
+- Actual evidence/artifact paths: `packages/compiler/src/index.ts` and `tests/unit/compiler.test.ts`.
+- Unsupported cases or remaining failures: this is a pure Node transform only. T03 must connect it to a real Vite/React render and verify HMR, manifest lookup, and runtime behavior. There is no ref injection, component wrapping, or live-node identity here.
+- Next task now unblocked: the transform side of T03; T04 remains independently ready.
+- Reviewer and review outcome: self-reviewed; parser and map assertions pass with original JSX expressions retained verbatim.
