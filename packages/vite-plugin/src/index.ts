@@ -17,8 +17,9 @@ function runtimeModule(manifest: Record<string, SourceRef>, runtimeVersion: stri
   return `import { capture, configureRuntime } from '@anwc/runtime';
 const manifest = ${JSON.stringify(manifest)};
 const sourceForSite = (siteId) => manifest[siteId] ?? null;
+const registerSources = (sources) => Object.assign(manifest, sources);
 configureRuntime({ sourceLookup: sourceForSite, runtimeVersion: ${JSON.stringify(runtimeVersion)} });
-window.__ANWC__ = { version: '0.1', capture, sourceForSite };
+window.__ANWC__ = { version: '0.1', capture, sourceForSite, registerSources };
 if (import.meta.hot) import.meta.hot.accept();`;
 }
 
@@ -66,10 +67,11 @@ export function anwc(options: AnwcPluginOptions = {}): Plugin {
     transform(code, id) {
       const transformed = updateModuleSites(id, code);
       if (transformed === null) return null;
-      return { code: transformed.code, map: transformed.map as SourceMap };
+      const sourceRecords = Object.fromEntries(transformed.sites.map((site) => [site.siteId, site]));
+      return { code: `${transformed.code}\n;window.__ANWC__?.registerSources?.(${JSON.stringify(sourceRecords)});`, map: transformed.map as SourceMap };
     },
-    transformIndexHtml(_html, context: IndexHtmlTransformContext) {
-      if (!active || context.server === undefined) return undefined;
+    transformIndexHtml(_html, _context: IndexHtmlTransformContext) {
+      if (!active) return undefined;
       return [{ tag: 'script', attrs: { type: 'module', src: `/@id/${VIRTUAL_ID}` }, injectTo: 'head-prepend' }];
     },
     async handleHotUpdate(context) {

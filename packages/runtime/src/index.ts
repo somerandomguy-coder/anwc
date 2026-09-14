@@ -25,6 +25,7 @@ type RuntimeState = {
 
 const states = new WeakMap<Document, RuntimeState>();
 const defaultLimits = { maxNodes: 1_500, maxSamplesPerNode: 25, textLimit: 160, timeoutMs: 1_000 };
+const nonInspectableTags = new Set(['base', 'head', 'link', 'meta', 'noscript', 'script', 'style', 'template', 'title']);
 
 function identifier(prefix: string): string {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -145,6 +146,10 @@ function nearestCapturedParent(element: Element, selected: Set<Element>, state: 
   return null;
 }
 
+function discoverElements(document: Document): Element[] {
+  return [...document.querySelectorAll('*')].filter((element) => !nonInspectableTags.has(element.tagName.toLowerCase()) && !element.hasAttribute('data-anwc-internal'));
+}
+
 function measure(element: Element, selected: Set<Element>, state: RuntimeState, textLimit: number): Measurement {
   const rect = element.getBoundingClientRect();
   const hasBox = element.getClientRects().length > 0;
@@ -202,7 +207,7 @@ export async function capture(options: CaptureOptions = {}): Promise<RawCapture>
   const state = stateFor(document);
   const started = performance.now();
   const readiness = await waitForReadiness(limits.timeoutMs);
-  const discovered = [...document.querySelectorAll('*')];
+  const discovered = discoverElements(document);
   const selected = discovered.slice(0, limits.maxNodes);
   const selectedSet = new Set(selected);
   const nodes = selected.map((element) => measure(element, selectedSet, state, limits.textLimit));

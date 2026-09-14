@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, and diagnostics ready. Implementation 7/11 tasks complete.**
+**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, and CLI ready. Implementation 8/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -19,6 +19,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Vite adapter and source manifest (T03) | done | development-only compiler/runtime injection with HMR manifest refresh |
 | Geometry and text observations (T05) | done | supported client-box clipping and direct-text Range fragments |
 | Pointer sampling and diagnostics (T06) | done | 5×5 browser hit tests and pure normalized findings |
+| CLI and serializer (T07) | done | isolated Playwright inspection, JSON, bounded text, and runtime-only injection |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -44,7 +45,7 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T04 | Browser capture | done | B | T01 | pending commit: browser capture |
 | T05 | Text/clip geometry | done | first available | T04 | pending commit: geometry and text observations |
 | T06 | Pointer/rules | done | B | T04; T05 | pending commit: pointer rules |
-| T07 | CLI/serializer | ready | A | T03–T06 | unclaimed |
+| T07 | CLI/serializer | done | A | T03–T06 | pending commit: CLI inspector |
 | T08 | Demo and controls | queued | B | T00/T01; T07 for integration | unclaimed |
 | T09 | Integration/freeze | queued | both; one integrator | T02–T08 | unclaimed |
 | T10 | Paired experiment | queued | evaluator | T09 | unclaimed |
@@ -189,3 +190,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: sample fractions are not pixel coverage; no rule infers paint visibility from pointer success. Disabled and inert controls retain interaction facts but are not reported as pointer-obscured. Rule severity is intent-aware; allowances produce acknowledged informational findings.
 - Next task now unblocked: T07 CLI and serializer.
 - Reviewer and review outcome: self-reviewed; pure synthetic rules and real browser hit-test findings passed without click, fill, scroll, style mutation, or screenshot APIs.
+
+### T07 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add CLI inspector`
+- Owned files changed: `packages/cli/**`, browser runtime injection entry, root CLI command, source-manifest registration fix, capture discovery filter, CLI integration tests, README, and this handoff board.
+- Interface changes: `npm run anwc -- inspect URL` now launches an isolated Chromium context and emits validated JSON or bounded text. `--runtime-only` bundles and injects the same runtime collector for a page without the Vite plugin. Exit statuses are 0 success, 1 selected finding threshold, 2 usage/navigation/runtime failure, and 3 incomplete/unsettled capture.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (18 tests); `npm run test:browser` passed (6 Chromium tests); `npm run build` passed. CLI tests cover linked Vite inspection at a mobile viewport, runtime-only capture, JSON-only error output, and finding-threshold exit status. The public runtime-only command emitted a compact zero-finding text report with no screenshot call.
+- Actual evidence/artifact paths: `packages/cli/src/index.ts`, `packages/cli/src/main.ts`, and `tests/unit/cli.test.ts`.
+- Unsupported cases or remaining failures: no scenario runner exists yet, so CLI inspection does not set up app state; it only reads the state it reaches. Runtime-only captures have source-null nodes by design. The runtime-missing detection wait is capped at two seconds inside the caller's overall timeout.
+- Next task now unblocked: T08 defect shop and then T09 integration/freeze.
+- Reviewer and review outcome: self-reviewed; output is schema-validated, browser/context cleanup is in `finally`, and implementation contains no screenshot, click, fill, scroll, or style-mutation calls.
