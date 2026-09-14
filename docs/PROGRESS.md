@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: workspace, protocol, compiler, Vite integration, browser capture, and geometry/text observations ready. Implementation 6/11 tasks complete.**
+**Current state: workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, and diagnostics ready. Implementation 7/11 tasks complete.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the empty repository was cloned locally. The supplied sample snippets were reviewed as design inputs. T00 added a pinned npm workspace, a clean React/Vite shop shell, and real Chromium smoke coverage. The compiler, browser runtime, CLI, and defect demo do not exist yet.
 
@@ -18,6 +18,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Browser capture and identity (T04) | done | read-only browser collector with per-document IDs and explicit unknowns |
 | Vite adapter and source manifest (T03) | done | development-only compiler/runtime injection with HMR manifest refresh |
 | Geometry and text observations (T05) | done | supported client-box clipping and direct-text Range fragments |
+| Pointer sampling and diagnostics (T06) | done | 5×5 browser hit tests and pure normalized findings |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
@@ -42,8 +43,8 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T03 | Vite integration | done | A | T02, runtime entry | pending commit: Vite adapter |
 | T04 | Browser capture | done | B | T01 | pending commit: browser capture |
 | T05 | Text/clip geometry | done | first available | T04 | pending commit: geometry and text observations |
-| T06 | Pointer/rules | ready | B | T04; T05 | all required measurements are ready |
-| T07 | CLI/serializer | queued | A | T03–T06 | unclaimed |
+| T06 | Pointer/rules | done | B | T04; T05 | pending commit: pointer rules |
+| T07 | CLI/serializer | ready | A | T03–T06 | unclaimed |
 | T08 | Demo and controls | queued | B | T00/T01; T07 for integration | unclaimed |
 | T09 | Integration/freeze | queued | both; one integrator | T02–T08 | unclaimed |
 | T10 | Paired experiment | queued | evaluator | T09 | unclaimed |
@@ -177,3 +178,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: transforms, clip paths, masks, vertical writing, and positioned descendants are unknown. Line grouping is approximate; text ownership is direct-node-only, so parent elements do not duplicate inline child observations. No final diagnostics are emitted here.
 - Next task now unblocked: T06 pointer sampling and pure diagnostic rules.
 - Reviewer and review outcome: self-reviewed; browser output validates against `parseRawCapture` and all supported/unknown fixtures passed.
+
+### T06 — 2026-09-15 — Codex
+- Status: done
+- Branch and commit: `main`; pending `feat: add pointer diagnostics`
+- Owned files changed: browser hit-test collector, pure diagnostics package, diagnostics unit tests, pointer browser fixture, README, and this handoff board.
+- Interface changes: interaction candidates receive a deduplicated 5×5 interior hit-test grid. `diagnose(capture)` returns stable normalized findings without browser APIs, including horizontal overflow, clipping, text clipping/line budgets, expected hidden state, viewport state, unsupported visibility, and full or partial pointer blockage.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (14 tests); `npm run test:browser` passed (6 Chromium tests); `npm run build` passed. Browser tests verify opaque, transparent, partial, nested-stack, child-descendant, disabled, opacity-zero, and pointer-events-none cases. Real findings validate as a `Snapshot`.
+- Actual evidence/artifact paths: `packages/runtime/src/hit-test.ts`, `packages/diagnostics/src/index.ts`, `tests/unit/diagnostics.test.ts`, and `tests/browser/runtime-pointer.spec.ts`.
+- Unsupported cases or remaining failures: sample fractions are not pixel coverage; no rule infers paint visibility from pointer success. Disabled and inert controls retain interaction facts but are not reported as pointer-obscured. Rule severity is intent-aware; allowances produce acknowledged informational findings.
+- Next task now unblocked: T07 CLI and serializer.
+- Reviewer and review outcome: self-reviewed; pure synthetic rules and real browser hit-test findings passed without click, fill, scroll, style mutation, or screenshot APIs.

@@ -1,5 +1,6 @@
 import type { Assessment, Measurement, RawCapture, SourceRef } from '@anwc/protocol';
 import { observeAncestorClip } from './clipping.js';
+import { observePointer } from './hit-test.js';
 import { observeText } from './text.js';
 
 export type CaptureOptions = {
@@ -159,6 +160,7 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
   const maxLinesRaw = element.getAttribute('data-anwc-max-lines');
   const maxLines = maxLinesRaw && /^\d+$/.test(maxLinesRaw) && Number(maxLinesRaw) > 0 ? Number(maxLinesRaw) : null;
   const allow = (element.getAttribute('data-anwc-allow') ?? '').split(/\s+/).filter((value): value is 'horizontal-scroll' | 'text-truncation' => value === 'horizontal-scroll' || value === 'text-truncation');
+  const interaction = { candidate: isInteractiveCandidate(element), disabled: isDisabled(element), inert: isInert(element), pointerEvents: getComputedStyle(element).pointerEvents };
 
   return {
     nodeId: nodeId(element, state), siteId, source, parentNodeId: nearestCapturedParent(element, selected, state),
@@ -171,8 +173,8 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
       scrollableX: element.scrollWidth > element.clientWidth, scrollableY: element.scrollHeight > element.clientHeight
     } : null,
     text: observeText(element, clip),
-    pointer: unknown('t04-not-implemented', ['Pointer samples are collected by T06.']),
-    interaction: { candidate: isInteractiveCandidate(element), disabled: isDisabled(element), inert: isInert(element), pointerEvents: getComputedStyle(element).pointerEvents },
+    pointer: observePointer(element, box, interaction.candidate, selected, (candidate) => nodeId(candidate, state)),
+    interaction,
     paintVisibility: unknown('v0', ['Paint visibility is unsupported in v0.']),
     intent: { expectedCurrent: expected === 'visible' || expected === 'interactive' ? expected : null, maxLines, allow }
   };
