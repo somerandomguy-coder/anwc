@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. Implementation 10/11 tasks complete.**
+**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 

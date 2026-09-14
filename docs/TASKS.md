@@ -1,6 +1,6 @@
 # Small implementation tasks for coding models
 
-Status: all implementation tasks are unstarted. These briefs are designed for one narrow coding session each. Read [PROTOCOL](PROTOCOL.md) first and use [PROGRESS](PROGRESS.md) as the shared ownership/status record.
+Status: **T00–T09 are complete and published through `4c6cafe`.** These are historical bounded implementation briefs, retained for review and future narrowly scoped follow-up work. Do not replay them or treat them as an unstarted backlog. Begin with [TOMORROW](TOMORROW.md), then use [PROGRESS](PROGRESS.md) as the shared ownership/status record. T10 is a paired-agent evaluation, whose operational brief is [BENCHMARK](BENCHMARK.md).
 
 ## Shared task prompt
 

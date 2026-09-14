@@ -1,5 +1,7 @@
 # ANWC implementation plan
 
+> **Implementation status:** This is the original architecture plan. T00–T09 have now been implemented and frozen at `4c6cafe`; the remaining work is the paired-agent experiment. Read [TOMORROW](TOMORROW.md) for the current handoff and [PROGRESS](PROGRESS.md) for verified evidence. Where this document describes a proposed or later capability, it is not a claim that the MVP already supports it.
+
 Planning date: 2026-09-15, Australia/Sydney. Baseline: authenticated SSH clone succeeded; remote repository contained no commits or source. The three supplied notes are concept material, not an implementation to preserve. This document specifies work to do; see [PROGRESS](PROGRESS.md) for what has actually been done.
 
 ## 1. Product decision

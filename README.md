@@ -10,12 +10,13 @@ The browser still performs layout. The compiler adds source identity and optiona
 
 ## Start here
 
-1. [Detailed architecture and implementation plan](docs/PLAN.md): scope, algorithms, integration, limits, milestones.
-2. [Shared progress board](docs/PROGRESS.md): current state, proposed owners, dependencies, evidence, next actions.
-3. [Small module task briefs](docs/TASKS.md): copyable instructions for cheaper coding models.
+1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
+2. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
+3. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
 4. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
-5. [Benchmark protocol](docs/BENCHMARK.md): defect fixtures, controls, fair comparison, scoring, cost measurement.
-6. [Decision log](docs/DECISIONS.md): agreed planning defaults and questions to revisit after the experiment.
+5. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
+6. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
+7. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
 
 ## Run the current workspace
 

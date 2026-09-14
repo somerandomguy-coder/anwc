@@ -1,6 +1,6 @@
 # Architecture decision record
 
-These are planning defaults from 2026-09-15. They are concrete enough to implement, and may be revised with evidence. They are not claims that both collaborators have already reviewed or accepted every detail.
+These began as planning defaults on 2026-09-15. T00–T09 implemented the MVP consistent with them and froze it at `4c6cafe`; they may be revised only with evidence and a recorded follow-up decision. They do not claim that both collaborators have already reviewed or accepted every detail.
 
 | ID | Decision | Reason | Revisit when |
 | --- | --- | --- | --- |
@@ -19,6 +19,7 @@ These are planning defaults from 2026-09-15. They are concrete enough to impleme
 | ADR-013 | Same-agent matched benchmark, competent baseline | Separates tool benefit from model/tool handicaps | Later cross-model/real-world replication |
 | ADR-014 | Independent truth and held-out variations | Detector must not grade itself or memorize scored fixtures | Always retain independence |
 | ADR-015 | Defer Next.js compiler integration; offer runtime-only path | Vite integration does not establish SSR/Turbopack compatibility | Vite source linkage demonstrates measurable value |
+| ADR-016 | Treat clean-fixture actionable findings as release blockers | T09 exposed a text-clip false positive from normal glyph overhang; detector trust depends on healthy controls | A broader corpus establishes a better regression policy |
 
 ## Questions to resolve with evidence
 

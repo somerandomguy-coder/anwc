@@ -1,6 +1,8 @@
 # Tomorrow's experiment: does ANWC reduce agent repair work?
 
-Status: development fixture implementation exists; no benchmark has been run and no cost/performance results exist. Freeze the fixture revision and scoring rules before the evaluated agent sees the tasks.
+Status: the development fixture and integration baseline are frozen at `4c6cafe`; no paired-agent benchmark has been run and no cost/performance results exist. Read [TOMORROW](TOMORROW.md) for the runnable baseline, then freeze a separate evaluator corpus and scoring rules before the evaluated agent sees the tasks.
+
+The frozen development baseline has 19 unit tests and 9 Chromium tests. The clean page has zero ANWC findings at 1440×900; the blocked-checkout page has the expected `POINTER_BLOCKED_AT_SAMPLES` finding at 390×844. These checks establish detector behavior for the development fixture. They are not benchmark observations and must not be presented as evidence of agent or cost improvement.
 
 The current public development scenarios are `clean`, `horizontal-overflow`, `ancestor-clip`, `line-budget`, `hidden-checkout`, `blocked-checkout`, `partial-checkout`, and `combined`. They are deterministic local URLs using `?scenario=ID`; the six isolated defects are verified by ordinary DOM/layout assertions and then separately through the CLI at 1440×900 and 390×844. These are development fixtures, not a blinded evaluator corpus.
 
