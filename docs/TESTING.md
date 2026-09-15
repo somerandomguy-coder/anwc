@@ -75,7 +75,18 @@ A scoreable pilot must use a separate subject workspace for each run. It must co
 
 Materialize one neutral held-out defect into each subject copy. Keep its mutation and independent grading checks outside the subject workspace. The ordinary subject must not have ANWC. The assisted subject may have the ANWC CLI, but no evaluator truth.
 
-Validate a prepared subject before giving it to an agent:
+Use the packager to export a new folder from the source repository plus a private overlay:
+
+```sh
+npm run bench -- package-subject PATH_TO_SOURCE PATH_TO_NEW_SUBJECT --overlay PATH_TO_PRIVATE_OVERLAY --condition ordinary
+npm run bench -- package-subject PATH_TO_SOURCE PATH_TO_NEW_SUBJECT --overlay PATH_TO_PRIVATE_OVERLAY --condition anwc-assisted
+```
+
+The destination must not already exist. The packager excludes planning/test/Git material, removes the public `scenarios.ts`, retains ANWC packages only for the assisted condition, sanitizes root scripts, applies the overlay, then runs the leakage gate. Keep the overlay outside both the repository and the subject workspace.
+
+The overlay must replace the app's public scenario setup with one materialized defect. For an ordinary subject it must also replace `examples/shop/vite.config.ts` with a normal React/Vite configuration that does not import the ANWC plugin. For an assisted subject, retain the Vite plugin while removing the scenario switch. Do not include the answer key or evaluator tests in either overlay output.
+
+You can also validate a prepared subject directly before giving it to an agent:
 
 ```sh
 npm run bench -- check-subject PATH_TO_SUBJECT --condition ordinary

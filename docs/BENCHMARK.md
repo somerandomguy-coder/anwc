@@ -168,6 +168,8 @@ The helper validates run setup and entered result consistency only. It does not 
 
 Before each agent receives a subject folder, run `npm run bench -- check-subject SUBJECT_PATH --condition ordinary` or `--condition anwc-assisted`. The gate rejects known leakage: `docs/`, `bench/`, `tests/`, `.git/`, the public scenario switch, and ANWC CLI code in the ordinary condition. It also requires the CLI in the assisted condition. It is a deterministic preflight check, not a substitute for host-level filesystem and network isolation.
 
+`npm run bench -- package-subject SOURCE_ROOT DESTINATION --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` creates a new condition-specific export and invokes the gate. The overlay is evaluator-owned and must replace public scenario setup with the one materialized held-out fixture. For ordinary subjects it must also replace the app's Vite config so ANWC is unavailable. Do not commit overlays or evaluator fixtures into this repository.
+
 ## 9. Pilot decision policy
 
 Pre-register these as engineering targets, not statistically validated thresholds:

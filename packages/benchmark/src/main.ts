@@ -1,18 +1,28 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BenchmarkPlanError, checkSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
+import { BenchmarkPlanError, checkSubjectWorkspace, packageSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted';
 }
 
 export async function run(args: string[], io: Pick<typeof process, 'stdout' | 'stderr'> = process): Promise<number> {
   const [command, planPath, ...rest] = args;
-  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject'].includes(command ?? '')) {
+  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject', 'package-subject'].includes(command ?? '')) {
     io.stderr.write(`${usage()}\n`);
     return 2;
   }
   try {
+    if (command === 'package-subject') {
+      const destination = rest.shift();
+      if (!destination || rest[0] !== '--overlay' || !rest[1] || rest[2] !== '--condition' || !['ordinary', 'anwc-assisted'].includes(rest[3] ?? '') || rest.length !== 4) {
+        io.stderr.write(`${usage()}\n`);
+        return 2;
+      }
+      await packageSubjectWorkspace({ sourceRoot: planPath, destination, overlayRoot: rest[1], condition: rest[3] as SubjectCondition });
+      io.stdout.write(`Packed subject workspace at ${destination}.\n`);
+      return 0;
+    }
     if (command === 'check-subject') {
       if (rest[0] !== '--condition' || !['ordinary', 'anwc-assisted'].includes(rest[1] ?? '') || rest.length !== 2) {
         io.stderr.write(`${usage()}\n`);

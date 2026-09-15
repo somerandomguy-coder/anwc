@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { BenchmarkPlanError, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { BenchmarkPlanError, packageSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 
 const validPlan = () => ({
   schemaVersion: '0.1' as const,
@@ -59,5 +62,28 @@ describe('benchmark plan', () => {
     ]));
 
     expect(validateSubjectInventory({ files: ['package.json', 'examples/shop/src/main.tsx', 'packages/cli/src/main.ts'], publicScenarioReferences: [] }, 'anwc-assisted')).toEqual([]);
+  });
+
+  test('packages a clean ordinary subject only after a private overlay removes scenario setup', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-benchmark-'));
+    const source = join(root, 'source');
+    const overlay = join(root, 'overlay');
+    const destination = join(root, 'subject');
+    try {
+      await mkdir(join(source, 'examples/shop/src'), { recursive: true });
+      await mkdir(overlay, { recursive: true });
+      await writeFile(join(source, 'package.json'), JSON.stringify({ name: 'subject', scripts: { dev: 'vite', build: 'vite build', anwc: 'tsx packages/cli/src/main.ts' } }));
+      await writeFile(join(source, 'examples/shop/src/main.tsx'), 'export const scenario = "?scenario=blocked-checkout";');
+      await writeFile(join(source, 'examples/shop/src/scenarios.ts'), 'export const scenarioIds = [];');
+      await mkdir(join(overlay, 'examples/shop/src'), { recursive: true });
+      await writeFile(join(overlay, 'examples/shop/src/main.tsx'), 'export const app = "subject";');
+
+      await packageSubjectWorkspace({ sourceRoot: source, destination, overlayRoot: overlay, condition: 'ordinary' });
+      expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8')).scripts).toEqual({ dev: 'vite', build: 'vite build' });
+      expect(await readFile(join(destination, 'examples/shop/src/main.tsx'), 'utf8')).toContain('subject');
+      expect(validateSubjectInventory({ files: ['package.json', 'examples/shop/src/main.tsx'], publicScenarioReferences: [] }, 'ordinary')).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

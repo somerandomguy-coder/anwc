@@ -88,6 +88,8 @@ npm run bench -- summarize bench/pilot.example.json bench/pilot.example.results.
 
 Before a scored agent run, validate the prepared subject folder with `npm run bench -- check-subject PATH --condition ordinary` or `--condition anwc-assisted`. The current development checkout is expected to fail this check because it contains public scenarios, tests, planning documents, Git history, and ANWC. The checker validates known leakage paths; it is not a security sandbox for files or services exposed by the host.
 
+`npm run bench -- package-subject SOURCE DESTINATION --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` prepares a new subject folder and runs that check automatically. The private overlay must materialize a single defect and remove the public scenario setup. In the ordinary condition it must also replace the Vite config with one that does not import the ANWC plugin. Keep overlays and evaluator truth outside the repository and every subject workspace.
+
 ## Change discipline
 
 - Keep the protocol at `0.1` unless a versioned, cross-package change is explicitly agreed and tested.

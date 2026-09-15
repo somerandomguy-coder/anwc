@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 
 const gitRef = z.string().regex(/^[0-9a-f]{7,64}$/i, 'must be a Git commit SHA');
@@ -308,4 +308,77 @@ export function validateSubjectInventory(inventory: SubjectInventory, condition:
 
 export async function checkSubjectWorkspace(root: string, condition: SubjectCondition): Promise<string[]> {
   return validateSubjectInventory(await inspectSubjectWorkspace(root), condition);
+}
+
+async function exists(path: string): Promise<boolean> {
+  try { await stat(path); return true; } catch { return false; }
+}
+
+async function copyTree(source: string, destination: string): Promise<void> {
+  const info = await stat(source);
+  if (info.isDirectory()) {
+    await mkdir(destination, { recursive: true });
+    for (const entry of await readdir(source, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) throw new BenchmarkPlanError([`subject source contains unsupported symbolic link: ${join(source, entry.name)}`]);
+      await copyTree(join(source, entry.name), join(destination, entry.name));
+    }
+    return;
+  }
+  await mkdir(join(destination, '..'), { recursive: true });
+  await copyFile(source, destination);
+}
+
+async function copyIfPresent(sourceRoot: string, destinationRoot: string, path: string): Promise<void> {
+  const source = join(sourceRoot, path);
+  if (await exists(source)) await copyTree(source, join(destinationRoot, path));
+}
+
+async function copyOverlay(source: string, destination: string): Promise<void> {
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) throw new BenchmarkPlanError([`private overlay contains unsupported symbolic link: ${join(source, entry.name)}`]);
+    await copyTree(join(source, entry.name), join(destination, entry.name));
+  }
+}
+
+export type SubjectPackageOptions = {
+  sourceRoot: string;
+  destination: string;
+  overlayRoot: string;
+  condition: SubjectCondition;
+};
+
+/**
+ * Creates a fresh agent-facing workspace from a source repo plus a private overlay.
+ * The overlay must materialize one defect and replace public scenario setup before
+ * the exported folder is handed to an agent.
+ */
+export async function packageSubjectWorkspace(options: SubjectPackageOptions): Promise<void> {
+  if (await exists(options.destination)) throw new BenchmarkPlanError([`destination already exists: ${options.destination}`]);
+  if (!(await exists(options.overlayRoot))) throw new BenchmarkPlanError([`private overlay does not exist: ${options.overlayRoot}`]);
+  const sourcePackagePath = join(options.sourceRoot, 'package.json');
+  if (!(await exists(sourcePackagePath))) throw new BenchmarkPlanError([`source root is missing package.json: ${options.sourceRoot}`]);
+
+  await mkdir(options.destination, { recursive: true });
+  const sourcePackage = JSON.parse(await readFile(sourcePackagePath, 'utf8')) as { scripts?: Record<string, string>; workspaces?: string[] };
+  const scripts: Record<string, string> = {};
+  for (const name of ['dev', 'build']) if (sourcePackage.scripts?.[name]) scripts[name] = sourcePackage.scripts[name]!;
+  if (options.condition === 'anwc-assisted' && sourcePackage.scripts?.anwc) scripts.anwc = sourcePackage.scripts.anwc;
+  const workspaces = options.condition === 'anwc-assisted'
+    ? ['packages/protocol', 'packages/compiler', 'packages/runtime', 'packages/diagnostics', 'packages/vite-plugin', 'packages/cli', 'examples/*']
+    : ['examples/*'];
+  await writeFile(join(options.destination, 'package.json'), `${JSON.stringify({ ...sourcePackage, scripts, workspaces }, null, 2)}\n`, 'utf8');
+
+  for (const path of ['package-lock.json', 'tsconfig.base.json', 'tsconfig.json']) await copyIfPresent(options.sourceRoot, options.destination, path);
+  await copyTree(join(options.sourceRoot, 'examples', 'shop'), join(options.destination, 'examples', 'shop'));
+  const publicScenarioFile = join(options.destination, 'examples', 'shop', 'src', 'scenarios.ts');
+  if (await exists(publicScenarioFile)) {
+    const { unlink } = await import('node:fs/promises');
+    await unlink(publicScenarioFile);
+  }
+  if (options.condition === 'anwc-assisted') {
+    for (const path of ['packages/protocol', 'packages/compiler', 'packages/runtime', 'packages/diagnostics', 'packages/vite-plugin', 'packages/cli']) await copyTree(join(options.sourceRoot, path), join(options.destination, path));
+  }
+  await copyOverlay(options.overlayRoot, options.destination);
+  const issues = await checkSubjectWorkspace(options.destination, options.condition);
+  if (issues.length > 0) throw new BenchmarkPlanError(['packed subject failed leakage gate:', ...issues]);
 }
