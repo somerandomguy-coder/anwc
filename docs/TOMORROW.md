@@ -22,7 +22,7 @@ npx playwright install chromium
 npm run test:integration
 ```
 
-Expected result: TypeScript succeeds, 19 unit tests pass, 9 Chromium tests pass, and the production shop build succeeds. The production output contains no ANWC instrumentation by default.
+Expected result: TypeScript succeeds, 24 unit tests pass, 10 Chromium tests pass, and the production shop build succeeds. The production output contains no ANWC instrumentation by default.
 
 `npm run test:integration` is the one command to use before and after any shared change. It runs typecheck, unit tests, browser tests, and the production build in that order.
 
@@ -37,19 +37,21 @@ npm run dev --workspace=@anwc/shop -- --host 127.0.0.1 --port 4175
 Terminal two:
 
 ```sh
-npm run anwc -- inspect "http://127.0.0.1:4175/?scenario=clean" --viewport 1440x900 --format text
-npm run anwc -- inspect "http://127.0.0.1:4175/?scenario=blocked-checkout" --viewport 390x844 --format json
+npm run anwc -- inspect "http://127.0.0.1:4175/" --viewport 1440x900 --format text
+npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format json
 ```
 
 The frozen checks establish these baseline outcomes:
 
 | URL scenario | Viewport | Required result |
 | --- | --- | --- |
-| `clean` | 1440×900 | complete capture; no findings |
+| `/` | 1440×900 | complete capture; no findings |
 | `blocked-checkout` | 390×844 | complete capture; `POINTER_BLOCKED_AT_SAMPLES` |
-| all six isolated defect scenarios | 1440×900 and 390×844 | their specified supported code is present |
+| all ten public lab cases | 1440×900 and 390×844 | their specified supported code is present |
 
-The public development scenario IDs are `horizontal-overflow`, `ancestor-clip`, `line-budget`, `hidden-checkout`, `blocked-checkout`, and `partial-checkout`. `combined` is a demonstration page, not a scored benchmark case. Their source lives in `examples/shop/src/main.tsx`, `examples/shop/src/scenarios.ts`, and `examples/shop/src/styles.css`.
+The public lab case IDs are listed in [TESTING](TESTING.md). `combined` is a demonstration page, not a scored benchmark case. Their source lives in `examples/shop/src/main.tsx`, `examples/shop/src/scenarios.ts`, and `examples/shop/src/styles.css`.
+
+The expanded public lab is at `/lab?case=ID`, with ten visible cases. Normal clean storefront routes are `/`, `/catalog`, `/checkout`, and `/account`. See [TESTING](TESTING.md) for the full case map and [EVALUATOR_SETUP](EVALUATOR_SETUP.md) for the separate source-bundle model required for actual repair evaluation.
 
 Ignored example reports are regenerated at `artifacts/integration/`. At the freeze they showed clean desktop with zero findings and blocked mobile with only the expected pointer finding. They are evidence aids, not committed benchmark results.
 
@@ -89,6 +91,8 @@ npm run bench -- summarize bench/pilot.example.json bench/pilot.example.results.
 Before a scored agent run, validate the prepared subject folder with `npm run bench -- check-subject PATH --condition ordinary` or `--condition anwc-assisted`. The current development checkout is expected to fail this check because it contains public scenarios, tests, planning documents, Git history, and ANWC. The checker validates known leakage paths; it is not a security sandbox for files or services exposed by the host.
 
 `npm run bench -- package-subject SOURCE DESTINATION --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` prepares a new subject folder and runs that check automatically. The private overlay must materialize a single defect and remove the public scenario setup. In the ordinary condition it must also replace the Vite config with one that does not import the ANWC plugin. Keep overlays and evaluator truth outside the repository and every subject workspace.
+
+The packager has been exercised end to end with local ignored overlays: both exports installed and built; the assisted export served a materialized blocked checkout and its own CLI reported a complete, source-linked `POINTER_BLOCKED_AT_SAMPLES` finding. This is packaging evidence only, not an agent-comparison result.
 
 ## Change discipline
 

@@ -48,8 +48,9 @@ describe('ANWC CLI', () => {
 
   test('reports each public shop defect through the CLI inspection path', async () => {
     const expected = [
-      ['horizontal-overflow', 'HORIZONTAL_OVERFLOW'], ['ancestor-clip', 'CLIPPED_BY_ANCESTOR'], ['line-budget', 'TEXT_LINE_BUDGET_EXCEEDED'],
-      ['hidden-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'], ['blocked-checkout', 'POINTER_BLOCKED_AT_SAMPLES'], ['partial-checkout', 'POINTER_PARTIALLY_BLOCKED']
+      ['horizontal-overflow', 'HORIZONTAL_OVERFLOW'], ['ancestor-clip', 'CLIPPED_BY_ANCESTOR'], ['nested-clip', 'CLIPPED_BY_ANCESTOR'],
+      ['line-budget', 'TEXT_LINE_BUDGET_EXCEEDED'], ['text-clipped', 'TEXT_CLIPPED'], ['hidden-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'],
+      ['opacity-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'], ['blocked-checkout', 'POINTER_BLOCKED_AT_SAMPLES'], ['partial-checkout', 'POINTER_PARTIALLY_BLOCKED'], ['outside-viewport', 'OUTSIDE_VIEWPORT']
     ] as const;
     for (const [scenario, code] of expected) {
       const snapshot = await inspect(parseArguments(['inspect', `${url}/?scenario=${scenario}`, '--viewport', '390x844', '--format', 'json']));

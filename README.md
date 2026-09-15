@@ -12,12 +12,13 @@ The browser still performs layout. The compiler adds source identity and optiona
 
 1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
 2. [Agent testing guide](docs/TESTING.md): public smoke test, fair A/B setup, pilot recording, and interpretation.
-3. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
-4. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
-5. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
-6. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
-7. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
-8. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
+3. [Evaluator workspace model](docs/EVALUATOR_SETUP.md): what agents receive and how to create isolated repair subjects.
+4. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
+5. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
+6. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
+7. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
+8. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
+9. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
 
 ## Run the current workspace
 
@@ -34,6 +35,8 @@ npm run bench -- validate bench/pilot.example.json
 ```
 
 The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
+
+For an explicit manual defect page, open `http://127.0.0.1:5173/lab?case=blocked-checkout`. The public lab has ten selectable defect cases and clean storefront routes at `/`, `/catalog`, `/checkout`, and `/account`. It is for learning and regression checks, never as a blinded agent subject.
 
 The paired-agent pilot uses a versioned non-secret manifest and result ledger. Validate the examples with `npm run bench -- validate bench/pilot.example.json` and `npm run bench -- validate-results bench/pilot.example.json bench/pilot.example.results.json`. Generate local runbooks or summaries with `npm run bench -- runbook PLAN.json --output artifacts/benchmark/pilot.runbook.md` and `npm run bench -- summarize PLAN.json RESULTS.json --output artifacts/benchmark/pilot.summary.md`. Copy the examples and replace their placeholders before marking a plan `scored`; evaluator truth and logs must stay outside the subject agent checkout.
 

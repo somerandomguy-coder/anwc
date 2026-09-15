@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. T10's reproducible pilot-manifest tooling is ready; the actual paired-agent experiment remains unrun. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
+**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, multi-page public fixture lab, and defect shop are verified. T10's reproducible pilot tooling and isolated subject exports are ready; the actual paired-agent experiment remains unrun. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -21,6 +21,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Pointer sampling and diagnostics (T06) | done | 5×5 browser hit tests and pure normalized findings |
 | CLI and serializer (T07) | done | isolated Playwright inspection, JSON, bounded text, and runtime-only injection |
 | Defect shop and controls (T08) | done | local e-commerce fixture with six isolated supported defects |
+| Multi-page public fixture lab | done | clean `/`, `/catalog`, `/checkout`, `/account`; ten explicit `/lab?case=` defects |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Paired-run manifest, runbook, result ledger, subject leakage gate, and packager | done | `@anwc/benchmark`; public examples at `bench/pilot.example*.json` |
@@ -229,9 +230,9 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 ### T10 (pilot tooling) — 2026-09-15 — Codex
 - Status: in progress; no paired agent run has started.
 - Branch and commit: `main`; pending `feat: add benchmark manifest helper`
-- Owned files changed: `packages/benchmark/**`, `bench/pilot.example*.json`, benchmark unit tests, root command/configuration, and handoff documents.
+- Owned files changed: `packages/benchmark/**`, `bench/pilot.example*.json`, benchmark unit tests, root command/configuration, public fixture lab, and handoff documents.
 - Interface changes: `npm run bench -- validate PLAN.json` validates public paired-run metadata. `npm run bench -- runbook PLAN.json --output FILE.md` writes a non-secret execution checklist. `validate-results` and `summarize` validate an entered ledger and emit a descriptive summary. `check-subject PATH --condition ordinary|anwc-assisted` rejects known answer leakage and condition-tool mismatch. `package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` prepares a fresh export then runs that gate. A scored plan rejects placeholder model/reasoning/prompt values and mismatched A/B setup.
-- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (24 tests across 6 files); public plan and result-ledger validation passed (4 runs across 2 pairs); public runbook and summary generation passed. The current development checkout correctly fails `check-subject . --condition ordinary`, demonstrating detection of docs, bench files, tests, Git history, public scenario switching, and the ordinary-condition CLI leak. An isolated filesystem test verifies private-overlay packing and script sanitization.
+- Acceptance commands and outcomes: `npm run test:integration` passed: TypeScript, 24 unit tests across 6 files, 10 Chromium tests, and production build. Public plan and result-ledger validation passed (4 runs across 2 pairs); public runbook and summary generation passed. The public lab independently reproduces ten supported cases through browser and CLI checks. The current development checkout correctly fails `check-subject . --condition ordinary`, demonstrating detection of docs, bench files, tests, Git history, public scenario switching, and the ordinary-condition CLI leak. Local ignored ordinary and assisted exports both installed and built; the assisted export served a materialized blocker and emitted a source-linked pointer finding.
 - Actual evidence/artifact paths: ignored `artifacts/benchmark/pilot.example.runbook.md` and `artifacts/benchmark/pilot.example.summary.md`; committed `bench/pilot.example*.json` and `tests/unit/benchmark.test.ts`.
 - Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, infers provider usage, or enforces host-level filesystem/network isolation. It does not create subject folders; those actions must be performed by the evaluator before the first scored run.
 - Next task now unblocked: complete a scored manifest outside the subject workspace, materialize evaluator fixtures, then run and score paired A/B sessions.

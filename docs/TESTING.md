@@ -13,7 +13,7 @@ npx playwright install chromium
 npm run test:integration
 ```
 
-The frozen baseline passes typecheck, 22 unit tests, 9 Chromium tests, and the production build. The production bundle has no ANWC instrumentation by default.
+The frozen baseline passes typecheck, 24 unit tests, 10 Chromium tests, and the production build. The production bundle has no ANWC instrumentation by default.
 
 ## 2. Public workflow smoke test
 
@@ -26,20 +26,24 @@ npm run dev --workspace=@anwc/shop -- --host 127.0.0.1 --port 4175
 In a second terminal, inspect a healthy page and a defective page:
 
 ```sh
-npm run anwc -- inspect "http://127.0.0.1:4175/?scenario=clean" --viewport 1440x900 --format text
-npm run anwc -- inspect "http://127.0.0.1:4175/?scenario=blocked-checkout" --viewport 390x844 --format text
+npm run anwc -- inspect "http://127.0.0.1:4175/" --viewport 1440x900 --format text
+npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format text
 ```
 
-The clean page must have zero findings. The blocked page must report `POINTER_BLOCKED_AT_SAMPLES` and a source location. The six public defects provide a quick full smoke matrix:
+The clean page must have zero findings. The blocked page must report `POINTER_BLOCKED_AT_SAMPLES` and a source location. The normal clean routes are `/`, `/catalog`, `/checkout`, and `/account`. The public fixture lab at `/lab?case=...` provides a quick full smoke matrix:
 
 | Scenario | Required code |
 | --- | --- |
 | `horizontal-overflow` | `HORIZONTAL_OVERFLOW` |
 | `ancestor-clip` | `CLIPPED_BY_ANCESTOR` |
+| `nested-clip` | `CLIPPED_BY_ANCESTOR` |
 | `line-budget` | `TEXT_LINE_BUDGET_EXCEEDED` |
+| `text-clipped` | `TEXT_CLIPPED` |
 | `hidden-checkout` | `EXPECTED_VISIBLE_BUT_HIDDEN` |
+| `opacity-checkout` | `EXPECTED_VISIBLE_BUT_HIDDEN` |
 | `blocked-checkout` | `POINTER_BLOCKED_AT_SAMPLES` |
 | `partial-checkout` | `POINTER_PARTIALLY_BLOCKED` |
+| `outside-viewport` | `OUTSIDE_VIEWPORT` |
 
 This stage is intentionally unblinded: the scenario URL, source switch, tests, and expected behavior are all in this repository. It proves the tool path, not a model advantage.
 
@@ -71,7 +75,7 @@ Seven models across all six defects and both conditions is 84 runs before repeat
 
 ## 5. Run a scoreable pilot
 
-A scoreable pilot must use a separate subject workspace for each run. It must contain the app and only the permitted condition tools. It must not expose `docs/`, `bench/`, `tests/`, `.git/`, public scenario switching, defect labels, prior patches, evaluator truth, or grading scripts. A Git worktree or normal clone alone is not sufficient because the agent can inspect history and planning files.
+Read [EVALUATOR_SETUP](EVALUATOR_SETUP.md) before creating a scoreable repair pilot. A scoreable pilot must use a separate subject workspace for each run. It must contain the app and only the permitted condition tools. It must not expose `docs/`, `bench/`, `tests/`, `.git/`, public scenario switching, defect labels, prior patches, evaluator truth, or grading scripts. A Git worktree or normal clone alone is not sufficient because the agent can inspect history and planning files.
 
 Materialize one neutral held-out defect into each subject copy. Keep its mutation and independent grading checks outside the subject workspace. The ordinary subject must not have ANWC. The assisted subject may have the ANWC CLI, but no evaluator truth.
 
