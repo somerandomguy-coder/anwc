@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the original prototype is implemented and its recorded suite passes; actual paired-agent runs remain unrun. Source review at `7db32b1` found remaining export, runtime, and validation gaps. The W01–W14 backlog in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) addresses these and adds healthy controls, two fixture apps, and independent repair grading. W01–W14 are planned, not implemented. T00–T09 completion records describe the historical prototype scope, not production readiness.**
+**Current state: the prototype and W01/W02 commits are present; actual paired-agent runs remain unrun. Windows verification at `bcdaf30` found nonportable npm scripts and one CLI test timeout, so the current integration suite is not certified green on Windows. W03–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. R01–R06 in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) add planned arbitrary-site inspection, neutral-page checks, and clearer runtime/coverage behavior. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. W01 (trustworthy subject exports) and W02 (result accounting and endpoint fairness) are complete. Implement W03 (functional shop controls and lab) next.
+1. Resolve the observed Windows command failures using R01, then implement R02/R03 for ordinary URL inspection. W01/W02 are committed; W03 remains the next shop task.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -275,4 +275,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: None for W02.
 - Next task now unblocked: W03 — Give shop fixtures real behavior.
 - Reviewer and review outcome: self-reviewed; all acceptance tests and integration suites pass.
+
+### Arbitrary URL planning and verification correction — Codex
+- Status: planning complete; R01–R06 remain unimplemented.
+- Reviewed source: `bcdaf302d9af4b6002f3909e5e2747ce4a2c2808`.
+- Previous session verification on Windows: TypeScript passed; 35/36 unit tests passed with one fixed five-second CLI integration timeout; 10 Chromium tests passed through a shell workaround; direct shop production build passed. Standard npm scripts failed on Unix-style environment assignments. These qualify the earlier platform-specific W01/W02 handoff claims; no full Windows integration pass is claimed.
+- Founder-reported external results: default Amazon inspection timed out waiting for ANWC; Instagram inspection encountered a CSP evaluation error that the CLI labelled runtime missing. Neither external target was rerun during this planning turn.
+- Source findings: default inspection assumes installed runtime; runtime-only inline injection is policy-sensitive; capture errors are misclassified; pointer detection uses browser geometry/hit targets independently of labels, but intent and custom-event discovery remain limited.
+- Updated files: new `docs/ARBITRARY_URL_PLAN.md`, continuation plan, decision record, README, progress, and co-founder handoff. R01/R02/R03 are the first proposed plain-URL milestone; W12 is benchmark packaging, not a prerequisite for root inspection.
+- Validation: documentation link/whitespace checks; no implementation or new runtime tests this turn.
+- Remaining evidence: strict-CSP compatibility, neutral uninstrumented before/after repairs, broader false-positive coverage, and human time/cost comparisons remain unproved.
 

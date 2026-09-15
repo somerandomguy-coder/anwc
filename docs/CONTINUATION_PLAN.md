@@ -2,7 +2,9 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: planned; W01–W14 below are not implemented.** This is the next implementation backlog. T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01/W02 were committed in `ba386e1`/`bcdaf30`; W03–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+
+**New product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R01–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. It can begin before the W fixture expansion. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files. All R tasks are planned, not implemented.
 
 ## What to build while agent testing is pending
 

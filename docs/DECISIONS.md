@@ -27,6 +27,12 @@ Date: 2026-09-15. Context: the prototype suite passes, but source review found i
 
 Decision: execute the bounded W01–W14 backlog in [CONTINUATION_PLAN](CONTINUATION_PLAN.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
 
+### ADR-018 — Arbitrary URL inspection is a core product path
+
+Context: the founder attempted uninstrumented Amazon/Instagram URLs and reported a runtime timeout and CSP evaluation failure. The current default requires a preinstalled runtime and the injection/error path is insufficient for general sites.
+
+Decision: plan R01–R06 in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md). The intended default reuses compatible installed instrumentation or attaches the collector to a temporary inspection session. Preserve source-null behavior on uninstrumented sites, measure without fixture names, distinguish intent from geometry, and report unsupported coverage explicitly. Keep CSP enabled in the default path and validate strict-CSP compatibility locally. This track may start before additional benchmark apps. W12 remains a separate subject-preparation capability. The user requested planning only this turn; no runtime change is claimed.
+
 ## Questions to resolve with evidence
 
 1. Does source linkage reduce repair time beyond runtime measurements alone? Run condition D after A/B.

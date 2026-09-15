@@ -4,7 +4,7 @@ Start here, then read [PROGRESS](PROGRESS.md), [BENCHMARK](BENCHMARK.md), and [D
 
 ## Current baseline
 
-**Next implementation work:** [CONTINUATION_PLAN](CONTINUATION_PLAN.md), starting with W01. Source review at `7db32b1` identified remaining export, measurement, and test-quality gaps despite the passing prototype suite. The W tasks can proceed while T10 is pending. Keep any actual A/B experiment on one recorded source/detector/grader revision.
+**Next implementation work:** W01/W02 have been committed. Follow [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) R01–R03 for the founder's plain-URL inspection workflow; W03 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remains next for the shop. Windows verification found script portability failures and one CLI test timeout; historical passed gates below are not current certification. Root-URL inspection already exists; W12 is needed for automatic benchmark subject preparation, not inspecting a website. Keep actual A/B experiments pinned to their recorded source/detector/grader revisions.
 
 - Repository: `git@github.com:somerandomguy-coder/anwc.git`
 - Branch: `main`
