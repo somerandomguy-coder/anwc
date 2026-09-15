@@ -1,11 +1,12 @@
-import { StrictMode, useState } from 'react';
+import { lazy, StrictMode, Suspense, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HmrProbe } from './HmrProbe.js';
 import { fixtureVariantFromSearch, scenarioFromSearch, scenarioIds, type FixtureVariant, type ScenarioId } from './scenarios.js';
 import './styles.css';
 
 type Product = { id: string; name: string; price: string; tint: string };
 type Modal = { kind: 'cart' | 'checkout'; title: string; message: string } | null;
+
+const HmrProbe = lazy(async () => ({ default: (await import('./HmrProbe.js')).HmrProbe }));
 
 const products: Product[] = [
   { id: 'cloud', name: 'Cloud runner', price: '$84', tint: 'peach' },
@@ -90,6 +91,7 @@ function ConfirmationModal({ modal, onClose }: { modal: Modal; onClose: () => vo
 function App() {
   const [cart, setCart] = useState(loadCart);
   const [modal, setModal] = useState<Modal>(null);
+  const [showProbe, setShowProbe] = useState(false);
   const path = window.location.pathname;
   const search = new URLSearchParams(window.location.search);
   const requestedScenario = search.get('case') ?? search.get('scenario');
@@ -108,7 +110,7 @@ function App() {
   const confirmCheckout = () => setModal({ kind: 'checkout', title: 'Checkout confirmed', message: 'The checkout action reached its local confirmation.' });
   const content = path === '/lab'
     ? <FixtureLab scenario={scenario} variant={variant} onDetails={openDetails} onCheckout={confirmCheckout} />
-    : <main className="shop-shell" data-anwc-scenario={scenario}><Navigation onDetails={openDetails} /><DefectPanel scenario={scenario} variant={variant} onCheckout={confirmCheckout} /><StorePage page={page} cart={cart} add={add} onDetails={openDetails} /><footer><p>Made locally, packed carefully.</p><HmrProbe /></footer></main>;
+    : <main className="shop-shell" data-anwc-scenario={scenario}><Navigation onDetails={openDetails} /><DefectPanel scenario={scenario} variant={variant} onCheckout={confirmCheckout} /><StorePage page={page} cart={cart} add={add} onDetails={openDetails} /><footer><p>Made locally, packed carefully.</p><button onClick={() => setShowProbe(true)}>Load source probe</button>{showProbe && <Suspense fallback={<p>Loading source probe</p>}><HmrProbe /></Suspense>}</footer></main>;
   return <>{content}<ConfirmationModal modal={modal} onClose={() => setModal(null)} /></>;
 }
 

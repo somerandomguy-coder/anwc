@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Current state: the prototype, W01–W07, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W07. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W08–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01–W08, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W08. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W09–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -335,4 +335,13 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence: `npm run test:integration` passed on Windows: TypeScript, 36 unit tests, 14 Chromium tests, and the production build. Focused tests make a known layout change during readiness, keep a target moving until deadline, and exercise a thrown runtime capture.
 - Remaining limit: stability covers a short capture window only. It does not predict later layout shifts or paint-level visibility.
 - Next task: W08 — reliable Vite startup, lazy modules, and production checks.
+
+### W08 — Reliable source registration and production isolation — Codex
+
+- Status: done.
+- Owned files: Vite plugin, lazy shop probe, browser/unit source-link tests, protocol notes, and handoff documents.
+- Change: each transformed module writes its current records to a shared pending registry before requesting live runtime registration. The runtime drains records present before it loaded and replaces a module's previous source sites on re-registration. The shop now imports the probe only when requested, giving the test suite a real lazy-module boundary.
+- Evidence: TypeScript passed; focused Chromium coverage verifies queued registration, lazy import, HMR source replacement, and stale-site removal. A separate Vite production build test verifies the output contains neither `virtual:anwc-runtime` nor generated `data-anwc-site` attributes.
+- Remaining limit: this proves the Vite adapter ordering contract. Next.js and other framework adapters remain separate future work.
+- Next task: W09 — fixture contract and independent checker library.
 

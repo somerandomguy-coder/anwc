@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01–W07 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/`3a96598`/`9a67666`/the next W07 commit; W08–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01–W08 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/`3a96598`/`9a67666`/`cc6665e`/the next W08 commit; W09–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -75,7 +75,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W05 | Correct inherited render visibility | existing runtime | done |
 | W06 | Bounded pointer probes in the current viewport | existing runtime | done |
 | W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | done |
-| W08 | Reliable source registration and production checks | existing Vite plugin | ready |
+| W08 | Reliable source registration and production checks | existing Vite plugin | done |
 | W09 | Small fixture contract and independent browser checks | W04 | queued |
 | W10 | Landing/pricing application with four defect pairs | W09 | queued |
 | W11 | Dashboard application with four defect pairs | W09 | queued |
@@ -206,6 +206,8 @@ The CLI must distinguish runtime missing from a present runtime throwing or timi
 **Acceptance:** cold load with delayed runtime; cold load with delayed app; lazy component imported after initial capture; editing lazy JSX updates source locations; removing a source site does not leave a live stale lookup. Compare app text, ordinary behavior, and key rectangles with plugin enabled/disabled. Check production HTML/JS for injected runtime and generated site IDs in an automated test, rather than just a manual search.
 
 **Done when:** source linkage and default production stripping hold across these entry orders.
+
+**Completed evidence:** transformed modules now replace a per-module source record in a global pending registry before attempting live registration. The injected runtime drains records that existed before it, replaces rather than accumulates per-module sites, and uses the fresh server manifest on HMR so deleted JSX sites do not remain addressable. The shop loads its HMR probe lazily. Browser tests cover the pre-runtime queue, a lazy source link, HMR tag replacement, and source removal; a production build test verifies that neither the virtual runtime nor `data-anwc-site` reaches the default output.
 
 ## W09 — Fixture contract and independent checker library
 

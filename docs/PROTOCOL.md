@@ -194,6 +194,8 @@ inspect(options: InspectOptions): Promise<Snapshot>;
 
 T01 defines the named aliases referenced above. `RawCapture` contains page/readiness/coverage/nodes and `{ capture, serialize }` timing, without rule output. `Snapshot` adds findings and rule timing. Compiler manifest joins belong in the capture orchestration path; diagnostics should not fetch source files. In Vite dev, `window.__ANWC__` exposes versioned `capture` and source lookup for the current page. In runtime-only mode, inject the same bundled capture implementation once.
 
+The Vite development adapter retains source records by module and makes registration order-independent: a transformed module writes its latest record to a pending registry before it calls the runtime, and the runtime drains that registry at startup. Re-registering a module replaces its previous sites. This is development-only source-link plumbing; the default production build has neither the virtual runtime nor generated `data-anwc-site` attributes.
+
 Every capture creates a consistent session context. If navigation or teardown occurs mid-capture, fail explicitly or mark the capture incomplete. Do not concatenate node lists from different document sessions.
 
 Readiness is a bounded heuristic: the runtime waits for browser font readiness and then requires two successive animation-frame geometry comparisons, with a 1 CSS px tolerance, across interactive and expected targets. A timeout or continuing movement produces `readiness.settled: false` with a specific reason. This prevents a clean finding list from being treated as a reliable result while layout is still moving; it does not prove that a page will remain stable indefinitely.

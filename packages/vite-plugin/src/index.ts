@@ -13,11 +13,20 @@ export type AnwcPluginOptions = {
   runtimeVersion?: string;
 };
 
-function runtimeModule(manifest: Record<string, SourceRef>, runtimeVersion: string): string {
+function runtimeModule(sourcesByModule: Record<string, Record<string, SourceRef>>, runtimeVersion: string): string {
   return `import { capture, configureRuntime } from '@anwc/runtime';
-const manifest = ${JSON.stringify(manifest)};
+const sourcesByModule = ${JSON.stringify(sourcesByModule)};
+const manifest = {};
+const pendingSources = window.__ANWC_PENDING_SOURCES__ ??= {};
+const registerSources = (moduleId, sources) => {
+  for (const siteId of Object.keys(sourcesByModule[moduleId] ?? {})) delete manifest[siteId];
+  sourcesByModule[moduleId] = sources;
+  Object.assign(manifest, sources);
+  pendingSources[moduleId] = sources;
+};
+for (const [moduleId, sources] of Object.entries(sourcesByModule)) registerSources(moduleId, sources);
+for (const [moduleId, sources] of Object.entries(pendingSources)) if (!(moduleId in sourcesByModule)) registerSources(moduleId, sources);
 const sourceForSite = (siteId) => manifest[siteId] ?? null;
-const registerSources = (sources) => Object.assign(manifest, sources);
 configureRuntime({ sourceLookup: sourceForSite, runtimeVersion: ${JSON.stringify(runtimeVersion)} });
 window.__ANWC__ = { version: '0.1', capture, sourceForSite, registerSources };
 if (import.meta.hot) import.meta.hot.accept();`;
@@ -29,9 +38,9 @@ export function anwc(options: AnwcPluginOptions = {}): Plugin {
   let server: ViteDevServer | undefined;
   const sitesByModule = new Map<string, SourceRef[]>();
 
-  const manifest = (): Record<string, SourceRef> => {
-    const result: Record<string, SourceRef> = {};
-    for (const sites of sitesByModule.values()) for (const site of sites) result[site.siteId] = site;
+  const moduleManifest = (): Record<string, Record<string, SourceRef>> => {
+    const result: Record<string, Record<string, SourceRef>> = {};
+    for (const [id, sites] of sitesByModule) result[id] = Object.fromEntries(sites.map((site) => [site.siteId, site]));
     return result;
   };
 
@@ -62,13 +71,14 @@ export function anwc(options: AnwcPluginOptions = {}): Plugin {
       return active && id === VIRTUAL_ID ? RESOLVED_VIRTUAL_ID : null;
     },
     load(id) {
-      return active && id === RESOLVED_VIRTUAL_ID ? runtimeModule(manifest(), options.runtimeVersion ?? '0.0.0') : null;
+      return active && id === RESOLVED_VIRTUAL_ID ? runtimeModule(moduleManifest(), options.runtimeVersion ?? '0.0.0') : null;
     },
     transform(code, id) {
       const transformed = updateModuleSites(id, code);
       if (transformed === null) return null;
       const sourceRecords = Object.fromEntries(transformed.sites.map((site) => [site.siteId, site]));
-      return { code: `${transformed.code}\n;window.__ANWC__?.registerSources?.(${JSON.stringify(sourceRecords)});`, map: transformed.map as SourceMap };
+      const registration = `\n;(() => { const sources = ${JSON.stringify(sourceRecords)}; const pending = window.__ANWC_PENDING_SOURCES__ ??= {}; pending[${JSON.stringify(id)}] = sources; window.__ANWC__?.registerSources?.(${JSON.stringify(id)}, sources); })();`;
+      return { code: `${transformed.code}${registration}`, map: transformed.map as SourceMap };
     },
     transformIndexHtml(_html, _context: IndexHtmlTransformContext) {
       if (!active) return undefined;
