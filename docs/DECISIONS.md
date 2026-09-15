@@ -25,7 +25,7 @@ These began as planning defaults on 2026-09-15. T00–T09 implemented the MVP co
 
 Date: 2026-09-15. Context: the prototype suite passes, but source review found incomplete export isolation, weak independent fixture checks, and missing-value accounting gaps. The founder requested a concrete implementation backlog for cheaper models while manual testing takes time.
 
-Decision: execute the bounded W01–W14 backlog in [CONTINUATION_PLAN](CONTINUATION_PLAN.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
+Decision: execute the bounded W01–W14 backlog in [CONTINUATION_PLAN](ROADMAP.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
 
 ### ADR-018 — Arbitrary URL inspection is a core product path
 

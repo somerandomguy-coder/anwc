@@ -1,8 +1,8 @@
-# ANWC continuation plan: reliability and useful test cases
+# ANWC short-term roadmap
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01–W08 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/`3a96598`/`9a67666`/`cc6665e`/the next W08 commit; W09–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01–W08 are complete; W09–W14 remain planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -308,7 +308,7 @@ Ensure documentation says:
 - severe correctness changes create a new benchmark version; earlier results stay attached to the old version;
 - paint/shape/transform limits remain explicit.
 
-**Acceptance:** one documented command completes the rehearsal from a clean install. Stop on failed checks. No hidden truths or answer patches appear in subjects. Update PROGRESS with real counts and known gaps rather than carrying forward historical passed gates.
+**Acceptance:** one documented command completes the rehearsal from a clean install. Stop on failed checks. No hidden truths or answer patches appear in subjects. Update STATUS with real counts and known gaps rather than carrying forward historical passed gates.
 
 **Done when:** the user can start a fresh agent with a folder and TASK.md, obtain a repair, then run a deterministic evaluator command.
 
@@ -328,6 +328,6 @@ After W14, discuss broader feature work with the founder using the evidence:
 
 Copy this prompt and replace only Wxx:
 
-> Implement Wxx from docs/CONTINUATION_PLAN.md. Read that entire task card, the global decisions, docs/PROTOCOL.md, and the current source in its owned paths. Inspect git status first. Reuse the established dependencies and interfaces. Implement only this task and necessary acceptance tests; do not redesign the architecture, choose model providers, or begin another W task. Use the task's fixed decisions for routine choices. Keep evaluation truth outside exported subjects. Verify behavior with independent browser checks where specified. Report any mismatch with the task's assumptions using a concrete failing example. Run the targeted checks while working, then npm run test:integration once before handoff; rerun only if changes/failures require it. Update docs/PROGRESS.md with files, test evidence, unresolved limits, and the next dependency. Commit this completed task and push under the user's existing authorization. Never label an unrun check or human agent comparison passed.
+> Implement Wxx from docs/ROADMAP.md. Read that entire task card, the global decisions, docs/PROTOCOL.md, and the current source in its owned paths. Inspect git status first. Reuse the established dependencies and interfaces. Implement only this task and necessary acceptance tests; do not redesign the architecture, choose model providers, or begin another W task. Use the task's fixed decisions for routine choices. Keep evaluation truth outside exported subjects. Verify behavior with independent browser checks where specified. Report any mismatch with the task's assumptions using a concrete failing example. Run the targeted checks while working, then npm run test:integration once before handoff. Update docs/STATUS.md with the new baseline and docs/HISTORY.md with task evidence. Commit this completed task and push under the user's existing authorization. Never label an unrun check or human agent comparison passed.
 
 Escalate only a demonstrated conflict that cannot be resolved within the task's decisions: required browser schema change, ambiguous new paint semantics, access needed to private evaluator data, or real agent/model selection before paid runs. Do not ask the founder to select an implementation detail already fixed in this document.

@@ -1,6 +1,6 @@
 # Tomorrow's experiment: does ANWC reduce agent repair work?
 
-Status: the development fixture and integration baseline are frozen at `4c6cafe`; no paired-agent benchmark has been run and no cost/performance results exist. Read [TOMORROW](TOMORROW.md) for the runnable baseline, then freeze a separate evaluator corpus and scoring rules before the evaluated agent sees the tasks.
+Status: the development fixture and integration baseline are frozen at `4c6cafe`; no paired-agent benchmark has been run and no cost/performance results exist. Read [STATUS](STATUS.md) for the runnable baseline, then freeze a separate evaluator corpus and scoring rules before the evaluated agent sees the tasks.
 
 The frozen development baseline has 19 unit tests and 9 Chromium tests. The clean page has zero ANWC findings at 1440×900; the blocked-checkout page has the expected `POINTER_BLOCKED_AT_SAMPLES` finding at 390×844. These checks establish detector behavior for the development fixture. They are not benchmark observations and must not be presented as evidence of agent or cost improvement.
 

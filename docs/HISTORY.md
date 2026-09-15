@@ -1,8 +1,10 @@
-# Shared progress and handoff
+# ANWC history
+
+> This is the completed-work record. Start at [STATUS](STATUS.md), then use [ROADMAP](ROADMAP.md) for active work. Entries below are retained as evidence, not an active task list.
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Current state: the prototype, W01–W08, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W08. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W09–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Historical summary:** the prototype and W01–W08 are complete; paired-agent runs remain unrun. Refer to [STATUS](STATUS.md) for current state.
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 

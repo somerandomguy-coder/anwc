@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: the source-linked compiler/runtime prototype and W01/W02 benchmark tooling are committed. Standard Windows commands passed their full integration suite; runtime reliability, broader fixtures, and actual paired-agent evaluation remain open. The current product requires an installed ANWC integration; arbitrary-site runtime-only inspection is a future track.
+Status on 2026-09-16: W01–W08 are complete. The current product requires an installed ANWC integration; arbitrary-site runtime-only inspection is a future track.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 
@@ -10,17 +10,13 @@ The browser still performs layout. The compiler adds source identity and optiona
 
 ## Start here
 
-For continued implementation while human agent runs are pending, start with [CONTINUATION_PLAN](docs/CONTINUATION_PLAN.md). W01/W02 and portable-command R01 are committed; W03–W14 cover further correctness fixes, healthy controls, two additional fixture apps, automatic A/B preparation, and independent repair grading. The [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) keeps future runtime-only inspection scoped separately; R02–R06 are deferred.
+Start with [Status](docs/STATUS.md). It gives the current task, exact verification command, demo commands, boundaries, and a short document map. [Roadmap](docs/ROADMAP.md) contains the W09–W14 task cards. The [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) is a separate future track.
 
-1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
-2. [Agent testing guide](docs/TESTING.md): public smoke test, fair A/B setup, pilot recording, and interpretation.
-3. [Evaluator workspace model](docs/EVALUATOR_SETUP.md): what agents receive and how to create isolated repair subjects.
-4. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
-5. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
-6. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
-7. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
-8. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
-9. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
+1. [Status](docs/STATUS.md): current task, commands, boundaries, and document map.
+2. [Short-term roadmap](docs/ROADMAP.md): active task cards W09–W14.
+3. [Testing guide](docs/TESTING.md) and [evaluator setup](docs/EVALUATOR_SETUP.md): manual checks and fair comparisons.
+4. [Protocol](docs/PROTOCOL.md) and [benchmark](docs/BENCHMARK.md): stable contracts.
+5. [History](docs/HISTORY.md), [decisions](docs/DECISIONS.md), [plan](docs/PLAN.md), and [tasks](docs/TASKS.md): reference material.
 
 ## Run the current workspace
 
@@ -73,6 +69,6 @@ npm run anwc -- inspect http://127.0.0.1:5173 --viewport 1440x900 --format text
 
 ## Collaboration
 
-Claim a task in `docs/PROGRESS.md`, implement only its owned paths, attach command output to the task's evidence entry, and move it to `review` before calling it complete. Schema changes require a coordinated update to producers, consumers, and examples. Suggested roles are placeholders until the two collaborators choose them.
+Choose the next task from `docs/ROADMAP.md`, implement only its owned paths, update `docs/STATUS.md` and `docs/HISTORY.md` when complete, then commit and push. Schema changes require a coordinated update to producers, consumers, and examples.
 
-This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. T00–T09 are published to the shared remote. Each completed task is recorded in `docs/PROGRESS.md` and committed separately.
+This checkout is connected to `git@github.com:somerandomguy-coder/anwc.git`. T00–T09 are published to the shared remote. Each completed task is committed separately.
