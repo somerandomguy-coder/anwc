@@ -1,7 +1,7 @@
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HmrProbe } from './HmrProbe.js';
-import { scenarioFromSearch, scenarioIds, type ScenarioId } from './scenarios.js';
+import { fixtureVariantFromSearch, scenarioFromSearch, scenarioIds, type FixtureVariant, type ScenarioId } from './scenarios.js';
 import './styles.css';
 
 type Product = { id: string; name: string; price: string; tint: string };
@@ -43,10 +43,10 @@ function CheckoutObstacle({ kind, onCheckout }: { kind: 'blocked' | 'partial'; o
   return <div className={`obstacle-fixture ${kind}`}><button data-anwc-key={`${kind}-checkout`} data-anwc-expect="interactive" onClick={onCheckout}>Checkout now</button><div className="cookie-obstacle" aria-label={kind === 'blocked' ? 'Cookie notice blocking checkout' : 'Cookie notice partially blocking checkout'}>Cookie choices</div></div>;
 }
 
-function DefectPanel({ scenario, onCheckout }: { scenario: ScenarioId; onCheckout: () => void }) {
+function DefectPanel({ scenario, variant, onCheckout }: { scenario: ScenarioId; variant: FixtureVariant; onCheckout: () => void }) {
   if (scenario === 'clean') return null;
   const show = (id: ScenarioId) => scenario === id || scenario === 'combined';
-  return <section className="defect-panel" aria-label="Scenario fixture">
+  return <section className={`defect-panel fixture-variant-${variant}`} aria-label="Scenario fixture">
     {show('horizontal-overflow') && <div className="overflow-fixture" data-anwc-key="overflow-rail" data-anwc-expect="visible"><span>Limited drop</span><span>North star collection</span><span>Members-only colourway</span><span>Ships this Friday</span></div>}
     {show('ancestor-clip') && <div className="clip-fixture"><button className="clip-action" data-anwc-key="clipped-action" data-anwc-expect="interactive" onClick={onCheckout}>Start a clipped checkout</button></div>}
     {show('nested-clip') && <div className="nested-clip"><div className="nested-clip-inner"><button className="nested-clip-action" data-anwc-key="nested-clipped-action" data-anwc-expect="interactive" onClick={onCheckout}>Nested clipped checkout action</button></div></div>}
@@ -73,12 +73,12 @@ function StorePage({ page, cart, add, onDetails }: { page: 'home' | 'catalog' | 
   </>;
 }
 
-function FixtureLab({ scenario, onDetails, onCheckout }: { scenario: ScenarioId; onDetails: () => void; onCheckout: () => void }) {
+function FixtureLab({ scenario, variant, onDetails, onCheckout }: { scenario: ScenarioId; variant: FixtureVariant; onDetails: () => void; onCheckout: () => void }) {
   return <main className="shop-shell fixture-lab" data-anwc-scenario={scenario}>
     <Navigation onDetails={onDetails} />
-    <section className="lab-intro"><p>Public ANWC fixture lab</p><h1>One visible defect at a time.</h1><p>Use these cases to learn the workflow. They are intentionally answer-bearing and are never suitable as blinded evaluation subjects.</p><p>Try the checkout action in each case. Once its layout issue is repaired, it opens a local confirmation.</p></section>
-    <nav className="lab-cases" aria-label="Fixture cases">{scenarioIds.filter((id) => id !== 'clean' && id !== 'combined').map((id) => <a key={id} className={scenario === id ? 'active' : ''} href={`/lab?case=${id}`}>{id}</a>)}</nav>
-    <DefectPanel scenario={scenario} onCheckout={onCheckout} />
+    <section className="lab-intro"><p>Public ANWC fixture lab</p><h1>One visible defect at a time.</h1><p>Use these cases to learn the workflow. They are intentionally answer-bearing and are never suitable as blinded evaluation subjects.</p><p>Try the checkout action in each case. Once its layout issue is repaired, it opens a local confirmation.</p>{scenario !== 'clean' && scenario !== 'combined' && <p><a href={`/lab?case=${scenario}&variant=${variant === 'broken' ? 'healthy' : 'broken'}`}>View the {variant === 'broken' ? 'healthy' : 'broken'} counterpart</a></p>}</section>
+    <nav className="lab-cases" aria-label="Fixture cases">{scenarioIds.filter((id) => id !== 'clean' && id !== 'combined').map((id) => <a key={id} className={scenario === id ? 'active' : ''} href={`/lab?case=${id}&variant=${variant}`}>{id}</a>)}</nav>
+    <DefectPanel scenario={scenario} variant={variant} onCheckout={onCheckout} />
   </main>;
 }
 
@@ -94,6 +94,7 @@ function App() {
   const search = new URLSearchParams(window.location.search);
   const requestedScenario = search.get('case') ?? search.get('scenario');
   const scenario = path === '/lab' && !requestedScenario ? 'blocked-checkout' : scenarioFromSearch(window.location.search);
+  const variant = fixtureVariantFromSearch(window.location.search);
   const page: 'home' | 'catalog' | 'checkout' | 'account' = path === '/catalog' ? 'catalog' : path === '/checkout' ? 'checkout' : path === '/account' ? 'account' : 'home';
   const add = (product: Product) => setCart((items) => {
     const next = [...items, product.id];
@@ -106,8 +107,8 @@ function App() {
   };
   const confirmCheckout = () => setModal({ kind: 'checkout', title: 'Checkout confirmed', message: 'The checkout action reached its local confirmation.' });
   const content = path === '/lab'
-    ? <FixtureLab scenario={scenario} onDetails={openDetails} onCheckout={confirmCheckout} />
-    : <main className="shop-shell" data-anwc-scenario={scenario}><Navigation onDetails={openDetails} /><DefectPanel scenario={scenario} onCheckout={confirmCheckout} /><StorePage page={page} cart={cart} add={add} onDetails={openDetails} /><footer><p>Made locally, packed carefully.</p><HmrProbe /></footer></main>;
+    ? <FixtureLab scenario={scenario} variant={variant} onDetails={openDetails} onCheckout={confirmCheckout} />
+    : <main className="shop-shell" data-anwc-scenario={scenario}><Navigation onDetails={openDetails} /><DefectPanel scenario={scenario} variant={variant} onCheckout={confirmCheckout} /><StorePage page={page} cart={cart} add={add} onDetails={openDetails} /><footer><p>Made locally, packed carefully.</p><HmrProbe /></footer></main>;
   return <>{content}<ConfirmationModal modal={modal} onClose={() => setModal(null)} /></>;
 }
 

@@ -1,69 +1,129 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { diagnose } from '../../packages/diagnostics/src/index.js';
+import { developmentFixtureCases, type FixtureCase } from '../../examples/shop/src/scenarios.js';
 
-const captureFindings = async (page: Page) => page.evaluate(async () => {
+const viewports = [{ width: 1440, height: 900 }, { width: 390, height: 844 }];
+
+const capture = async (page: Page) => page.evaluate(async () => {
   const api = (window as Window & { __ANWC__?: { capture(): Promise<unknown> } }).__ANWC__;
   return api!.capture();
 });
 
-test('each public defect scenario reproduces its independent DOM/layout condition', async ({ page }) => {
-  await page.goto('/?scenario=horizontal-overflow');
-  expect(await page.locator('[data-anwc-key="overflow-rail"]').evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+const targetFindings = async (page: Page, targetKey: string) => {
+  const result = await capture(page);
+  const typed = result as Parameters<typeof diagnose>[0];
+  const target = typed.nodes.find((node) => node.semanticKey === targetKey);
+  expect(target, `missing target ${targetKey}`).toBeDefined();
+  return diagnose(typed).filter((finding) => finding.nodeId === target!.nodeId);
+};
 
-  await page.goto('/?scenario=ancestor-clip');
-  expect(await page.locator('.clip-action').evaluate((element) => element.getBoundingClientRect().width > element.parentElement!.getBoundingClientRect().width)).toBe(true);
+async function browserRangeLineCount(page: Page, targetKey: string): Promise<number> {
+  return page.locator(`[data-anwc-key="${targetKey}"]`).evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const tops = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0).map((rect) => Math.round(rect.top));
+    return new Set(tops).size;
+  });
+}
 
-  await page.goto('/lab?case=nested-clip');
-  expect(await page.locator('.nested-clip-action').evaluate((element) => element.getBoundingClientRect().width > element.parentElement!.getBoundingClientRect().width)).toBe(true);
+async function assertBrokenTruth(page: Page, fixture: FixtureCase): Promise<void> {
+  const target = page.locator(`[data-anwc-key="${fixture.targetKey}"]`);
+  if (fixture.id === 'horizontal-overflow') {
+    await expect(target.evaluate((element) => element.scrollWidth > element.clientWidth)).resolves.toBe(true);
+  } else if (fixture.id === 'ancestor-clip' || fixture.id === 'nested-clip') {
+    await expect(target.evaluate((element) => element.getBoundingClientRect().right > element.parentElement!.getBoundingClientRect().right)).resolves.toBe(true);
+  } else if (fixture.id === 'line-budget') {
+    expect(await browserRangeLineCount(page, fixture.targetKey)).toBeGreaterThan(2);
+  } else if (fixture.id === 'text-clipped') {
+    await expect(target.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const boundary = element.parentElement!.getBoundingClientRect();
+      return [...range.getClientRects()].some((rect) => rect.bottom > boundary.bottom + .5);
+    })).resolves.toBe(true);
+  } else if (fixture.id === 'hidden-checkout') {
+    await expect(target).toBeHidden();
+  } else if (fixture.id === 'opacity-checkout') {
+    await expect(target).toHaveCSS('opacity', '0');
+  } else if (fixture.id === 'blocked-checkout') {
+    await expect(target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) !== element;
+    })).resolves.toBe(true);
+  } else if (fixture.id === 'partial-checkout') {
+    await expect(target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const left = document.elementFromPoint(rect.left + rect.width / 4, rect.top + rect.height / 2);
+      const right = document.elementFromPoint(rect.left + rect.width * .8, rect.top + rect.height / 2);
+      return left !== element && right === element;
+    })).resolves.toBe(true);
+  } else if (fixture.id === 'outside-viewport') {
+    await expect(target.evaluate((element) => element.getBoundingClientRect().top >= window.innerHeight)).resolves.toBe(true);
+  }
+}
 
-  await page.goto('/?scenario=line-budget');
-  expect(await page.locator('[data-anwc-key="line-budget-title"]').evaluate((element) => element.getClientRects().length > 0)).toBe(true);
+async function assertHealthyTruth(page: Page, fixture: FixtureCase): Promise<void> {
+  const target = page.locator(`[data-anwc-key="${fixture.targetKey}"]`);
+  if (fixture.id === 'horizontal-overflow') {
+    await expect(target.evaluate((element) => element.scrollWidth <= element.clientWidth)).resolves.toBe(true);
+  } else if (fixture.id === 'ancestor-clip' || fixture.id === 'nested-clip') {
+    await expect(target.evaluate((element) => element.getBoundingClientRect().right <= element.parentElement!.getBoundingClientRect().right + .5)).resolves.toBe(true);
+  } else if (fixture.id === 'line-budget') {
+    expect(await browserRangeLineCount(page, fixture.targetKey)).toBeLessThanOrEqual(2);
+    await expect(target).toContainText('A deliberately long product title');
+  } else if (fixture.id === 'text-clipped') {
+    await expect(target.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const boundary = element.parentElement!.getBoundingClientRect();
+      return [...range.getClientRects()].every((rect) => rect.bottom <= boundary.bottom + .5);
+    })).resolves.toBe(true);
+  } else if (fixture.id === 'hidden-checkout') {
+    await expect(target).toBeVisible();
+  } else if (fixture.id === 'opacity-checkout') {
+    await expect(target).toHaveCSS('opacity', '1');
+  } else if (fixture.id === 'blocked-checkout' || fixture.id === 'partial-checkout') {
+    await expect(target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return [rect.left + rect.width / 4, rect.left + rect.width * .8].every((x) => {
+        const hit = document.elementFromPoint(x, rect.top + rect.height / 2);
+        return hit === element || element.contains(hit);
+      });
+    })).resolves.toBe(true);
+  } else if (fixture.id === 'outside-viewport') {
+    await expect(target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= window.innerHeight;
+    })).resolves.toBe(true);
+  }
+}
 
-  await page.goto('/lab?case=text-clipped');
-  expect(await page.locator('[data-anwc-key="text-clipped-title"]').evaluate((element) => element.getBoundingClientRect().height > element.parentElement!.clientHeight / 2)).toBe(true);
-
-  await page.goto('/?scenario=hidden-checkout');
-  await expect(page.getByRole('button', { name: 'Checkout' })).toBeHidden();
-
-  await page.goto('/lab?case=opacity-checkout');
-  await expect(page.getByRole('button', { name: 'Opacity-hidden checkout' })).toHaveCSS('opacity', '0');
-
-  await page.goto('/?scenario=blocked-checkout');
-  expect(await page.locator('[data-anwc-key="blocked-checkout"]').evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    return document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) !== element;
-  })).toBe(true);
-
-  await page.goto('/?scenario=partial-checkout');
-  expect(await page.locator('[data-anwc-key="partial-checkout"]').evaluate((element) => {
-    const rect = element.getBoundingClientRect();
-    const left = document.elementFromPoint(rect.left + rect.width / 4, rect.top + rect.height / 2);
-    const right = document.elementFromPoint(rect.left + rect.width * .8, rect.top + rect.height / 2);
-    return { left: left?.className, right: right?.className };
-  })).toEqual({ left: 'cookie-obstacle', right: '' });
-
-  await page.goto('/lab?case=outside-viewport');
-  expect(await page.locator('[data-anwc-key="outside-viewport-checkout"]').evaluate((element) => element.getBoundingClientRect().top > window.innerHeight)).toBe(true);
+test('every broken fixture has independent browser truth and a target-specific ANWC finding', async ({ page }) => {
+  for (const viewport of viewports) for (const fixture of developmentFixtureCases) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/lab?case=${fixture.id}&variant=broken`);
+    await assertBrokenTruth(page, fixture);
+    expect((await targetFindings(page, fixture.targetKey)).some((finding) => finding.code === fixture.expectedCode)).toBe(true);
+  }
 });
 
-test('ANWC reports the supported defect codes independently from scenario setup', async ({ page }) => {
-  const expected = [
-    ['horizontal-overflow', 'HORIZONTAL_OVERFLOW'], ['ancestor-clip', 'CLIPPED_BY_ANCESTOR'], ['nested-clip', 'CLIPPED_BY_ANCESTOR'],
-    ['line-budget', 'TEXT_LINE_BUDGET_EXCEEDED'], ['text-clipped', 'TEXT_CLIPPED'], ['hidden-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'],
-    ['opacity-checkout', 'EXPECTED_VISIBLE_BUT_HIDDEN'], ['blocked-checkout', 'POINTER_BLOCKED_AT_SAMPLES'], ['partial-checkout', 'POINTER_PARTIALLY_BLOCKED'], ['outside-viewport', 'OUTSIDE_VIEWPORT']
-  ] as const;
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) for (const [scenario, code] of expected) {
+test('every healthy fixture keeps its content/action and has no target-specific actionable finding', async ({ page }) => {
+  for (const viewport of viewports) for (const fixture of developmentFixtureCases) {
     await page.setViewportSize(viewport);
-    await page.goto(`/lab?case=${scenario}`);
-    const capture = await captureFindings(page);
-    expect(diagnose(capture as Parameters<typeof diagnose>[0]).some((finding) => finding.code === code)).toBe(true);
+    await page.goto(`/lab?case=${fixture.id}&variant=healthy`);
+    await assertHealthyTruth(page, fixture);
+    expect((await targetFindings(page, fixture.targetKey)).some((finding) => finding.code === fixture.expectedCode && finding.severity !== 'info')).toBe(false);
+    if (fixture.actionRequired) {
+      await page.locator(`[data-anwc-key="${fixture.targetKey}"]`).click();
+      await expect(page.getByRole('dialog', { name: 'Checkout confirmation' })).toContainText('Checkout confirmed');
+    }
   }
 });
 
 test('the clean scenario has no unacknowledged ANWC findings', async ({ page }) => {
   await page.goto('/?scenario=clean');
-  const capture = await captureFindings(page);
-  expect(diagnose(capture as Parameters<typeof diagnose>[0])).toEqual([]);
-  expect((capture as { page: { scenario: string | null } }).page.scenario).toBe('clean');
+  const result = await capture(page);
+  expect(diagnose(result as Parameters<typeof diagnose>[0])).toEqual([]);
+  expect((result as { page: { scenario: string | null } }).page.scenario).toBe('clean');
 });

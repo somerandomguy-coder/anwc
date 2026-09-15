@@ -66,4 +66,20 @@ footer { border-top: 1px solid #d4d9d1; padding: 2rem 0; font-size: .9rem; }
 .lab-cases { display: flex; flex-wrap: wrap; gap: .5rem; padding: 1rem 0 1.5rem; }
 .lab-cases a { border: 1px solid #c8d3cb; border-radius: 999px; color: inherit; padding: .4rem .7rem; text-decoration: none; }
 .lab-cases a.active { background: #27493e; border-color: #27493e; color: white; }
+.fixture-variant-healthy .overflow-fixture { flex-wrap: wrap; gap: .75rem; overflow-x: visible; white-space: normal; }
+.fixture-variant-healthy .overflow-fixture span { flex: 1 1 12rem; }
+.fixture-variant-healthy .clip-fixture { width: min(100%, 28rem); overflow: visible; }
+.fixture-variant-healthy .clip-action { width: 100%; }
+.fixture-variant-healthy .nested-clip { width: min(100%, 28rem); overflow: visible; }
+.fixture-variant-healthy .nested-clip-inner { width: 100%; overflow: visible; }
+.fixture-variant-healthy .nested-clip-action { width: 100%; }
+.fixture-variant-healthy .line-fixture { width: min(100%, 28rem); }
+.fixture-variant-healthy .line-fixture h2 { font-size: .95rem; }
+.fixture-variant-healthy .text-clip-fixture { width: min(100%, 28rem); height: auto; overflow: visible; }
+.fixture-variant-healthy .hidden-checkout { display: inline-block; border: 0; border-radius: 999px; background: #27493e; color: white; padding: .75rem 1rem; }
+.fixture-variant-healthy .opacity-checkout { opacity: 1; border: 0; border-radius: 999px; background: #27493e; color: white; padding: .75rem 1rem; }
+.fixture-variant-healthy .obstacle-fixture { height: auto; }
+.fixture-variant-healthy .obstacle-fixture > button { min-height: 4.5rem; }
+.fixture-variant-healthy .cookie-obstacle { position: static; margin-top: .5rem; min-height: 2.5rem; }
+.fixture-variant-healthy .outside-viewport { margin-top: 0; }
 @media (max-width: 640px) { .site-nav div a { display: none; } .hero { padding: 3.5rem 0; } .product-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 3.25rem; } }

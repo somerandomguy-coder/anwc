@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the prototype, W01/W02/W03, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W03. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W04–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01/W02/W03/W04, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W04. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W05–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Implement W04: ten explicit broken/healthy fixture pairs with independent truth checks. R01 and W03 are complete; R02–R06 remain future runtime-only work.
+1. Implement W05: correct inherited render visibility, with a child allowed to restore `visibility:visible`. R01 and W03/W04 are complete; R02–R06 remain future runtime-only work.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -301,4 +301,12 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence: focused TypeScript and six shop/scenario Chromium tests passed. `npm run test:integration` passed on Windows: 36 unit tests, 11 Chromium tests, TypeScript, and production build. The action test removes only the blocker, clicks the existing checkout button, and observes the checkout confirmation.
 - Remaining limit: W04 has not created healthy counterpart routes or evaluator-side behavior checks yet. The public lab remains answer-bearing and unsuitable for blinded subjects.
 - Next task: W04 — ten defects with ten explicit healthy counterparts.
+
+### W04 — Broken/healthy fixture pairs — Codex
+- Status: done.
+- Owned files: public fixture registry, shop fixture variant rendering/styles, scenario browser tests, continuation/progress handoff.
+- Change: each public case now has `/lab?case=ID&variant=broken|healthy`; the default remains broken and the prior `?scenario=ID` routes remain valid. Every pair uses one stable target key. Healthy checkout controls preserve real actions rather than deleting their targets.
+- Evidence: focused fixture tests passed at 1440×900 and 390×844. Every broken case satisfies an independent DOM, Range, or browser hit-test condition before its exact target is checked for the expected ANWC finding. Every healthy counterpart retains content/action behavior and has no target-specific expected actionable finding. `npm run test:integration` passed on Windows: 36 unit tests, 11 Chromium tests, TypeScript, and production build.
+- Remaining limit: the development registry deliberately includes answer-bearing expected codes. W09 will create a benchmark fixture contract with private evaluator sidecars; the current public lab remains unsuitable as a blinded subject.
+- Next task: W05 — correct inherited render visibility.
 
