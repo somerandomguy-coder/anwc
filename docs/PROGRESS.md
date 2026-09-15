@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
+**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, and defect shop are verified. T10's reproducible pilot-manifest tooling is ready; the actual paired-agent experiment remains unrun. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -23,6 +23,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Defect shop and controls (T08) | done | local e-commerce fixture with six isolated supported defects |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
+| Paired-run manifest and runbook helper | done | `@anwc/benchmark`; public example at `bench/pilot.example.json` |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
 | Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
 | Compiler/runtime/demo | done | T02–T08, verified by typecheck, unit, Chromium, build, and CLI checks |
@@ -49,7 +50,7 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T07 | CLI/serializer | done | A | T03–T06 | pending commit: CLI inspector |
 | T08 | Demo and controls | done | B | T00/T01; T07 | pending commit: defect shop |
 | T09 | Integration/freeze | done | Codex | T02–T08 | pending commit: freeze MVP integration candidate |
-| T10 | Paired experiment | ready | evaluator | T09 | unclaimed |
+| T10 | Paired experiment | in progress | evaluator | T09 | manifest/runbook helper complete; no agent runs recorded |
 
 ## Tonight's gates
 
@@ -67,9 +68,9 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 ## Next three actions
 
-1. Run T10 as a paired-agent evaluation using the frozen fixture matrix and benchmark protocol.
-2. Keep evaluation answers isolated from the repair agent and record timing/cost separately from quality.
-3. Keep every completed task in a separate commit with its evidence recorded here.
+1. Copy and complete the public pilot manifest, validate it, and generate the evaluator runbook before agent runs begin.
+2. Materialize hidden fixtures outside the subject checkout, then run T10 as a paired-agent evaluation using the frozen protocol.
+3. Keep evaluation answers isolated from the repair agent and record timing/cost separately from quality.
 
 ## Collaboration workflow
 
@@ -224,3 +225,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: results are the candidate fixture evidence, not a paired-agent benchmark or a cost measurement. Paint visibility, non-rectangular clipping, and transformed geometry remain explicitly unsupported.
 - Next task now unblocked: T10 paired experiment.
 - Reviewer and review outcome: self-reviewed. The final integration run surfaced an initial false-positive text clip caused by glyph overhang; T09 now intersects text Range rectangles only with actual clip ancestors and own overflow clips, and the clean regression passed.
+
+### T10 (pilot tooling) — 2026-09-15 — Codex
+- Status: in progress; no paired agent run has started.
+- Branch and commit: `main`; pending `feat: add benchmark manifest helper`
+- Owned files changed: `packages/benchmark/**`, `bench/pilot.example.json`, benchmark unit tests, root command/configuration, and handoff documents.
+- Interface changes: `npm run bench -- validate PLAN.json` validates public paired-run metadata. `npm run bench -- runbook PLAN.json --output FILE.md` writes a non-secret execution checklist. A scored plan rejects placeholder model/reasoning/prompt values and mismatched A/B setup.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (21 tests across 6 files); public example validation passed (4 runs across 2 pairs); public example runbook generation passed.
+- Actual evidence/artifact paths: ignored `artifacts/benchmark/pilot.example.runbook.md`; committed `bench/pilot.example.json` and `tests/unit/benchmark.test.ts`.
+- Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, captures provider usage, or enforces filesystem isolation. Those actions must be performed by the evaluator before the first scored run.
+- Next task now unblocked: complete a scored manifest outside the subject workspace, materialize evaluator fixtures, then run and score paired A/B sessions.
+- Reviewer and review outcome: self-reviewed; tests cover a fair pair plus incomplete/mismatched pair rejection.

@@ -5,6 +5,7 @@
     { "path": "./packages/compiler" },
     { "path": "./packages/runtime" },
     { "path": "./packages/diagnostics" },
+    { "path": "./packages/benchmark" },
     { "path": "./packages/vite-plugin" },
     { "path": "./packages/cli" },
     { "path": "./examples/shop" }

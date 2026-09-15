@@ -71,6 +71,17 @@ Run a small, paired repair pilot to answer whether ANWC helps the **same** agent
 
 Do not start Next.js support, an MCP server, a framework rewrite, background observers, paint inference, or package publishing before this pilot creates evidence that one of those investments is justified.
 
+## Prepare the pilot manifest
+
+The repository now includes a small local manifest validator and runbook generator. It checks that every A/B pair has one ordinary run and one ANWC-assisted run with identical fixture, replicate, viewport, state, and subject URL. It produces no hidden truth, repair score, or agent result.
+
+```sh
+npm run bench -- validate bench/pilot.example.json
+npm run bench -- runbook bench/pilot.example.json --output artifacts/benchmark/pilot.runbook.md
+```
+
+`bench/pilot.example.json` is intentionally not scoreable: it uses `kind: "example"` and placeholder agent/prompt fields. Copy it outside the subject workspace, fill the exact model/settings and prompt identifier, materialize neutral held-out fixture IDs, then change `kind` to `"scored"`. The validator refuses placeholder agent/prompt data for a scored plan.
+
 ## Change discipline
 
 - Keep the protocol at `0.1` unless a versioned, cross-package change is explicitly agreed and tested.
@@ -93,4 +104,5 @@ Do not start Next.js support, an MCP server, a framework rewrite, background obs
 | Collector | `packages/runtime/src/index.ts` |
 | Diagnostics | `packages/diagnostics/src/index.ts` |
 | CLI | `packages/cli/src/index.ts` |
+| Pilot manifest/runbook tool | `packages/benchmark/src/` and `bench/pilot.example.json` |
 | Real-layout tests | `tests/browser/` |

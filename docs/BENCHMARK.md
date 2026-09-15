@@ -158,6 +158,12 @@ Measure browser launch, navigation/readiness, ANWC extraction, rule execution, s
 
 Save a machine-readable run manifest with runId, start/end timestamps, app commit, detector commit, browser version, OS, viewport/scroll/state, condition order, prompt hash, model settings, budgets, patch hash, log paths, usage source, independent scoring, and exclusions.
 
+### Pilot manifest helper
+
+`bench/pilot.example.json` is a public, non-secret starting plan. `npm run bench -- validate PLAN.json` rejects unfair A/B pairs: each pair must contain exactly one ordinary and one ANWC-assisted run with the same fixture, replicate, viewport, state, and subject URL. `npm run bench -- runbook PLAN.json --output artifacts/benchmark/RUNBOOK.md` creates a local execution checklist.
+
+The helper validates run setup only. It does not materialize defects, execute agents, grade repairs, store results, or isolate evaluator truth. Copy the example outside the subject checkout, replace its placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
+
 ## 9. Pilot decision policy
 
 Pre-register these as engineering targets, not statistically validated thresholds:

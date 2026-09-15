@@ -29,9 +29,12 @@ npm run test:unit
 npm run test:browser
 npm run build
 npm run test:integration
+npm run bench -- validate bench/pilot.example.json
 ```
 
 The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
+
+The paired-agent pilot uses a versioned non-secret manifest. Validate the example with `npm run bench -- validate bench/pilot.example.json`, then generate a local runbook with `npm run bench -- runbook bench/pilot.example.json --output artifacts/benchmark/pilot.runbook.md`. Copy the example and replace its placeholders before marking a plan `scored`; evaluator truth and logs must stay outside the subject agent checkout.
 
 ## Tonight's target
 

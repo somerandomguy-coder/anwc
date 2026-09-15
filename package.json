@@ -15,7 +15,8 @@
     "test:unit": "vitest run",
     "test:browser": "playwright test",
     "test:integration": "npm run typecheck && npm run test:unit && npm run test:browser && npm run build",
-    "anwc": "tsx packages/cli/src/main.ts"
+    "anwc": "tsx packages/cli/src/main.ts",
+    "bench": "tsx packages/benchmark/src/main.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.51.1",

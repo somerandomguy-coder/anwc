@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "example",
+  "title": "ANWC paired repair pilot",
+  "baseline": {
+    "appCommit": "4c6cafe",
+    "detectorCommit": "4c6cafe",
+    "browser": "Playwright Chromium build 1161",
+    "node": "24.18.0",
+    "packageManager": "npm 11.13.0"
+  },
+  "agent": {
+    "provider": "replace-before-scored-run",
+    "model": "replace-before-scored-run",
+    "reasoning": "replace-before-scored-run"
+  },
+  "budget": { "wallMinutes": 20, "tokenLimit": null },
+  "promptId": "replace-before-scored-run",
+  "runs": [
+    { "id": "p01-a", "pairId": "p01", "fixtureId": "heldout-01", "replicate": 1, "condition": "ordinary", "viewport": { "width": 1440, "height": 900 }, "state": "initial", "subjectUrl": "http://127.0.0.1:4175/" },
+    { "id": "p01-b", "pairId": "p01", "fixtureId": "heldout-01", "replicate": 1, "condition": "anwc-assisted", "viewport": { "width": 1440, "height": 900 }, "state": "initial", "subjectUrl": "http://127.0.0.1:4175/" },
+    { "id": "p02-a", "pairId": "p02", "fixtureId": "heldout-02", "replicate": 1, "condition": "ordinary", "viewport": { "width": 390, "height": 844 }, "state": "initial", "subjectUrl": "http://127.0.0.1:4175/" },
+    { "id": "p02-b", "pairId": "p02", "fixtureId": "heldout-02", "replicate": 1, "condition": "anwc-assisted", "viewport": { "width": 390, "height": 844 }, "state": "initial", "subjectUrl": "http://127.0.0.1:4175/" }
+  ]
+}
