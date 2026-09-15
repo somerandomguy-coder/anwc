@@ -28,10 +28,12 @@ function sourcePath(filename: string, root: string): string | null {
   const filenameWithoutQuery = filename.split(/[?#]/, 1)[0] ?? '';
   if (!supportedExtension.test(filenameWithoutQuery) || filenameWithoutQuery.endsWith('.d.ts')) return null;
 
-  const absoluteFile = isAbsolute(filenameWithoutQuery) ? filenameWithoutQuery : resolve(filenameWithoutQuery);
-  const fromRoot = relative(resolve(root), absoluteFile);
-  if (fromRoot === '' || fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) return null;
-  return normalize(fromRoot).split(sep).join('/');
+  const normalizedFilename = filenameWithoutQuery.split('\\').join('/');
+  const normalizedRoot = root.split('\\').join('/');
+  const absoluteFile = isAbsolute(normalizedFilename) ? normalizedFilename : resolve(normalizedFilename);
+  const fromRoot = relative(resolve(normalizedRoot), absoluteFile);
+  if (fromRoot === '' || fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || fromRoot.startsWith('../') || isAbsolute(fromRoot)) return null;
+  return normalize(fromRoot).split(sep).join('/').replace(/^(\.\/)+/, '');
 }
 
 function jsxIdentifierName(value: unknown): string | null {

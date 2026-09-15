@@ -15,6 +15,9 @@ export default defineConfig({
     command: 'npm run dev --workspace=@anwc/shop -- --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000
+    timeout: 30_000,
+    env: {
+      NODE_OPTIONS: '--import tsx'
+    }
   }
 });

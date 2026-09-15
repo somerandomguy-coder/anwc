@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --build && vite build"
+    "build": "tsc --build && NODE_OPTIONS='--import tsx' vite build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "4.3.4",

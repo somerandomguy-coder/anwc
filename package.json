@@ -9,11 +9,11 @@
     "examples/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@anwc/shop",
+    "dev": "NODE_OPTIONS='--import tsx' npm run dev --workspace=@anwc/shop",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc --build",
-    "test:unit": "vitest run",
-    "test:browser": "playwright test",
+    "test:unit": "NODE_OPTIONS='--import tsx' vitest run",
+    "test:browser": "PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 playwright test",
     "test:integration": "npm run typecheck && npm run test:unit && npm run test:browser && npm run build",
     "anwc": "tsx packages/cli/src/main.ts",
     "bench": "tsx packages/benchmark/src/main.ts"

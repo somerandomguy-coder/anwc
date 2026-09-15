@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Implement W01's trustworthy export fixes, then W02's result accounting and endpoint corrections; commit each completed task.
+1. W01 (trustworthy subject exports) is complete. Implement W02's result accounting and endpoint corrections next.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -248,3 +248,15 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Validation: documentation links and Git whitespace checks; no application code changed or new browser/model results claimed.
 - Next task: W01, then W02. Continue development while actual human comparisons remain pinned to their recorded revisions.
 - Remaining limits: 18 planned defect/healthy pairs and prepare/grade commands are future deliverables; public cases remain unblinded. T10 requires real agent runs.
+
+### W01 — 2026-09-15 — Antigravity
+- Status: done
+- Branch and commit: `main`; `feat: trustworthy subject exports (W01)`
+- Owned files changed: `packages/benchmark/src/subject.ts`, `packages/benchmark/src/index.ts`, `tests/unit/benchmark.test.ts`, `packages/compiler/src/index.ts`, `package.json`, `examples/shop/package.json`, `playwright.config.ts`, `docs/PROGRESS.md`.
+- Interface changes: Extracted `packages/benchmark/src/subject.ts`; `packageSubjectWorkspace` now validates path overlap, rejects non-application overlay files, generates clean condition-specific Vite configs/manifests post-overlay, generates matching lockfiles via `npm install --package-lock-only`, and strictly excludes forbidden files (`dist`, `test-runtime.ts`, `scenarios.ts`, source maps, test files, and TS build info).
+- Acceptance commands and outcomes: `npm run test:integration` passed: TypeScript compilation, 28 unit tests across 6 files, 10 Chromium tests, and production shop build. Standalone packaging and builds verified for both `ordinary` and `anwc-assisted` conditions in `/tmp/` outside repo ancestry; both passed `check-subject`, clean `npm ci`, `npm run typecheck`, and `npm run build`. Unit tests cover overlay root-script rejection, path overlap rejection, and forbidden artifact/bridge exclusions.
+- Actual evidence/artifact paths: `packages/benchmark/src/subject.ts`, `tests/unit/benchmark.test.ts`.
+- Unsupported cases or remaining failures: W01 provides trustworthy subject exports and leakage checks; multi-port pair endpoints and missing measurement handling follow in W02.
+- Next task now unblocked: W02 — result accounting and paired endpoints.
+- Reviewer and review outcome: self-reviewed; full integration suite passed.
+

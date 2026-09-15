@@ -86,4 +86,102 @@ describe('benchmark plan', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test('rejects an overlay attempting to replace root scripts or non-application files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-benchmark-overlay-'));
+    const source = join(root, 'source');
+    const overlay = join(root, 'overlay');
+    const destination = join(root, 'subject');
+    try {
+      await mkdir(join(source, 'examples/shop/src'), { recursive: true });
+      await mkdir(overlay, { recursive: true });
+      await writeFile(join(source, 'package.json'), JSON.stringify({ name: 'subject', scripts: { dev: 'vite' } }));
+      await writeFile(join(source, 'examples/shop/src/main.tsx'), 'export const app = "orig";');
+      await writeFile(join(overlay, 'package.json'), JSON.stringify({ scripts: { malicious: 'true' } }));
+
+      await expect(packageSubjectWorkspace({ sourceRoot: source, destination, overlayRoot: overlay, condition: 'ordinary' }))
+        .rejects.toThrow('overlay attempts to modify non-application file: package.json');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects path overlap between source, destination, and overlay', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-benchmark-overlap-'));
+    const source = join(root, 'source');
+    const overlay = join(root, 'overlay');
+    const nestedDestination = join(source, 'nested-subject');
+    try {
+      await mkdir(source, { recursive: true });
+      await mkdir(overlay, { recursive: true });
+      await writeFile(join(source, 'package.json'), '{}');
+
+      await expect(packageSubjectWorkspace({ sourceRoot: source, destination: nestedDestination, overlayRoot: overlay, condition: 'ordinary' }))
+        .rejects.toThrow('destination is inside source root');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('excludes dist, nested tests, test-runtime, and source maps from exported subjects', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-benchmark-exclude-'));
+    const source = join(root, 'source');
+    const overlay = join(root, 'overlay');
+    const destination = join(root, 'subject');
+    try {
+      await mkdir(join(source, 'examples/shop/src'), { recursive: true });
+      await mkdir(join(source, 'examples/shop/dist'), { recursive: true });
+      await mkdir(join(source, 'examples/shop/tests'), { recursive: true });
+      await mkdir(overlay, { recursive: true });
+
+      await writeFile(join(source, 'package.json'), JSON.stringify({ name: 'subject', scripts: { dev: 'vite', build: 'vite build' } }));
+      await writeFile(join(source, 'examples/shop/src/main.tsx'), 'export const app = "orig";');
+      await writeFile(join(source, 'examples/shop/src/test-runtime.ts'), 'export const bridge = true;');
+      await writeFile(join(source, 'examples/shop/src/styles.css.map'), '{"version":3}');
+      await writeFile(join(source, 'examples/shop/dist/bundle.js'), 'export const answer = 42;');
+      await writeFile(join(source, 'examples/shop/tests/shop.test.ts'), 'test("nested", () => {});');
+
+      await mkdir(join(overlay, 'examples/shop/src'), { recursive: true });
+      await writeFile(join(overlay, 'examples/shop/src/main.tsx'), 'export const app = "clean";');
+
+      await packageSubjectWorkspace({ sourceRoot: source, destination, overlayRoot: overlay, condition: 'ordinary' });
+
+      // Verify exclusions
+      const inventory = validateSubjectInventory({
+        files: ['package.json', 'examples/shop/src/main.tsx'],
+        publicScenarioReferences: []
+      }, 'ordinary');
+      expect(inventory).toEqual([]);
+
+      // Ensure forbidden files are not in destination
+      const { existsSync } = await import('node:fs');
+      expect(existsSync(join(destination, 'examples/shop/src/test-runtime.ts'))).toBe(false);
+      expect(existsSync(join(destination, 'examples/shop/src/styles.css.map'))).toBe(false);
+      expect(existsSync(join(destination, 'examples/shop/dist'))).toBe(false);
+      expect(existsSync(join(destination, 'examples/shop/tests'))).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects subject inventory containing dist, tests, or test-runtime.ts', () => {
+    const issues = validateSubjectInventory({
+      files: [
+        'package.json',
+        'examples/shop/src/main.tsx',
+        'dist/bundle.js',
+        'tests/unit.test.ts',
+        'examples/shop/src/test-runtime.ts',
+        'examples/shop/src/app.js.map'
+      ],
+      publicScenarioReferences: []
+    }, 'ordinary');
+
+    expect(issues).toEqual(expect.arrayContaining([
+      'subject exposes forbidden dist/ content in dist/bundle.js',
+      'subject exposes forbidden tests/ content',
+      'subject exposes forbidden runtime test bridge: examples/shop/src/test-runtime.ts',
+      'subject exposes forbidden source map: examples/shop/src/app.js.map'
+    ]));
+  });
 });
