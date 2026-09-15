@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BenchmarkPlanError, packageSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, packageSubjectWorkspace, repairVerified, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -21,6 +21,14 @@ const validPlan = () => ({
 });
 
 describe('benchmark plan', () => {
+  test('validates strict fixture contracts and never counts unsupported required checks as repaired', () => {
+    expect(fixtureCaseSchema.parse({ schemaVersion: '0.2', id: 'shop-action', appId: 'shop', route: '/', requirements: ['Keep checkout usable'], viewports: [{ width: 390, height: 844 }], setup: [{ kind: 'click', role: 'button', name: 'Open cart' }], requiredContent: ['Cart'], requiredActions: [{ role: 'button', name: 'Checkout' }] }).id).toBe('shop-action');
+    expect(() => fixtureCaseSchema.parse({ schemaVersion: '0.2', id: 'bad', appId: 'shop', route: '/', requirements: ['x'], viewports: [{ width: 1, height: 1 }], setup: [{ kind: 'evaluate', script: 'alert(1)' }], requiredContent: ['x'], requiredActions: [] })).toThrow();
+    expect(() => checkSchema.parse({ id: 'bad-check', required: true, kind: 'content', selector: '#copy', text: 'hello', extra: true })).toThrow();
+    expect(evaluatorSidecarSchema.parse({ fixtureId: 'shop-action', revision: 'abcdef0', defect: 'Checkout is hidden', baselineChecks: [{ id: 'hidden', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }], repairChecks: [{ id: 'usable', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }] }).fixtureId).toBe('shop-action');
+    expect(repairVerified([{ id: 'usable', required: true, status: 'pass', evidence: {} }, { id: 'optional', required: false, status: 'unsupported', evidence: {} }])).toBe(true);
+    expect(repairVerified([{ id: 'usable', required: true, status: 'unsupported', evidence: {} }])).toBe(false);
+  });
   test('accepts a fair A/B pair and produces a non-secret runbook', () => {
     const plan = validateBenchmarkPlan(validPlan());
     const runbook = renderRunbook(plan);

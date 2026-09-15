@@ -426,3 +426,5 @@ export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResu
     'Unavailable billing remains `NA`; it must not be treated as zero cost.'
   ].join('\n');
 }
+
+export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema, applySetup, runChecks, repairVerified, type FixtureCase, type FixtureCheck, type CheckResult } from './fixtures/index.js';
