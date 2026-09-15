@@ -86,6 +86,8 @@ npm run bench -- summarize bench/pilot.example.json bench/pilot.example.results.
 
 `bench/pilot.example.results.json` is a zero-result ledger: every run is `planned`, with metrics set to `null`. Complete it outside the subject workspace as runs finish. The results validator requires each planned run exactly once and prevents a planned/failed/excluded run from being silently counted as success. The summary reports medians only where enough values are available and preserves unavailable cost as `NA`.
 
+Before a scored agent run, validate the prepared subject folder with `npm run bench -- check-subject PATH --condition ordinary` or `--condition anwc-assisted`. The current development checkout is expected to fail this check because it contains public scenarios, tests, planning documents, Git history, and ANWC. The checker validates known leakage paths; it is not a security sandbox for files or services exposed by the host.
+
 ## Change discipline
 
 - Keep the protocol at `0.1` unless a versioned, cross-package change is explicitly agreed and tested.
@@ -108,5 +110,5 @@ npm run bench -- summarize bench/pilot.example.json bench/pilot.example.results.
 | Collector | `packages/runtime/src/index.ts` |
 | Diagnostics | `packages/diagnostics/src/index.ts` |
 | CLI | `packages/cli/src/index.ts` |
-| Pilot manifest/runbook/ledger tool | `packages/benchmark/src/` and `bench/pilot.example*.json` |
+| Pilot manifest/runbook/ledger/subject gate | `packages/benchmark/src/` and `bench/pilot.example*.json` |
 | Real-layout tests | `tests/browser/` |

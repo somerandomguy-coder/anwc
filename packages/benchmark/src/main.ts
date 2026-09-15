@@ -1,18 +1,31 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BenchmarkPlanError, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults } from './index.js';
+import { BenchmarkPlanError, checkSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted';
 }
 
 export async function run(args: string[], io: Pick<typeof process, 'stdout' | 'stderr'> = process): Promise<number> {
   const [command, planPath, ...rest] = args;
-  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize'].includes(command ?? '')) {
+  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject'].includes(command ?? '')) {
     io.stderr.write(`${usage()}\n`);
     return 2;
   }
   try {
+    if (command === 'check-subject') {
+      if (rest[0] !== '--condition' || !['ordinary', 'anwc-assisted'].includes(rest[1] ?? '') || rest.length !== 2) {
+        io.stderr.write(`${usage()}\n`);
+        return 2;
+      }
+      const issues = await checkSubjectWorkspace(planPath, rest[1] as SubjectCondition);
+      if (issues.length > 0) {
+        io.stderr.write(`Subject workspace is not ready:\n${issues.map((issue) => `- ${issue}`).join('\n')}\n`);
+        return 2;
+      }
+      io.stdout.write(`Subject workspace is ready for the ${rest[1]} condition.\n`);
+      return 0;
+    }
     const plan = validateBenchmarkPlan(JSON.parse(await readFile(planPath, 'utf8')));
     if (command === 'validate') {
       io.stdout.write(`Valid ${plan.kind} benchmark plan: ${plan.runs.length} runs across ${new Set(plan.runs.map((run) => run.pairId)).size} pairs.\n`);

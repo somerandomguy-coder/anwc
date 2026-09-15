@@ -11,12 +11,13 @@ The browser still performs layout. The compiler adds source identity and optiona
 ## Start here
 
 1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
-2. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
-3. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
-4. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
-5. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
-6. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
-7. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
+2. [Agent testing guide](docs/TESTING.md): public smoke test, fair A/B setup, pilot recording, and interpretation.
+3. [Shared progress board](docs/PROGRESS.md): current state, gates, evidence, and handoff entries.
+4. [Benchmark protocol](docs/BENCHMARK.md): paired-agent evaluation, fixture controls, scoring, and cost measurement.
+5. [Protocol contract](docs/PROTOCOL.md): identity, snapshots, findings, CLI behavior, example output.
+6. [Decision log](docs/DECISIONS.md): agreed defaults and questions to revisit after the experiment.
+7. [Detailed architecture and implementation plan](docs/PLAN.md): original scope, algorithms, integration, limits, milestones.
+8. [Small module task briefs](docs/TASKS.md): historical bounded implementation briefs; T00–T09 are already complete.
 
 ## Run the current workspace
 

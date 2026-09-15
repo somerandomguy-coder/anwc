@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BenchmarkPlanError, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 
 const validPlan = () => ({
   schemaVersion: '0.1' as const,
@@ -45,5 +45,19 @@ describe('benchmark plan', () => {
     expect(renderResultsSummary(plan, results)).toContain('| ordinary | 1 | 1 | 1 | 1 | 0 | 42 | NA |');
     expect(renderResultsSummary(plan, results)).toContain('| anwc-assisted | 1 | 1 | 0 | 0 | 0 | 1200 | NA |');
     expect(() => validateBenchmarkResults(plan, { ...results, runs: results.runs.slice(0, 1) })).toThrow('missing runId');
+  });
+
+  test('rejects answer-bearing or condition-inappropriate subject inventory', () => {
+    const ordinaryIssues = validateSubjectInventory({
+      files: ['package.json', 'examples/shop/src/main.tsx', 'docs/BENCHMARK.md', 'packages/cli/src/main.ts'],
+      publicScenarioReferences: ['examples/shop/src/main.tsx']
+    }, 'ordinary');
+    expect(ordinaryIssues).toEqual(expect.arrayContaining([
+      'subject exposes forbidden docs/ content',
+      'subject exposes public scenario switching in examples/shop/src/main.tsx',
+      'ordinary subject exposes packages/cli; remove ANWC before the baseline run'
+    ]));
+
+    expect(validateSubjectInventory({ files: ['package.json', 'examples/shop/src/main.tsx', 'packages/cli/src/main.ts'], publicScenarioReferences: [] }, 'anwc-assisted')).toEqual([]);
   });
 });

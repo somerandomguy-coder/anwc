@@ -166,6 +166,8 @@ Save a machine-readable run manifest with runId, start/end timestamps, app commi
 
 The helper validates run setup and entered result consistency only. It does not materialize defects, execute agents, grade repairs, infer usage, or isolate evaluator truth. Copy the examples outside the subject checkout, replace placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
 
+Before each agent receives a subject folder, run `npm run bench -- check-subject SUBJECT_PATH --condition ordinary` or `--condition anwc-assisted`. The gate rejects known leakage: `docs/`, `bench/`, `tests/`, `.git/`, the public scenario switch, and ANWC CLI code in the ordinary condition. It also requires the CLI in the assisted condition. It is a deterministic preflight check, not a substitute for host-level filesystem and network isolation.
+
 ## 9. Pilot decision policy
 
 Pre-register these as engineering targets, not statistically validated thresholds:

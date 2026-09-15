@@ -23,7 +23,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Defect shop and controls (T08) | done | local e-commerce fixture with six isolated supported defects |
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
-| Paired-run manifest, runbook, and result-ledger helper | done | `@anwc/benchmark`; public examples at `bench/pilot.example*.json` |
+| Paired-run manifest, runbook, result ledger, and subject leakage gate | done | `@anwc/benchmark`; public examples at `bench/pilot.example*.json` |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
 | Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
 | Compiler/runtime/demo | done | T02–T08, verified by typecheck, unit, Chromium, build, and CLI checks |
@@ -230,9 +230,9 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Status: in progress; no paired agent run has started.
 - Branch and commit: `main`; pending `feat: add benchmark manifest helper`
 - Owned files changed: `packages/benchmark/**`, `bench/pilot.example*.json`, benchmark unit tests, root command/configuration, and handoff documents.
-- Interface changes: `npm run bench -- validate PLAN.json` validates public paired-run metadata. `npm run bench -- runbook PLAN.json --output FILE.md` writes a non-secret execution checklist. `validate-results` and `summarize` validate an entered ledger and emit a descriptive summary. A scored plan rejects placeholder model/reasoning/prompt values and mismatched A/B setup.
-- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (22 tests across 6 files); public plan and result-ledger validation passed (4 runs across 2 pairs); public runbook and summary generation passed.
+- Interface changes: `npm run bench -- validate PLAN.json` validates public paired-run metadata. `npm run bench -- runbook PLAN.json --output FILE.md` writes a non-secret execution checklist. `validate-results` and `summarize` validate an entered ledger and emit a descriptive summary. `check-subject PATH --condition ordinary|anwc-assisted` rejects known answer leakage and condition-tool mismatch. A scored plan rejects placeholder model/reasoning/prompt values and mismatched A/B setup.
+- Acceptance commands and outcomes: `npm run typecheck` passed; `npm run test:unit` passed (23 tests across 6 files); public plan and result-ledger validation passed (4 runs across 2 pairs); public runbook and summary generation passed. The current development checkout correctly fails `check-subject . --condition ordinary`, demonstrating detection of docs, bench files, tests, Git history, public scenario switching, and the ordinary-condition CLI leak.
 - Actual evidence/artifact paths: ignored `artifacts/benchmark/pilot.example.runbook.md` and `artifacts/benchmark/pilot.example.summary.md`; committed `bench/pilot.example*.json` and `tests/unit/benchmark.test.ts`.
-- Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, infers provider usage, or enforces filesystem isolation. Those actions must be performed by the evaluator before the first scored run.
+- Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, infers provider usage, or enforces host-level filesystem/network isolation. It does not create subject folders; those actions must be performed by the evaluator before the first scored run.
 - Next task now unblocked: complete a scored manifest outside the subject workspace, materialize evaluator fixtures, then run and score paired A/B sessions.
 - Reviewer and review outcome: self-reviewed; tests cover a fair pair plus incomplete/mismatched pair rejection.

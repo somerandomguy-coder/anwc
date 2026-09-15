@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { readdir, readFile, stat } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
 
 const gitRef = z.string().regex(/^[0-9a-f]{7,64}$/i, 'must be a Git commit SHA');
 const nonEmpty = z.string().trim().min(1);
@@ -66,6 +68,8 @@ export const benchmarkResultsSchema = z.object({
 }).strict();
 
 export type BenchmarkResults = z.infer<typeof benchmarkResultsSchema>;
+export type SubjectCondition = 'ordinary' | 'anwc-assisted';
+export type SubjectInventory = { files: string[]; publicScenarioReferences: string[] };
 
 export class BenchmarkPlanError extends Error {
   constructor(readonly issues: string[]) {
@@ -250,4 +254,58 @@ export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResu
     '',
     'Unavailable billing remains `NA`; it must not be treated as zero cost.'
   ].join('\n');
+}
+
+const ignoredSubjectDirectories = new Set(['node_modules', 'dist', '.vite', 'artifacts', 'coverage']);
+const forbiddenSubjectRoots = ['docs', 'bench', 'tests', '.git'];
+const publicScenarioPattern = /scenarioFromSearch|scenarioIds|\?scenario=|data-anwc-scenario/;
+
+function normalizedPath(path: string): string {
+  return path.split(sep).join('/');
+}
+
+/** Reads only a candidate subject workspace and returns the evidence used by the leakage gate. */
+export async function inspectSubjectWorkspace(root: string): Promise<SubjectInventory> {
+  const files: string[] = [];
+  const publicScenarioReferences: string[] = [];
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.isDirectory() && ignoredSubjectDirectories.has(entry.name)) continue;
+      const absolute = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(absolute);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const path = normalizedPath(relative(root, absolute));
+      files.push(path);
+      if (/^examples\/shop\/src\/.*\.(?:[cm]?[jt]sx?)$/.test(path)) {
+        const content = await readFile(absolute, 'utf8');
+        if (publicScenarioPattern.test(content)) publicScenarioReferences.push(path);
+      }
+    }
+  }
+  const info = await stat(root);
+  if (!info.isDirectory()) throw new BenchmarkPlanError([`subject path is not a directory: ${root}`]);
+  await visit(root);
+  return { files: files.sort(), publicScenarioReferences: publicScenarioReferences.sort() };
+}
+
+/** Applies deterministic leakage checks to a workspace inventory; it is not a host security boundary. */
+export function validateSubjectInventory(inventory: SubjectInventory, condition: SubjectCondition): string[] {
+  const issues: string[] = [];
+  const has = (path: string): boolean => inventory.files.includes(path);
+  for (const forbidden of forbiddenSubjectRoots) {
+    if (inventory.files.some((path) => path === forbidden || path.startsWith(`${forbidden}/`))) issues.push(`subject exposes forbidden ${forbidden}/ content`);
+  }
+  for (const required of ['package.json', 'examples/shop/src/main.tsx']) if (!has(required)) issues.push(`subject is missing required ${required}`);
+  for (const path of inventory.publicScenarioReferences) issues.push(`subject exposes public scenario switching in ${path}`);
+  const cliPresent = inventory.files.some((path) => path === 'packages/cli/src/main.ts' || path.startsWith('packages/cli/'));
+  if (condition === 'ordinary' && cliPresent) issues.push('ordinary subject exposes packages/cli; remove ANWC before the baseline run');
+  if (condition === 'anwc-assisted' && !cliPresent) issues.push('assisted subject is missing packages/cli; provide the ANWC CLI before the assisted run');
+  return issues;
+}
+
+export async function checkSubjectWorkspace(root: string, condition: SubjectCondition): Promise<string[]> {
+  return validateSubjectInventory(await inspectSubjectWorkspace(root), condition);
 }
