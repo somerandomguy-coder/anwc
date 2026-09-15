@@ -21,6 +21,12 @@ These began as planning defaults on 2026-09-15. T00–T09 implemented the MVP co
 | ADR-015 | Defer Next.js compiler integration; offer runtime-only path | Vite integration does not establish SSR/Turbopack compatibility | Vite source linkage demonstrates measurable value |
 | ADR-016 | Treat clean-fixture actionable findings as release blockers | T09 exposed a text-clip false positive from normal glyph overhang; detector trust depends on healthy controls | A broader corpus establishes a better regression policy |
 
+### ADR-017 — Continue correctness work while human experiments are pending
+
+Date: 2026-09-15. Context: the prototype suite passes, but source review found incomplete export isolation, weak independent fixture checks, and missing-value accounting gaps. The founder requested a concrete implementation backlog for cheaper models while manual testing takes time.
+
+Decision: execute the bounded W01–W14 backlog in [CONTINUATION_PLAN](CONTINUATION_PLAN.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
+
 ## Questions to resolve with evidence
 
 1. Does source linkage reduce repair time beyond runtime measurements alone? Run condition D after A/B.

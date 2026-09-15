@@ -4,6 +4,8 @@ Start here, then read [PROGRESS](PROGRESS.md), [BENCHMARK](BENCHMARK.md), and [D
 
 ## Current baseline
 
+**Next implementation work:** [CONTINUATION_PLAN](CONTINUATION_PLAN.md), starting with W01. Source review at `7db32b1` identified remaining export, measurement, and test-quality gaps despite the passing prototype suite. The W tasks can proceed while T10 is pending. Keep any actual A/B experiment on one recorded source/detector/grader revision.
+
 - Repository: `git@github.com:somerandomguy-coder/anwc.git`
 - Branch: `main`
 - Frozen integration commit: `4c6cafe` (`chore: freeze MVP integration candidate`)

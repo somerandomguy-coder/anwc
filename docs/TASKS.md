@@ -4,6 +4,8 @@ Status: **T00–T09 are complete and published through `4c6cafe`.** These are hi
 
 ## Shared task prompt
 
+For new work, use the W01–W14 task cards and copyable model prompt in [CONTINUATION_PLAN](CONTINUATION_PLAN.md). The T00–T09 briefs below are historical. The continuation plan also records acceptance gaps found during source review; their fixes do not require waiting for T10's human agent runs.
+
 Copy this prefix, then the selected task below:
 
 > Implement ANWC task Txx in this repository. First read README.md, docs/PROTOCOL.md, the corresponding task brief, and docs/PROGRESS.md. Inspect existing code before editing. Limit changes to the task's owned files and agreed integration files. Preserve the frozen protocol and other tasks' work. Do not build later features, replace the toolchain, loosen tests, or mark unsupported visibility as known. Use real browser tests for layout. Run the listed acceptance checks, update the task's progress entry with files changed, command outcomes, limitations and next handoff, and stop at a reviewable implementation. If a dependency is missing, implement the independent portion, state the exact missing interface, and mark the task blocked rather than inventing a competing contract. Do not publish packages or push/merge remote changes unless the collaborators request it.

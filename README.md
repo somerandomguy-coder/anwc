@@ -10,6 +10,8 @@ The browser still performs layout. The compiler adds source identity and optiona
 
 ## Start here
 
+For continued implementation while human agent runs are pending, start with [CONTINUATION_PLAN](docs/CONTINUATION_PLAN.md). It contains W01–W14: correctness fixes, healthy controls, two additional fixture apps, automatic A/B preparation, and independent repair grading. These tasks are planned, not implemented.
+
 1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
 2. [Agent testing guide](docs/TESTING.md): public smoke test, fair A/B setup, pilot recording, and interpretation.
 3. [Evaluator workspace model](docs/EVALUATOR_SETUP.md): what agents receive and how to create isolated repair subjects.

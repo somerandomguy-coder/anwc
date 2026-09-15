@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the MVP integration candidate is frozen. Workspace, protocol, compiler, Vite integration, browser capture, geometry/text observations, diagnostics, CLI, multi-page public fixture lab, and defect shop are verified. T10's reproducible pilot tooling and isolated subject exports are ready; the actual paired-agent experiment remains unrun. Implementation 10/11 tasks complete. Begin the next session with [TOMORROW](TOMORROW.md).**
+**Current state: the original prototype is implemented and its recorded suite passes; actual paired-agent runs remain unrun. Source review at `7db32b1` found remaining export, runtime, and validation gaps. The W01–W14 backlog in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) addresses these and adds healthy controls, two fixture apps, and independent repair grading. W01–W14 are planned, not implemented. T00–T09 completion records describe the historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -55,6 +55,8 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 ## Tonight's gates
 
+Historical prototype results are recorded below. They are not fresh certification of the expanded corpus. In particular, G4 does not yet establish a named healthy counterpart for every current defect at both widths; W04 adds that matrix. Export install/build smoke results do not prove absence of generated-file leakage or identical A/B app source; W01 and W12 close those gaps.
+
 | Gate | Acceptance | Status | Evidence to attach |
 | --- | --- | --- | --- |
 | G0 | Clean app builds/runs, toolchain pinned | passed | Node 24.18.0, npm 11.13.0, TypeScript 5.7.3, Vite 6.1.0, React 19.0.0, Vitest 3.0.7, Playwright 1.51.1 / Chromium build 1161 |
@@ -69,9 +71,9 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 
 ## Next three actions
 
-1. Copy and complete the public pilot manifest, validate it, and generate the evaluator runbook before agent runs begin.
-2. Materialize hidden fixtures outside the subject checkout, then run T10 as a paired-agent evaluation using the frozen protocol.
-3. Keep evaluation answers isolated from the repair agent and record timing/cost separately from quality.
+1. Implement W01's trustworthy export fixes, then W02's result accounting and endpoint corrections; commit each completed task.
+2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
+3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
 ## Collaboration workflow
 
@@ -234,6 +236,15 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Interface changes: `npm run bench -- validate PLAN.json` validates public paired-run metadata. `npm run bench -- runbook PLAN.json --output FILE.md` writes a non-secret execution checklist. `validate-results` and `summarize` validate an entered ledger and emit a descriptive summary. `check-subject PATH --condition ordinary|anwc-assisted` rejects known answer leakage and condition-tool mismatch. `package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` prepares a fresh export then runs that gate. A scored plan rejects placeholder model/reasoning/prompt values and mismatched A/B setup.
 - Acceptance commands and outcomes: `npm run test:integration` passed: TypeScript, 24 unit tests across 6 files, 10 Chromium tests, and production build. Public plan and result-ledger validation passed (4 runs across 2 pairs); public runbook and summary generation passed. The public lab independently reproduces ten supported cases through browser and CLI checks. The current development checkout correctly fails `check-subject . --condition ordinary`, demonstrating detection of docs, bench files, tests, Git history, public scenario switching, and the ordinary-condition CLI leak. Local ignored ordinary and assisted exports both installed and built; the assisted export served a materialized blocker and emitted a source-linked pointer finding.
 - Actual evidence/artifact paths: ignored `artifacts/benchmark/pilot.example.runbook.md` and `artifacts/benchmark/pilot.example.summary.md`; committed `bench/pilot.example*.json` and `tests/unit/benchmark.test.ts`.
-- Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, infers provider usage, or enforces host-level filesystem/network isolation. It does not create subject folders; those actions must be performed by the evaluator before the first scored run.
+- Unsupported cases or remaining failures: this helper neither materializes hidden fixtures nor launches agents, grades repairs, infers provider usage, or enforces host-level filesystem/network isolation. The packager creates subject folders from evaluator-provided overlays; preparing the actual fixture and scoring remain evaluator work. The continuation audit below qualifies the earlier export and fixture checks.
 - Next task now unblocked: complete a scored manifest outside the subject workspace, materialize evaluator fixtures, then run and score paired A/B sessions.
 - Reviewer and review outcome: self-reviewed; tests cover a fair pair plus incomplete/mismatched pair rejection.
+
+### Continuation planning audit — 2026-09-15 — Codex
+- Status: planning complete; W01–W14 implementation has not started.
+- Reviewed revision: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
+- Owned files changed: `docs/CONTINUATION_PLAN.md`, README, progress, task index, handoff, and decision record.
+- Evidence: source inspection found export isolation, paired endpoint/accounting, fixture behavior/truth, runtime visibility/sampling/readiness, and source registration gaps. The new plan names the relevant functions and gives each task fixed decisions, owned paths, dependencies, and acceptance checks.
+- Validation: documentation links and Git whitespace checks; no application code changed or new browser/model results claimed.
+- Next task: W01, then W02. Continue development while actual human comparisons remain pinned to their recorded revisions.
+- Remaining limits: 18 planned defect/healthy pairs and prepare/grade commands are future deliverables; public cases remain unblinded. T10 requires real agent runs.
