@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
-import { errorEnvelopeSchema, inspectOptionsSchema, snapshotSchema } from '@anwc/protocol';
+import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSchema } from '@anwc/protocol';
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
 import { chromium, type Page } from 'playwright';
 
@@ -72,13 +72,24 @@ async function capturePage(page: Page, options: InspectOptions): Promise<RawCapt
   if (options.runtimeOnly) await page.addScriptTag({ content: await runtimeScript() });
   try {
     await page.waitForFunction(() => Boolean((window as Window & { __ANWC__?: unknown }).__ANWC__), undefined, { timeout: Math.min(options.timeoutMs, 2_000) });
-    return await page.evaluate(async (captureOptions) => {
-      const api = (window as Window & { __ANWC__?: RuntimeApi }).__ANWC__;
-      if (!api) throw new Error('ANWC runtime is not present on this page.');
-      return api.capture(captureOptions);
-    }, { textLimit: 160, timeoutMs: options.timeoutMs });
   } catch (error) {
     throw new CliError('RUNTIME_MISSING', error instanceof Error ? error.message : 'ANWC runtime is not present on this page.');
+  }
+  try {
+    return await new Promise<RawCapture>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new CliError('TIMEOUT', 'Runtime capture exceeded the timeout budget.')), options.timeoutMs);
+      void page.evaluate(async (captureOptions) => {
+        const api = (window as Window & { __ANWC__?: RuntimeApi }).__ANWC__;
+        if (!api) throw new Error('ANWC runtime disappeared before capture.');
+        return api.capture(captureOptions);
+      }, { textLimit: 160, timeoutMs: options.timeoutMs }).then(
+        (capture) => { clearTimeout(timeout); resolve(capture); },
+        (error: unknown) => { clearTimeout(timeout); reject(error); }
+      );
+    });
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+    throw new CliError('INTERNAL', error instanceof Error ? error.message : 'The ANWC runtime failed during capture.');
   }
 }
 
@@ -100,7 +111,7 @@ export async function inspect(options: InspectOptions): Promise<Snapshot> {
           throw new CliError('TIMEOUT', error instanceof Error ? error.message : 'Readiness selector timed out.');
         }
       }
-      const capture = await capturePage(page, options);
+      const capture = rawCaptureSchema.parse(await capturePage(page, options));
       const rulesStarted = performance.now();
       const findings = diagnose(capture);
       const rules = Math.round(performance.now() - rulesStarted);

@@ -69,3 +69,34 @@ test('uses a target computed visibility while preserving display and opacity anc
   expect(hiddenFindings.map((finding) => finding.nodeId)).not.toContain(byKey('restored').nodeId);
   expect(hiddenFindings.map((finding) => finding.nodeId)).not.toContain(byKey('visible').nodeId);
 });
+
+test('waits for stable geometry and reports continuous movement as unsettled', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => { await import('/src/test-runtime.ts'); });
+  await page.evaluate(() => {
+    document.body.innerHTML = '<button id="target">Ready target</button>';
+    const target = document.querySelector<HTMLButtonElement>('#target')!;
+    requestAnimationFrame(() => requestAnimationFrame(() => { target.style.width = '220px'; }));
+  });
+  const settled = await page.evaluate(() => window.__ANWC_TEST__!.capture({ timeoutMs: 500 }));
+  expect(settled.readiness).toMatchObject({ settled: true, reasons: expect.arrayContaining(['fonts ready', 'geometry stable within 1 CSS px for two successive frames']) });
+
+  const unsettled = await page.evaluate(async () => {
+    const target = document.querySelector<HTMLButtonElement>('#target')!;
+    let running = true;
+    let position = 0;
+    const move = () => {
+      if (!running) return;
+      target.style.transform = `translateX(${position++ * 3}px)`;
+      requestAnimationFrame(move);
+    };
+    requestAnimationFrame(move);
+    const capture = await window.__ANWC_TEST__!.capture({ timeoutMs: 90 });
+    running = false;
+    return capture;
+  });
+  expect(unsettled.readiness).toMatchObject({
+    settled: false,
+    reasons: expect.arrayContaining(['fonts ready', 'geometry remained unstable before timeout'])
+  });
+});

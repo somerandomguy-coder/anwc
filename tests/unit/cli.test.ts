@@ -44,6 +44,10 @@ describe('ANWC CLI', () => {
     const missingExit = await run(['inspect', 'data:text/html,<button>Missing runtime</button>', '--format', 'json'], io);
     expect(missingExit).toBe(2);
     expect(JSON.parse(stdout.pop()!)).toMatchObject({ error: { code: 'RUNTIME_MISSING' } });
+
+    const exceptionExit = await run(['inspect', 'data:text/html,<script>window.__ANWC__={capture(){throw new Error("capture broke")}}</script>', '--format', 'json'], io);
+    expect(exceptionExit).toBe(2);
+    expect(JSON.parse(stdout.pop()!)).toMatchObject({ error: { code: 'INTERNAL', message: expect.stringContaining('capture broke') } });
   }, 20_000);
 
   test('reports each public shop defect through the CLI inspection path', async () => {

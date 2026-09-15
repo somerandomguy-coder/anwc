@@ -196,6 +196,8 @@ T01 defines the named aliases referenced above. `RawCapture` contains page/readi
 
 Every capture creates a consistent session context. If navigation or teardown occurs mid-capture, fail explicitly or mark the capture incomplete. Do not concatenate node lists from different document sessions.
 
+Readiness is a bounded heuristic: the runtime waits for browser font readiness and then requires two successive animation-frame geometry comparisons, with a 1 CSS px tolerance, across interactive and expected targets. A timeout or continuing movement produces `readiness.settled: false` with a specific reason. This prevents a clean finding list from being treated as a reliable result while layout is still moving; it does not prove that a page will remain stable indefinitely.
+
 ## 5. CLI contract
 
 Commands below are targets to implement, not commands that run in this documentation-only repository today.

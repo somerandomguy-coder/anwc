@@ -188,16 +188,63 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
   };
 }
 
+type GeometryObservation = Map<Element, { x: number; y: number; width: number; height: number }>;
+
+function readinessCandidates(): Element[] {
+  return discoverElements(document).filter((element) => isInteractiveCandidate(element) || element.hasAttribute('data-anwc-expect'));
+}
+
+function observeGeometry(): GeometryObservation {
+  return new Map(readinessCandidates().map((element) => {
+    const rect = element.getBoundingClientRect();
+    return [element, { x: rect.x, y: rect.y, width: rect.width, height: rect.height }];
+  }));
+}
+
+function geometryStable(before: GeometryObservation, after: GeometryObservation): boolean {
+  if (before.size !== after.size) return false;
+  for (const [element, previous] of before) {
+    const next = after.get(element);
+    if (!next || Math.abs(next.x - previous.x) > 1 || Math.abs(next.y - previous.y) > 1 || Math.abs(next.width - previous.width) > 1 || Math.abs(next.height - previous.height) > 1) return false;
+  }
+  return true;
+}
+
+function nextFrameBefore(deadline: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let frame = 0;
+    const remaining = Math.max(0, deadline - performance.now());
+    const timeout = window.setTimeout(() => { cancelAnimationFrame(frame); resolve(false); }, remaining);
+    frame = requestAnimationFrame(() => { clearTimeout(timeout); resolve(performance.now() <= deadline); });
+  });
+}
+
+function fontsReadyBefore(deadline: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(() => finish(false), Math.max(0, deadline - performance.now()));
+    const finish = (ready: boolean) => { clearTimeout(timeout); resolve(ready); };
+    void document.fonts.ready.then(() => finish(true), () => finish(false));
+  });
+}
+
 async function waitForReadiness(timeoutMs: number): Promise<{ settled: boolean; waitMs: number; reasons: string[] }> {
   const started = performance.now();
-  let animationFrame = 0;
-  let timeout = 0;
-  const settled = await new Promise<boolean>((resolve) => {
-    const finish = (value: boolean) => { cancelAnimationFrame(animationFrame); clearTimeout(timeout); resolve(value); };
-    animationFrame = requestAnimationFrame(() => { animationFrame = requestAnimationFrame(() => finish(true)); });
-    timeout = window.setTimeout(() => finish(false), timeoutMs);
-  });
-  return { settled, waitMs: Math.round(performance.now() - started), reasons: settled ? ['two animation frames'] : ['readiness timeout'] };
+  const deadline = started + timeoutMs;
+  const finish = (settled: boolean, reasons: string[]) => ({ settled, waitMs: Math.round(performance.now() - started), reasons });
+  if (!document.fonts) return finish(false, ['font readiness API is unavailable']);
+
+  const fontsReady = await fontsReadyBefore(deadline);
+  if (!fontsReady) return finish(false, ['font readiness did not complete before timeout']);
+
+  let previous = observeGeometry();
+  let stableFrames = 0;
+  while (stableFrames < 2) {
+    if (!await nextFrameBefore(deadline)) return finish(false, ['fonts ready', 'geometry remained unstable before timeout']);
+    const current = observeGeometry();
+    stableFrames = geometryStable(previous, current) ? stableFrames + 1 : 0;
+    previous = current;
+  }
+  return finish(true, ['fonts ready', 'geometry stable within 1 CSS px for two successive frames']);
 }
 
 export function configureRuntime(configuration: RuntimeConfiguration): void {

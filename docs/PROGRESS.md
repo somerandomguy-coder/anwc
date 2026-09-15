@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Current state: the prototype, W01–W06, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W06. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W07–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01–W07, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W07. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W08–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -326,4 +326,13 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence: TypeScript and the focused pointer suite passed on Windows: 2 Chromium tests. The suite covers partial/full offscreen controls, 1/5/25 caps, narrow controls, child spans, transparent input blockers, pointer-events-none paint layers, and disabled/inert controls.
 - Remaining limit: pointer results are sampled event-delivery evidence, not pixel coverage or paint visibility. W07 is still needed so readiness itself has a bounded, evidence-based meaning.
 - Next task: W07 — readiness and truthful timeout errors.
+
+### W07 — Bounded readiness and truthful timeout errors — Codex
+
+- Status: done.
+- Owned files: runtime readiness helper, CLI capture handling, focused browser/CLI tests, protocol notes, and handoff documents.
+- Change: capture now waits for `document.fonts.ready` and two successive stable geometry observations of interactive/expected targets, allowing at most 1 CSS px movement. It returns an explicit unsettled result when fonts are unavailable/not ready in budget or motion continues. The CLI validates raw capture data before diagnostics, bounds runtime evaluation, and separates absent runtime (`RUNTIME_MISSING`) from a present runtime that fails (`INTERNAL`).
+- Evidence: `npm run test:integration` passed on Windows: TypeScript, 36 unit tests, 14 Chromium tests, and the production build. Focused tests make a known layout change during readiness, keep a target moving until deadline, and exercise a thrown runtime capture.
+- Remaining limit: stability covers a short capture window only. It does not predict later layout shifts or paint-level visibility.
+- Next task: W08 — reliable Vite startup, lazy modules, and production checks.
 
