@@ -149,6 +149,8 @@ type Snapshot = {
 
 `paintVisibility` is unknown in v0 even when hit samples reach the target. `render` describes non-paint facts that callers may use independently. This avoids implying that pointer tests detect opaque overlays with `pointer-events:none`.
 
+Pointer samples are collected only from the intersection of the target border rectangle and the current viewport. The deterministic sequence starts at the center, has at most 25 interior locations, and is deduplicated by physical browser hit-test location. `capture({ maxSamplesPerNode })` accepts only integers from 1 through 25 (default 25). A target with no viewport intersection returns an unknown pointer assessment with a no-samples limitation; it is not evidence that pointer delivery succeeds. A lower configured cap is recorded as a method limitation. Pointer evidence and clipping evidence remain separate.
+
 For `visibility`, the collector uses the target's computed value. CSS inheritance permits a descendant to restore `visibility:visible` under a hidden ancestor, so ancestor iteration would misreport that child. `display:none` and zero opacity are still collected across the element's ancestry. These are render-state facts, not paint-visibility guarantees.
 
 The label is a best-effort label with provenance, not a conforming computed accessible name. Prefer platform semantics and test common roles; do not claim a full accessibility audit.

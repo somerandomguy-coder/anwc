@@ -153,7 +153,7 @@ function discoverElements(document: Document): Element[] {
   return [...document.querySelectorAll('*')].filter((element) => !nonInspectableTags.has(element.tagName.toLowerCase()) && !element.hasAttribute('data-anwc-internal'));
 }
 
-function measure(element: Element, selected: Set<Element>, state: RuntimeState, textLimit: number): Measurement {
+function measure(element: Element, selected: Set<Element>, state: RuntimeState, textLimit: number, maxSamplesPerNode: number): Measurement {
   const rect = element.getBoundingClientRect();
   const hasBox = element.getClientRects().length > 0;
   const box = hasBox ? toRect(rect) : null;
@@ -181,7 +181,7 @@ function measure(element: Element, selected: Set<Element>, state: RuntimeState, 
       scrollableX: element.scrollWidth > element.clientWidth, scrollableY: element.scrollHeight > element.clientHeight
     } : null,
     text: observeText(element, clip),
-    pointer: observePointer(element, box, interaction.candidate, selected, (candidate) => nodeId(candidate, state)),
+    pointer: observePointer(element, box, interaction.candidate, selected, (candidate) => nodeId(candidate, state), maxSamplesPerNode),
     interaction,
     paintVisibility: unknown('v0', ['Paint visibility is unsupported in v0.']),
     intent: { expectedCurrent: expected === 'visible' || expected === 'interactive' ? expected : null, maxLines, allow }
@@ -207,13 +207,16 @@ export function configureRuntime(configuration: RuntimeConfiguration): void {
 
 export async function capture(options: CaptureOptions = {}): Promise<RawCapture> {
   const limits = { ...defaultLimits, ...options };
+  if (!Number.isInteger(limits.maxSamplesPerNode) || limits.maxSamplesPerNode < 1 || limits.maxSamplesPerNode > defaultLimits.maxSamplesPerNode) {
+    throw new RangeError(`maxSamplesPerNode must be an integer from 1 to ${defaultLimits.maxSamplesPerNode}.`);
+  }
   const state = stateFor(document);
   const started = performance.now();
   const readiness = await waitForReadiness(limits.timeoutMs);
   const discovered = discoverElements(document);
   const selected = discovered.slice(0, limits.maxNodes);
   const selectedSet = new Set(selected);
-  const nodes = selected.map((element) => measure(element, selectedSet, state, limits.textLimit));
+  const nodes = selected.map((element) => measure(element, selectedSet, state, limits.textLimit, limits.maxSamplesPerNode));
   const scenarioElement = document.querySelector('[data-anwc-scenario]');
 
   return {

@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01/W02/W03/W04/W05 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/the next W05 commit; W06–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01–W06 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/`3a96598`/the next W06 commit; W07–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -73,7 +73,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W03 | Functional shop controls and lab | existing shop | done |
 | W04 | Ten defects with ten explicit healthy counterparts | W03 | done |
 | W05 | Correct inherited render visibility | existing runtime | done |
-| W06 | Bounded pointer probes in the current viewport | existing runtime | ready |
+| W06 | Bounded pointer probes in the current viewport | existing runtime | done |
 | W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | ready |
 | W08 | Reliable source registration and production checks | existing Vite plugin | ready |
 | W09 | Small fixture contract and independent browser checks | W04 | queued |
@@ -180,6 +180,8 @@ Use independent test geometry helpers; do not import ANWC clipping/text/hit-test
 **Acceptance:** partially offscreen target sampled only within viewport; completely offscreen target has zero tests; 1/5/25 caps respected; narrow targets deduplicated; child span hits accepted; transparent input-blocker detected; opaque pointer-events-none layer retains paint unknown. Disabled/inert controls do not become pointer-obstruction errors.
 
 **Done when:** reports state exactly which points were tested and never overstate sample coverage.
+
+**Completed evidence:** pointer sampling now intersects a target's border rectangle with the current viewport and reports a fully offscreen interactive target as `unknown`, with an explicit no-samples limitation. The fixed 25-position order begins at the center, is deduplicated by browser device-pixel hit-test location, and obeys the caller's validated 1–25 cap. Browser coverage checks partial and fully offscreen controls, 1/5/25 caps, narrow deduplication, a transparent input blocker, descendant hits, a pointer-events-none paint-only layer, and disabled/inert controls.
 
 ## W07 — Readiness and timeouts that mean what they say
 

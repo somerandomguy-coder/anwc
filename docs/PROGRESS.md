@@ -1,8 +1,8 @@
 # Shared progress and handoff
 
-Last updated: 2026-09-15, Australia/Sydney.
+Last updated: 2026-09-16, Australia/Sydney.
 
-**Current state: the prototype, W01/W02/W03/W04/W05, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W05. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W06–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01–W06, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W06. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W07–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -317,4 +317,13 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence: focused runtime tests passed. `npm run test:integration` passed on Windows: 36 unit tests, 12 Chromium tests, TypeScript, and production build. The five regression fixtures confirm both raw render observations and target-specific hidden findings.
 - Remaining limit: this reports CSS render facts only; paint visibility remains unknown.
 - Next task: W06 — bounded pointer probes in the current viewport.
+
+### W06 — Bounded pointer probes in the current viewport — Codex
+
+- Status: done.
+- Owned files: `packages/runtime/src/hit-test.ts`, `packages/runtime/src/index.ts`, pointer browser tests, protocol notes, and handoff documents.
+- Change: pointer checks now sample only the target area inside the current viewport. `maxSamplesPerNode` is a validated integer from 1 to 25, defaults to 25, and uses a deterministic center-first sequence. Samples that collapse to the same browser device-pixel hit-test location are deduplicated. A fully offscreen interactive target returns an unknown pointer result with an explicit no-samples limitation, so it cannot read as a successful pointer check.
+- Evidence: TypeScript and the focused pointer suite passed on Windows: 2 Chromium tests. The suite covers partial/full offscreen controls, 1/5/25 caps, narrow controls, child spans, transparent input blockers, pointer-events-none paint layers, and disabled/inert controls.
+- Remaining limit: pointer results are sampled event-delivery evidence, not pixel coverage or paint visibility. W07 is still needed so readiness itself has a bounded, evidence-based meaning.
+- Next task: W07 — readiness and truthful timeout errors.
 
