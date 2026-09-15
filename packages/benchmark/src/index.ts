@@ -16,6 +16,7 @@ const runSchema = z.object({
 
 export const benchmarkPlanSchema = z.object({
   schemaVersion: z.literal('0.1'),
+  id: z.string().regex(/^[a-z0-9-]+$/, 'must use lowercase letters, digits, and hyphens'),
   kind: z.enum(['example', 'scored']),
   title: nonEmpty,
   baseline: z.object({
@@ -40,6 +41,31 @@ export const benchmarkPlanSchema = z.object({
 
 export type BenchmarkPlan = z.infer<typeof benchmarkPlanSchema>;
 export type BenchmarkRun = z.infer<typeof runSchema>;
+
+const nullableNonNegative = z.number().nonnegative().nullable();
+const resultRunSchema = z.object({
+  runId: z.string().regex(/^[a-z0-9-]+$/, 'must use lowercase letters, digits, and hyphens'),
+  status: z.enum(['planned', 'completed', 'time-capped', 'infrastructure-failed', 'excluded']),
+  wallSeconds: nullableNonNegative,
+  usage: z.object({ inputTokens: nullableNonNegative, cachedInputTokens: nullableNonNegative, outputTokens: nullableNonNegative, costUsd: nullableNonNegative }).strict(),
+  scoring: z.object({
+    truePositives: z.number().int().nonnegative().nullable(),
+    falsePositives: z.number().int().nonnegative().nullable(),
+    falseNegatives: z.number().int().nonnegative().nullable(),
+    verifiedRepairs: z.number().int().nonnegative().nullable(),
+    regressions: z.number().int().nonnegative().nullable(),
+    fullSuccess: z.boolean().nullable()
+  }).strict(),
+  notes: z.string()
+}).strict();
+
+export const benchmarkResultsSchema = z.object({
+  schemaVersion: z.literal('0.1'),
+  planId: z.string().regex(/^[a-z0-9-]+$/, 'must use lowercase letters, digits, and hyphens'),
+  runs: z.array(resultRunSchema).min(1)
+}).strict();
+
+export type BenchmarkResults = z.infer<typeof benchmarkResultsSchema>;
 
 export class BenchmarkPlanError extends Error {
   constructor(readonly issues: string[]) {
@@ -97,6 +123,32 @@ export function validateBenchmarkPlan(input: unknown): BenchmarkPlan {
   return plan;
 }
 
+function isScoredStatus(status: BenchmarkResults['runs'][number]['status']): boolean {
+  return status === 'completed' || status === 'time-capped';
+}
+
+/** Validates a non-secret ledger against the exact public plan it claims to score. */
+export function validateBenchmarkResults(plan: BenchmarkPlan, input: unknown): BenchmarkResults {
+  const parsed = benchmarkResultsSchema.safeParse(input);
+  if (!parsed.success) throw new BenchmarkPlanError(parsed.error.issues.map((issue) => `${issue.path.join('.') || 'results'}: ${issue.message}`));
+  const results = parsed.data;
+  const issues: string[] = [];
+  if (results.planId !== plan.id) issues.push(`results.planId: expected ${plan.id}`);
+  const expectedIds = new Set(plan.runs.map((run) => run.id));
+  const seen = new Set<string>();
+  for (const result of results.runs) {
+    if (!expectedIds.has(result.runId)) issues.push(`results.runs: unknown runId ${result.runId}`);
+    if (seen.has(result.runId)) issues.push(`results.runs: duplicate runId ${result.runId}`);
+    seen.add(result.runId);
+    if (isScoredStatus(result.status) && result.wallSeconds === null) issues.push(`results.${result.runId}: scored runs require wallSeconds`);
+    if (result.status === 'planned' && (result.wallSeconds !== null || result.scoring.fullSuccess !== null)) issues.push(`results.${result.runId}: planned runs cannot carry outcome data`);
+    if (!isScoredStatus(result.status) && result.scoring.fullSuccess !== null) issues.push(`results.${result.runId}: only scored runs may set fullSuccess`);
+  }
+  for (const id of expectedIds) if (!seen.has(id)) issues.push(`results.runs: missing runId ${id}`);
+  if (issues.length > 0) throw new BenchmarkPlanError(issues);
+  return results;
+}
+
 function row(run: BenchmarkRun): string {
   return `| ${run.pairId} | ${run.condition} | ${run.fixtureId} | ${run.replicate} | ${run.viewport.width}×${run.viewport.height} | ${run.state} | ${run.subjectUrl} |`;
 }
@@ -135,5 +187,67 @@ export function renderRunbook(plan: BenchmarkPlan): string {
     '5. Apply each patch to a clean evaluator checkout, run hidden repair/control checks, and record scoring before comparing conditions.',
     '',
     'This runbook does not score repairs. Use the frozen evaluator truth and the policy in `docs/BENCHMARK.md`.'
+  ].join('\n');
+}
+
+type ConditionSummary = {
+  runs: number;
+  completed: number;
+  fullSuccesses: number;
+  verifiedRepairs: number;
+  regressions: number;
+  medianWallSeconds: number | null;
+  medianCostUsd: number | null;
+};
+
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const ordered = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 === 1 ? ordered[middle]! : (ordered[middle - 1]! + ordered[middle]!) / 2;
+}
+
+function formatNumber(value: number | null): string {
+  return value === null ? 'NA' : Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+/** Summarizes evaluator-entered counts without attempting to infer or hide unavailable usage. */
+export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResults): string {
+  const indexedPlan = new Map(plan.runs.map((run) => [run.id, run]));
+  const summaries = new Map<BenchmarkRun['condition'], ConditionSummary>();
+  for (const condition of ['ordinary', 'anwc-assisted'] as const) summaries.set(condition, { runs: 0, completed: 0, fullSuccesses: 0, verifiedRepairs: 0, regressions: 0, medianWallSeconds: null, medianCostUsd: null });
+  const wallTimes = new Map<BenchmarkRun['condition'], number[]>([['ordinary', []], ['anwc-assisted', []]]);
+  const costs = new Map<BenchmarkRun['condition'], number[]>([['ordinary', []], ['anwc-assisted', []]]);
+  const completedCounts = new Map<BenchmarkRun['condition'], number>([['ordinary', 0], ['anwc-assisted', 0]]);
+  for (const result of results.runs) {
+    const run = indexedPlan.get(result.runId)!;
+    const summary = summaries.get(run.condition)!;
+    summary.runs += 1;
+    if (!isScoredStatus(result.status)) continue;
+    summary.completed += 1;
+    completedCounts.set(run.condition, completedCounts.get(run.condition)! + 1);
+    if (result.scoring.fullSuccess) summary.fullSuccesses += 1;
+    summary.verifiedRepairs += result.scoring.verifiedRepairs ?? 0;
+    summary.regressions += result.scoring.regressions ?? 0;
+    if (result.wallSeconds !== null) wallTimes.get(run.condition)!.push(result.wallSeconds);
+    if (result.usage.costUsd !== null) costs.get(run.condition)!.push(result.usage.costUsd);
+  }
+  for (const [condition, summary] of summaries) {
+    summary.medianWallSeconds = median(wallTimes.get(condition)!);
+    summary.medianCostUsd = costs.get(condition)!.length === completedCounts.get(condition) ? median(costs.get(condition)!) : null;
+  }
+  return [
+    `# ${plan.title} results summary`,
+    '',
+    '> This is a ledger summary, not a causal conclusion. Preserve individual run rows, failures, exclusions, and evaluator notes alongside it.',
+    '',
+    '| Condition | Runs | Scored runs | Full successes | Verified repairs | Regressions | Median wall sec | Median cost USD |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    ...(['ordinary', 'anwc-assisted'] as const).map((condition) => {
+      const summary = summaries.get(condition)!;
+      return `| ${condition} | ${summary.runs} | ${summary.completed} | ${summary.fullSuccesses} | ${summary.verifiedRepairs} | ${summary.regressions} | ${formatNumber(summary.medianWallSeconds)} | ${formatNumber(summary.medianCostUsd)} |`;
+    }),
+    '',
+    'Unavailable billing remains `NA`; it must not be treated as zero cost.'
   ].join('\n');
 }

@@ -78,9 +78,13 @@ The repository now includes a small local manifest validator and runbook generat
 ```sh
 npm run bench -- validate bench/pilot.example.json
 npm run bench -- runbook bench/pilot.example.json --output artifacts/benchmark/pilot.runbook.md
+npm run bench -- validate-results bench/pilot.example.json bench/pilot.example.results.json
+npm run bench -- summarize bench/pilot.example.json bench/pilot.example.results.json --output artifacts/benchmark/pilot.summary.md
 ```
 
 `bench/pilot.example.json` is intentionally not scoreable: it uses `kind: "example"` and placeholder agent/prompt fields. Copy it outside the subject workspace, fill the exact model/settings and prompt identifier, materialize neutral held-out fixture IDs, then change `kind` to `"scored"`. The validator refuses placeholder agent/prompt data for a scored plan.
+
+`bench/pilot.example.results.json` is a zero-result ledger: every run is `planned`, with metrics set to `null`. Complete it outside the subject workspace as runs finish. The results validator requires each planned run exactly once and prevents a planned/failed/excluded run from being silently counted as success. The summary reports medians only where enough values are available and preserves unavailable cost as `NA`.
 
 ## Change discipline
 
@@ -104,5 +108,5 @@ npm run bench -- runbook bench/pilot.example.json --output artifacts/benchmark/p
 | Collector | `packages/runtime/src/index.ts` |
 | Diagnostics | `packages/diagnostics/src/index.ts` |
 | CLI | `packages/cli/src/index.ts` |
-| Pilot manifest/runbook tool | `packages/benchmark/src/` and `bench/pilot.example.json` |
+| Pilot manifest/runbook/ledger tool | `packages/benchmark/src/` and `bench/pilot.example*.json` |
 | Real-layout tests | `tests/browser/` |

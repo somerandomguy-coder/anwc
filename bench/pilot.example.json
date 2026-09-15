@@ -1,5 +1,6 @@
 {
   "schemaVersion": "0.1",
+  "id": "anwc-pilot-example",
   "kind": "example",
   "title": "ANWC paired repair pilot",
   "baseline": {

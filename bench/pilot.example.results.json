@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "0.1",
+  "planId": "anwc-pilot-example",
+  "runs": [
+    { "runId": "p01-a", "status": "planned", "wallSeconds": null, "usage": { "inputTokens": null, "cachedInputTokens": null, "outputTokens": null, "costUsd": null }, "scoring": { "truePositives": null, "falsePositives": null, "falseNegatives": null, "verifiedRepairs": null, "regressions": null, "fullSuccess": null }, "notes": "Not run." },
+    { "runId": "p01-b", "status": "planned", "wallSeconds": null, "usage": { "inputTokens": null, "cachedInputTokens": null, "outputTokens": null, "costUsd": null }, "scoring": { "truePositives": null, "falsePositives": null, "falseNegatives": null, "verifiedRepairs": null, "regressions": null, "fullSuccess": null }, "notes": "Not run." },
+    { "runId": "p02-a", "status": "planned", "wallSeconds": null, "usage": { "inputTokens": null, "cachedInputTokens": null, "outputTokens": null, "costUsd": null }, "scoring": { "truePositives": null, "falsePositives": null, "falseNegatives": null, "verifiedRepairs": null, "regressions": null, "fullSuccess": null }, "notes": "Not run." },
+    { "runId": "p02-b", "status": "planned", "wallSeconds": null, "usage": { "inputTokens": null, "cachedInputTokens": null, "outputTokens": null, "costUsd": null }, "scoring": { "truePositives": null, "falsePositives": null, "falseNegatives": null, "verifiedRepairs": null, "regressions": null, "fullSuccess": null }, "notes": "Not run." }
+  ]
+}

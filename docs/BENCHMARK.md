@@ -162,7 +162,9 @@ Save a machine-readable run manifest with runId, start/end timestamps, app commi
 
 `bench/pilot.example.json` is a public, non-secret starting plan. `npm run bench -- validate PLAN.json` rejects unfair A/B pairs: each pair must contain exactly one ordinary and one ANWC-assisted run with the same fixture, replicate, viewport, state, and subject URL. `npm run bench -- runbook PLAN.json --output artifacts/benchmark/RUNBOOK.md` creates a local execution checklist.
 
-The helper validates run setup only. It does not materialize defects, execute agents, grade repairs, store results, or isolate evaluator truth. Copy the example outside the subject checkout, replace its placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
+`bench/pilot.example.results.json` is the matching zero-result ledger. `npm run bench -- validate-results PLAN.json RESULTS.json` ensures it covers every planned run once and that only completed/time-capped runs have outcome fields. `npm run bench -- summarize PLAN.json RESULTS.json --output artifacts/benchmark/SUMMARY.md` emits a descriptive condition summary; unavailable cost remains `NA` rather than zero.
+
+The helper validates run setup and entered result consistency only. It does not materialize defects, execute agents, grade repairs, infer usage, or isolate evaluator truth. Copy the examples outside the subject checkout, replace placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
 
 ## 9. Pilot decision policy
 
