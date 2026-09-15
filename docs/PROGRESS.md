@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the prototype, W01/W02, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after R01. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W03–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01/W02/W03, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after W03. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W04–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Implement W03: functional shop controls and lab. R01 portable commands are complete; R02–R06 remain future runtime-only work.
+1. Implement W04: ten explicit broken/healthy fixture pairs with independent truth checks. R01 and W03 are complete; R02–R06 remain future runtime-only work.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -293,4 +293,12 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence: `npm run test:integration` passed on Windows: TypeScript, 36 unit tests, 10 Chromium tests, and production build. `npm run dev -- --host 127.0.0.1 --port 4180` served the app at `http://127.0.0.1:4180/`.
 - Remaining limit: Linux CI was not rerun. R02–R06 remain planned future runtime-only work; current support is an app that installs ANWC.
 - Next task: W03 — functional shop controls and lab.
+
+### W03 — Functional shop controls and lab — Codex
+- Status: done.
+- Owned files: `examples/shop/src/main.tsx`, shop browser behavior tests, continuation/progress handoff.
+- Change: cart state is stored as validated product IDs in versioned sessionStorage, so normal page navigation preserves the cart in one browser session. The confirmation modal is shared by storefront and lab routes. Every checkout fixture has a real local confirmation handler; `/lab` defaults to the blocked-checkout case and explains the action to try.
+- Evidence: focused TypeScript and six shop/scenario Chromium tests passed. `npm run test:integration` passed on Windows: 36 unit tests, 11 Chromium tests, TypeScript, and production build. The action test removes only the blocker, clicks the existing checkout button, and observes the checkout confirmation.
+- Remaining limit: W04 has not created healthy counterpart routes or evaluator-side behavior checks yet. The public lab remains answer-bearing and unsuitable for blinded subjects.
+- Next task: W04 — ten defects with ten explicit healthy counterparts.
 

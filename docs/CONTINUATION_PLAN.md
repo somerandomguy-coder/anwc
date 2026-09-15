@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01/W02 were committed in `ba386e1`/`bcdaf30`; W03–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01/W02/W03 were committed in `ba386e1`/`bcdaf30`/the next W03 commit; W04–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -70,8 +70,8 @@ Statuses here describe dependency readiness, not assigned ownership.
 | --- | --- | --- | --- |
 | W01 | Trustworthy subject exports | existing packager | done |
 | W02 | Honest result accounting and paired endpoints | existing ledger | done |
-| W03 | Functional shop controls and lab | existing shop | ready |
-| W04 | Ten defects with ten explicit healthy counterparts | W03 | queued |
+| W03 | Functional shop controls and lab | existing shop | done |
+| W04 | Ten defects with ten explicit healthy counterparts | W03 | ready |
 | W05 | Correct inherited render visibility | existing runtime | ready |
 | W06 | Bounded pointer probes in the current viewport | existing runtime | ready |
 | W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | ready |
@@ -129,6 +129,8 @@ Give each checkout fixture an actual handler with a visible local confirmation; 
 **Acceptance:** add to cart → navigate to checkout → count persists → review opens modal → close works. Lab Details opens and closes. After a test locally removes only the blocking overlay, a normal Playwright click produces the checkout confirmation. Empty cart and new context behave deterministically.
 
 **Done when:** the grader can verify behavior rather than merely find a button on screen.
+
+**Completed evidence:** cart state now uses a validated versioned sessionStorage record, all fixture checkout controls call a shared confirmation path, the modal renders outside the lab path, and `/lab` defaults to the blocked checkout case. The browser tests add cart-navigation, modal-close, default-lab, and blocker-removal action checks. The W04 healthy counterpart links remain pending because those counterpart routes do not exist yet.
 
 ## W04 — Strong fixture truth and healthy counterparts
 
