@@ -1,3 +1,4 @@
 import { run } from './index.js';
 
-process.exitCode = await run(process.argv.slice(2));
+const code = await run(process.argv.slice(2));
+process.exit(code);
