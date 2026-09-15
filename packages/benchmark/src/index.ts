@@ -87,13 +87,23 @@ function isPlaceholder(value: string): boolean {
   return /^(unset|replace|todo|tbd|example)([-_ ].*)?$/i.test(value.trim());
 }
 
+function sameRouteAndQuery(leftUrl: string, rightUrl: string): boolean {
+  try {
+    const left = new URL(leftUrl);
+    const right = new URL(rightUrl);
+    return left.pathname === right.pathname && left.search === right.search;
+  } catch {
+    return false;
+  }
+}
+
 function sameRunSetup(left: BenchmarkRun, right: BenchmarkRun): boolean {
   return left.fixtureId === right.fixtureId
     && left.replicate === right.replicate
     && left.viewport.width === right.viewport.width
     && left.viewport.height === right.viewport.height
     && left.state === right.state
-    && left.subjectUrl === right.subjectUrl;
+    && sameRouteAndQuery(left.subjectUrl, right.subjectUrl);
 }
 
 /** Parses a public plan and rejects unfair or incomplete A/B pair definitions. */
@@ -120,7 +130,7 @@ export function validateBenchmarkPlan(input: unknown): BenchmarkPlan {
     }
     const conditions = new Set(pair.map((run) => run.condition));
     if (conditions.size !== 2) issues.push(`pair ${pairId}: requires one ordinary run and one anwc-assisted run`);
-    if (!sameRunSetup(pair[0]!, pair[1]!)) issues.push(`pair ${pairId}: fixture, replicate, viewport, state, and subjectUrl must match`);
+    if (!sameRunSetup(pair[0]!, pair[1]!)) issues.push(`pair ${pairId}: fixture, replicate, viewport, state, route, and query must match`);
   }
 
   if (plan.kind === 'scored') {
@@ -149,17 +159,41 @@ export function validateBenchmarkResults(plan: BenchmarkPlan, input: unknown): B
     if (!expectedIds.has(result.runId)) issues.push(`results.runs: unknown runId ${result.runId}`);
     if (seen.has(result.runId)) issues.push(`results.runs: duplicate runId ${result.runId}`);
     seen.add(result.runId);
-    if (isScoredStatus(result.status) && result.wallSeconds === null) issues.push(`results.${result.runId}: scored runs require wallSeconds`);
-    if (result.status === 'planned' && (result.wallSeconds !== null || result.scoring.fullSuccess !== null)) issues.push(`results.${result.runId}: planned runs cannot carry outcome data`);
-    if (!isScoredStatus(result.status) && result.scoring.fullSuccess !== null) issues.push(`results.${result.runId}: only scored runs may set fullSuccess`);
+
+    // Planned runs: no wallSeconds, no usage, no outcome data
+    if (result.status === 'planned') {
+      if (result.wallSeconds !== null) issues.push(`results.${result.runId}: planned runs cannot carry wallSeconds`);
+      const hasUsage = Object.values(result.usage).some((val) => val !== null);
+      if (hasUsage) issues.push(`results.${result.runId}: planned runs cannot carry usage data`);
+      const hasScoring = Object.values(result.scoring).some((val) => val !== null);
+      if (hasScoring) issues.push(`results.${result.runId}: planned runs cannot carry scoring data`);
+    }
+
+    // Scored runs (completed or time-capped)
+    if (isScoredStatus(result.status) && result.wallSeconds === null) {
+      issues.push(`results.${result.runId}: scored runs require wallSeconds`);
+    }
+
+    // Failed or excluded runs: no repair scores, require explanation in notes
+    if (result.status === 'infrastructure-failed' || result.status === 'excluded') {
+      const hasScoring = Object.values(result.scoring).some((val) => val !== null);
+      if (hasScoring) issues.push(`results.${result.runId}: ${result.status} runs cannot carry repair scoring`);
+      if (!result.notes || result.notes.trim().length === 0) {
+        issues.push(`results.${result.runId}: ${result.status} runs require an explanation in notes`);
+      }
+    }
   }
   for (const id of expectedIds) if (!seen.has(id)) issues.push(`results.runs: missing runId ${id}`);
   if (issues.length > 0) throw new BenchmarkPlanError(issues);
   return results;
 }
 
+function escapeCell(value: string): string {
+  return value.replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' ');
+}
+
 function row(run: BenchmarkRun): string {
-  return `| ${run.pairId} | ${run.condition} | ${run.fixtureId} | ${run.replicate} | ${run.viewport.width}×${run.viewport.height} | ${run.state} | ${run.subjectUrl} |`;
+  return `| ${escapeCell(run.pairId)} | ${escapeCell(run.condition)} | ${escapeCell(run.fixtureId)} | ${run.replicate} | ${run.viewport.width}×${run.viewport.height} | ${escapeCell(run.state)} | ${escapeCell(run.subjectUrl)} |`;
 }
 
 /** Creates a non-secret runbook. It intentionally contains no defect answer key or grading logic. */
@@ -169,17 +203,17 @@ export function renderRunbook(plan: BenchmarkPlan): string {
     : '> **Scored plan.** Keep this runbook and all logs outside the subject agent workspace.\n\n';
   const tokenLimit = plan.budget.tokenLimit === null ? 'provider/default' : String(plan.budget.tokenLimit);
   return [
-    `# ${plan.title} runbook`,
+    `# ${escapeCell(plan.title)} runbook`,
     '',
     warning.trimEnd(),
     '',
-    `- App commit: \`${plan.baseline.appCommit}\``,
-    `- Detector commit: \`${plan.baseline.detectorCommit}\``,
-    `- Browser: ${plan.baseline.browser}`,
-    `- Node / package manager: ${plan.baseline.node} / ${plan.baseline.packageManager}`,
-    `- Agent: ${plan.agent.provider} / ${plan.agent.model} / ${plan.agent.reasoning}`,
+    `- App commit: \`${escapeCell(plan.baseline.appCommit)}\``,
+    `- Detector commit: \`${escapeCell(plan.baseline.detectorCommit)}\``,
+    `- Browser: ${escapeCell(plan.baseline.browser)}`,
+    `- Node / package manager: ${escapeCell(plan.baseline.node)} / ${escapeCell(plan.baseline.packageManager)}`,
+    `- Agent: ${escapeCell(plan.agent.provider)} / ${escapeCell(plan.agent.model)} / ${escapeCell(plan.agent.reasoning)}`,
     `- Budget: ${plan.budget.wallMinutes} minutes; token limit ${tokenLimit}`,
-    `- Prompt ID: ${plan.promptId}`,
+    `- Prompt ID: ${escapeCell(plan.promptId)}`,
     '',
     '## Paired runs',
     '',
@@ -201,10 +235,18 @@ export function renderRunbook(plan: BenchmarkPlan): string {
 
 type ConditionSummary = {
   runs: number;
+  planned: number;
   completed: number;
-  fullSuccesses: number;
-  verifiedRepairs: number;
-  regressions: number;
+  timeCapped: number;
+  failed: number;
+  excluded: number;
+  scored: number;
+  graded: number;
+  fullSuccesses: number | null;
+  verifiedRepairs: number | null;
+  regressions: number | null;
+  totalCostUsd: number;
+  allCostsKnown: boolean;
   medianWallSeconds: number | null;
   medianCostUsd: number | null;
 };
@@ -223,39 +265,163 @@ function formatNumber(value: number | null): string {
 /** Summarizes evaluator-entered counts without attempting to infer or hide unavailable usage. */
 export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResults): string {
   const indexedPlan = new Map(plan.runs.map((run) => [run.id, run]));
+  const indexedResults = new Map(results.runs.map((run) => [run.runId, run]));
   const summaries = new Map<BenchmarkRun['condition'], ConditionSummary>();
-  for (const condition of ['ordinary', 'anwc-assisted'] as const) summaries.set(condition, { runs: 0, completed: 0, fullSuccesses: 0, verifiedRepairs: 0, regressions: 0, medianWallSeconds: null, medianCostUsd: null });
+  for (const condition of ['ordinary', 'anwc-assisted'] as const) {
+    summaries.set(condition, {
+      runs: 0,
+      planned: 0,
+      completed: 0,
+      timeCapped: 0,
+      failed: 0,
+      excluded: 0,
+      scored: 0,
+      graded: 0,
+      fullSuccesses: 0,
+      verifiedRepairs: 0,
+      regressions: 0,
+      totalCostUsd: 0,
+      allCostsKnown: true,
+      medianWallSeconds: null,
+      medianCostUsd: null
+    });
+  }
+
   const wallTimes = new Map<BenchmarkRun['condition'], number[]>([['ordinary', []], ['anwc-assisted', []]]);
   const costs = new Map<BenchmarkRun['condition'], number[]>([['ordinary', []], ['anwc-assisted', []]]);
-  const completedCounts = new Map<BenchmarkRun['condition'], number>([['ordinary', 0], ['anwc-assisted', 0]]);
+
   for (const result of results.runs) {
-    const run = indexedPlan.get(result.runId)!;
+    const run = indexedPlan.get(result.runId);
+    if (!run) continue;
     const summary = summaries.get(run.condition)!;
     summary.runs += 1;
-    if (!isScoredStatus(result.status)) continue;
-    summary.completed += 1;
-    completedCounts.set(run.condition, completedCounts.get(run.condition)! + 1);
-    if (result.scoring.fullSuccess) summary.fullSuccesses += 1;
-    summary.verifiedRepairs += result.scoring.verifiedRepairs ?? 0;
-    summary.regressions += result.scoring.regressions ?? 0;
-    if (result.wallSeconds !== null) wallTimes.get(run.condition)!.push(result.wallSeconds);
-    if (result.usage.costUsd !== null) costs.get(run.condition)!.push(result.usage.costUsd);
+
+    if (result.status === 'planned') {
+      summary.planned += 1;
+    } else if (result.status === 'completed') {
+      summary.completed += 1;
+      summary.scored += 1;
+    } else if (result.status === 'time-capped') {
+      summary.timeCapped += 1;
+      summary.scored += 1;
+    } else if (result.status === 'infrastructure-failed') {
+      summary.failed += 1;
+    } else if (result.status === 'excluded') {
+      summary.excluded += 1;
+    }
+
+    if (result.wallSeconds !== null) {
+      wallTimes.get(run.condition)!.push(result.wallSeconds);
+    }
+
+    if (result.usage.costUsd !== null) {
+      costs.get(run.condition)!.push(result.usage.costUsd);
+      summary.totalCostUsd += result.usage.costUsd;
+    } else if (result.status !== 'planned') {
+      summary.allCostsKnown = false;
+    }
+
+    if (isScoredStatus(result.status)) {
+      const isGraded = result.scoring.fullSuccess !== null && result.scoring.verifiedRepairs !== null && result.scoring.regressions !== null;
+      if (isGraded) {
+        summary.graded += 1;
+        if (summary.fullSuccesses !== null) {
+          summary.fullSuccesses += result.scoring.fullSuccess ? 1 : 0;
+        }
+        if (summary.verifiedRepairs !== null) {
+          summary.verifiedRepairs += result.scoring.verifiedRepairs!;
+        }
+        if (summary.regressions !== null) {
+          summary.regressions += result.scoring.regressions!;
+        }
+      } else {
+        if (result.scoring.fullSuccess === null) summary.fullSuccesses = null;
+        else if (summary.fullSuccesses !== null) summary.fullSuccesses += result.scoring.fullSuccess ? 1 : 0;
+
+        if (result.scoring.verifiedRepairs === null) summary.verifiedRepairs = null;
+        else if (summary.verifiedRepairs !== null) summary.verifiedRepairs += result.scoring.verifiedRepairs!;
+
+        if (result.scoring.regressions === null) summary.regressions = null;
+        else if (summary.regressions !== null) summary.regressions += result.scoring.regressions!;
+      }
+    }
   }
+
   for (const [condition, summary] of summaries) {
     summary.medianWallSeconds = median(wallTimes.get(condition)!);
-    summary.medianCostUsd = costs.get(condition)!.length === completedCounts.get(condition) ? median(costs.get(condition)!) : null;
+    summary.medianCostUsd = summary.allCostsKnown && summary.scored > 0 && costs.get(condition)!.length === summary.scored
+      ? median(costs.get(condition)!)
+      : null;
+    if (summary.scored === 0) {
+      summary.fullSuccesses = null;
+      summary.verifiedRepairs = null;
+      summary.regressions = null;
+    }
   }
+
+  // Paired comparisons
+  const pairGroups = new Map<string, BenchmarkRun[]>();
+  for (const run of plan.runs) {
+    const list = pairGroups.get(run.pairId) ?? [];
+    list.push(run);
+    pairGroups.set(run.pairId, list);
+  }
+
+  const pairedTimeDeltas: number[] = [];
+  const pairedCostDeltas: number[] = [];
+
+  for (const [, pairRuns] of pairGroups) {
+    const ordinaryRun = pairRuns.find((r) => r.condition === 'ordinary');
+    const assistedRun = pairRuns.find((r) => r.condition === 'anwc-assisted');
+    if (!ordinaryRun || !assistedRun) continue;
+    const ordRes = indexedResults.get(ordinaryRun.id);
+    const astRes = indexedResults.get(assistedRun.id);
+    if (!ordRes || !astRes) continue;
+
+    if (isScoredStatus(ordRes.status) && isScoredStatus(astRes.status)) {
+      if (ordRes.wallSeconds !== null && astRes.wallSeconds !== null) {
+        pairedTimeDeltas.push(astRes.wallSeconds - ordRes.wallSeconds);
+      }
+      if (ordRes.usage.costUsd !== null && astRes.usage.costUsd !== null) {
+        pairedCostDeltas.push(astRes.usage.costUsd - ordRes.usage.costUsd);
+      }
+    }
+  }
+
+  const medianTimeDelta = median(pairedTimeDeltas);
+  const medianCostDelta = median(pairedCostDeltas);
+
   return [
-    `# ${plan.title} results summary`,
+    `# ${escapeCell(plan.title)} results summary`,
     '',
     '> This is a ledger summary, not a causal conclusion. Preserve individual run rows, failures, exclusions, and evaluator notes alongside it.',
+    '',
+    '## Status breakdown',
+    '',
+    '| Condition | Runs | Planned | Completed | Capped | Failed | Excluded | Graded |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    ...(['ordinary', 'anwc-assisted'] as const).map((condition) => {
+      const summary = summaries.get(condition)!;
+      return `| ${condition} | ${summary.runs} | ${summary.planned} | ${summary.completed} | ${summary.timeCapped} | ${summary.failed} | ${summary.excluded} | ${summary.graded} |`;
+    }),
+    '',
+    '## Scored outcomes',
     '',
     '| Condition | Runs | Scored runs | Full successes | Verified repairs | Regressions | Median wall sec | Median cost USD |',
     '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
     ...(['ordinary', 'anwc-assisted'] as const).map((condition) => {
       const summary = summaries.get(condition)!;
-      return `| ${condition} | ${summary.runs} | ${summary.completed} | ${summary.fullSuccesses} | ${summary.verifiedRepairs} | ${summary.regressions} | ${formatNumber(summary.medianWallSeconds)} | ${formatNumber(summary.medianCostUsd)} |`;
+      return `| ${condition} | ${summary.runs} | ${summary.completed + summary.timeCapped} | ${formatNumber(summary.fullSuccesses)} | ${formatNumber(summary.verifiedRepairs)} | ${formatNumber(summary.regressions)} | ${formatNumber(summary.medianWallSeconds)} | ${formatNumber(summary.medianCostUsd)} |`;
     }),
+    '',
+    '## Paired differences (assisted − ordinary)',
+    '',
+    `- Eligible paired timing runs: ${pairedTimeDeltas.length}${medianTimeDelta !== null ? ` (median difference: ${formatNumber(medianTimeDelta)}s)` : ' (NA)'}`,
+    `- Eligible paired cost runs: ${pairedCostDeltas.length}${medianCostDelta !== null ? ` (median difference: $${formatNumber(medianCostDelta)})` : ' (NA)'}`,
+    '',
+    '## Expenditure',
+    '',
+    `- Known spending: ordinary = $${formatNumber(summaries.get('ordinary')!.totalCostUsd)}${summaries.get('ordinary')!.allCostsKnown ? '' : ' (incomplete)'}, anwc-assisted = $${formatNumber(summaries.get('anwc-assisted')!.totalCostUsd)}${summaries.get('anwc-assisted')!.allCostsKnown ? '' : ' (incomplete)'}`,
     '',
     'Unavailable billing remains `NA`; it must not be treated as zero cost.'
   ].join('\n');

@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BenchmarkPlanError, packageSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
   schemaVersion: '0.1' as const,
@@ -183,5 +184,272 @@ describe('benchmark plan', () => {
       'subject exposes forbidden runtime test bridge: examples/shop/src/test-runtime.ts',
       'subject exposes forbidden source map: examples/shop/src/app.js.map'
     ]));
+  });
+});
+
+describe('W02 result accounting and endpoint fairness', () => {
+  test('accepts a two-port fair pair with matching route and query', () => {
+    const plan = validPlan();
+    plan.runs[0]!.subjectUrl = 'http://127.0.0.1:4175/lab?case=ancestor-clip';
+    plan.runs[1]!.subjectUrl = 'http://localhost:5173/lab?case=ancestor-clip';
+    expect(() => validateBenchmarkPlan(plan)).not.toThrow();
+  });
+
+  test('rejects pairs with different routes or queries', () => {
+    const planDifferentRoute = validPlan();
+    planDifferentRoute.runs[0]!.subjectUrl = 'http://127.0.0.1:4175/lab?case=ancestor-clip';
+    planDifferentRoute.runs[1]!.subjectUrl = 'http://127.0.0.1:4175/shop?case=ancestor-clip';
+    expect(() => validateBenchmarkPlan(planDifferentRoute)).toThrow('route, and query must match');
+
+    const planDifferentQuery = validPlan();
+    planDifferentQuery.runs[0]!.subjectUrl = 'http://127.0.0.1:4175/lab?case=ancestor-clip';
+    planDifferentQuery.runs[1]!.subjectUrl = 'http://127.0.0.1:4175/lab?case=horizontal-overflow';
+    expect(() => validateBenchmarkPlan(planDifferentQuery)).toThrow('route, and query must match');
+  });
+
+  test('ledger with one missing regression count shows NA and tracks graded counts', () => {
+    const plan = validateBenchmarkPlan(validPlan());
+    const results = validateBenchmarkResults(plan, {
+      schemaVersion: '0.1',
+      planId: 'pilot',
+      runs: [
+        {
+          runId: 'pair-a',
+          status: 'completed',
+          wallSeconds: 50,
+          usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.05 },
+          scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true },
+          notes: ''
+        },
+        {
+          runId: 'pair-b',
+          status: 'completed',
+          wallSeconds: 60,
+          usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.06 },
+          scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: null, fullSuccess: true },
+          notes: ''
+        }
+      ]
+    });
+    const summary = renderResultsSummary(plan, results);
+    expect(summary).toContain('| anwc-assisted | 1 | 1 | 1 | 1 | NA | 60 | 0.06 |');
+    expect(summary).toContain('| ordinary | 1 | 0 | 1 | 0 | 0 | 0 | 1 |');
+    expect(summary).toContain('| anwc-assisted | 1 | 0 | 1 | 0 | 0 | 0 | 0 |');
+  });
+
+  test('keeps planned, completed, capped, failed, and excluded runs distinct', () => {
+    const plan = validPlan();
+    for (let i = 2; i <= 5; i++) {
+      plan.runs.push(
+        { id: `pair-${i}a`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' },
+        { id: `pair-${i}b`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' }
+      );
+    }
+    const validatedPlan = validateBenchmarkPlan(plan);
+    const results = validateBenchmarkResults(validatedPlan, {
+      schemaVersion: '0.1',
+      planId: 'pilot',
+      runs: [
+        { runId: 'pair-a', status: 'completed', wallSeconds: 30, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.03 }, scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true }, notes: '' },
+        { runId: 'pair-b', status: 'completed', wallSeconds: 35, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.04 }, scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true }, notes: '' },
+        { runId: 'pair-2a', status: 'time-capped', wallSeconds: 1200, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.10 }, scoring: { truePositives: 0, falsePositives: 0, falseNegatives: 1, verifiedRepairs: 0, regressions: 0, fullSuccess: false }, notes: '' },
+        { runId: 'pair-2b', status: 'time-capped', wallSeconds: 1200, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.10 }, scoring: { truePositives: 0, falsePositives: 0, falseNegatives: 1, verifiedRepairs: 0, regressions: 0, fullSuccess: false }, notes: '' },
+        { runId: 'pair-3a', status: 'infrastructure-failed', wallSeconds: 5, usage: { inputTokens: 2, cachedInputTokens: null, outputTokens: 1, costUsd: 0.02 }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: 'Network error' },
+        { runId: 'pair-3b', status: 'infrastructure-failed', wallSeconds: 5, usage: { inputTokens: 2, cachedInputTokens: null, outputTokens: 1, costUsd: 0.02 }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: 'Network error' },
+        { runId: 'pair-4a', status: 'excluded', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: 'Excluded run' },
+        { runId: 'pair-4b', status: 'excluded', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: 'Excluded run' },
+        { runId: 'pair-5a', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-5b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    });
+    const summary = renderResultsSummary(validatedPlan, results);
+    expect(summary).toContain('| ordinary | 5 | 1 | 1 | 1 | 1 | 1 | 2 |');
+    expect(summary).toContain('| anwc-assisted | 5 | 1 | 1 | 1 | 1 | 1 | 2 |');
+    expect(summary).toContain('| ordinary | 5 | 2 | 1 | 1 | 0 |');
+  });
+
+  test('preserves known failed-run costs in expenditure and handles incomplete cost accounting', () => {
+    const plan = validateBenchmarkPlan(validPlan());
+    const results = validateBenchmarkResults(plan, {
+      schemaVersion: '0.1',
+      planId: 'pilot',
+      runs: [
+        {
+          runId: 'pair-a',
+          status: 'completed',
+          wallSeconds: 40,
+          usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.10 },
+          scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true },
+          notes: ''
+        },
+        {
+          runId: 'pair-b',
+          status: 'infrastructure-failed',
+          wallSeconds: 15,
+          usage: { inputTokens: 5, cachedInputTokens: null, outputTokens: 2, costUsd: 0.25 },
+          scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null },
+          notes: 'Browser process crashed unexpectedly'
+        }
+      ]
+    });
+    const summary = renderResultsSummary(plan, results);
+    expect(summary).toContain('Known spending: ordinary = $0.10, anwc-assisted = $0.25');
+
+    const resultsWithMissingCost = validateBenchmarkResults(plan, {
+      schemaVersion: '0.1',
+      planId: 'pilot',
+      runs: [
+        {
+          runId: 'pair-a',
+          status: 'completed',
+          wallSeconds: 40,
+          usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: null },
+          scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true },
+          notes: ''
+        },
+        {
+          runId: 'pair-b',
+          status: 'completed',
+          wallSeconds: 45,
+          usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.20 },
+          scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true },
+          notes: ''
+        }
+      ]
+    });
+    const missingSummary = renderResultsSummary(plan, resultsWithMissingCost);
+    expect(missingSummary).toContain('ordinary = $0 (incomplete)');
+    expect(missingSummary).toContain('| ordinary | 1 | 1 | 1 | 1 | 0 | 40 | NA |');
+  });
+
+  test('validates result constraints for planned, failed, and excluded rows', () => {
+    const plan = validateBenchmarkPlan(validPlan());
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'planned', wallSeconds: 10, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('planned runs cannot carry wallSeconds');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'planned', wallSeconds: null, usage: { inputTokens: 5, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('planned runs cannot carry usage data');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'infrastructure-failed', wallSeconds: 10, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: 1, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: 'Error' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('infrastructure-failed runs cannot carry repair scoring');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'infrastructure-failed', wallSeconds: 10, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '   ' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('require an explanation in notes');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'excluded', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('require an explanation in notes');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'unknown-run', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('unknown runId unknown-run');
+
+    expect(() => validateBenchmarkResults(plan, {
+      schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-a', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ]
+    })).toThrow('duplicate runId pair-a');
+  });
+
+  test('escapes pipes and newlines in table cells and headings', () => {
+    const plan = validPlan();
+    plan.title = 'Title | with pipe\nand newline';
+    plan.runs[0]!.state = 'state | A\nstate B';
+    plan.runs[1]!.state = 'state | A\nstate B';
+    const runbook = renderRunbook(validateBenchmarkPlan(plan));
+    expect(runbook).toContain('# Title \\| with pipe and newline runbook');
+    expect(runbook).toContain('state \\| A state B');
+  });
+
+  test('CLI enforces strict arguments and rejects extraneous arguments', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-bench-cli-'));
+    const planFile = join(root, 'plan.json');
+    const resultsFile = join(root, 'results.json');
+    const outFile = join(root, 'output.md');
+    try {
+      const plan = validPlan();
+      await writeFile(planFile, JSON.stringify(plan));
+      const results = {
+        schemaVersion: '0.1',
+        planId: 'pilot',
+        runs: [
+          { runId: 'pair-a', status: 'completed', wallSeconds: 30, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.05 }, scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true }, notes: '' },
+          { runId: 'pair-b', status: 'completed', wallSeconds: 35, usage: { inputTokens: 10, cachedInputTokens: null, outputTokens: 5, costUsd: 0.05 }, scoring: { truePositives: 1, falsePositives: 0, falseNegatives: 0, verifiedRepairs: 1, regressions: 0, fullSuccess: true }, notes: '' }
+        ]
+      };
+      await writeFile(resultsFile, JSON.stringify(results));
+
+      const ioCapture = () => {
+        const stdout: string[] = [];
+        const stderr: string[] = [];
+        return {
+          stdout: { write: (msg: string) => stdout.push(msg) },
+          stderr: { write: (msg: string) => stderr.push(msg) },
+          getStdout: () => stdout.join(''),
+          getStderr: () => stderr.join('')
+        };
+      };
+
+      let io = ioCapture();
+      expect(await runBenchmarkCli(['validate', planFile, 'unexpected-arg'], io)).toBe(2);
+      expect(io.getStderr()).toContain('Usage:');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['validate', planFile], io)).toBe(0);
+      expect(io.getStdout()).toContain('Valid scored benchmark plan');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['runbook', planFile], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['runbook', planFile, '--output', outFile, 'extra'], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['runbook', planFile, '--output', outFile], io)).toBe(0);
+      expect(await readFile(outFile, 'utf8')).toContain('# Pilot runbook');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['validate-results', planFile, resultsFile, 'extra'], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['validate-results', planFile, resultsFile], io)).toBe(0);
+      expect(io.getStdout()).toContain('Valid benchmark results');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['summarize', planFile, resultsFile, '--output', outFile, 'extra'], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['summarize', planFile, resultsFile, '--output', outFile], io)).toBe(0);
+      expect(await readFile(outFile, 'utf8')).toContain('# Pilot results summary');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['not-a-command', planFile], io)).toBe(2);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

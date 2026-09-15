@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. W01 (trustworthy subject exports) is complete. Implement W02's result accounting and endpoint corrections next.
+1. W01 (trustworthy subject exports) and W02 (result accounting and endpoint fairness) are complete. Implement W03 (functional shop controls and lab) next.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -259,4 +259,20 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Unsupported cases or remaining failures: W01 provides trustworthy subject exports and leakage checks; multi-port pair endpoints and missing measurement handling follow in W02.
 - Next task now unblocked: W02 — result accounting and paired endpoints.
 - Reviewer and review outcome: self-reviewed; full integration suite passed.
+
+### W02 — 2026-09-15 — Antigravity
+- Status: done
+- Branch and commit: `main`; pending commit for W02
+- Owned files changed: `packages/benchmark/src/index.ts`, `packages/benchmark/src/main.ts`, `tests/unit/benchmark.test.ts`, `docs/CONTINUATION_PLAN.md`, `docs/PROGRESS.md`.
+- Interface changes:
+  - Allowed paired endpoints to use different ports/origins as long as route pathname and search query match (`sameRouteAndQuery`).
+  - Strict result validation: planned rows cannot carry usage/wallSeconds/scoring; failed/excluded rows cannot carry repair scores and require explanation in `notes`; duplicate/unknown/missing run IDs fail.
+  - Honest accounting summary: separate Status breakdown table for planned, completed, capped, failed, excluded, and graded counts; Scored outcomes retains missing measurements as `NA` and tracks graded count; paired difference median calculated strictly when both runs are scored with observed values; known spending preserves failed-run costs and flags incomplete spending with `(incomplete)`.
+  - Markdown table escaping: pipes and newlines in cell and heading content are safely escaped.
+  - Strict CLI argument enforcement: extra arguments on `validate`, `runbook`, `validate-results`, and `summarize` return exit code 2 with usage instructions.
+- Acceptance commands and outcomes: `npm run test:integration` passed: TypeScript compilation, 36 unit tests across 6 files, 10 Chromium browser tests, and production shop build.
+- Actual evidence/artifact paths: `packages/benchmark/src/index.ts`, `packages/benchmark/src/main.ts`, and `tests/unit/benchmark.test.ts`.
+- Unsupported cases or remaining failures: None for W02.
+- Next task now unblocked: W03 — Give shop fixtures real behavior.
+- Reviewer and review outcome: self-reviewed; all acceptance tests and integration suites pass.
 

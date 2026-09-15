@@ -66,8 +66,8 @@ Statuses here describe dependency readiness, not assigned ownership.
 
 | Task | Deliverable | Depends on | Status |
 | --- | --- | --- | --- |
-| W01 | Trustworthy subject exports | existing packager | ready |
-| W02 | Honest result accounting and paired endpoints | existing ledger | ready |
+| W01 | Trustworthy subject exports | existing packager | done |
+| W02 | Honest result accounting and paired endpoints | existing ledger | done |
 | W03 | Functional shop controls and lab | existing shop | ready |
 | W04 | Ten defects with ten explicit healthy counterparts | W03 | queued |
 | W05 | Correct inherited render visibility | existing runtime | ready |
