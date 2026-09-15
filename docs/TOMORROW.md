@@ -4,7 +4,7 @@ Start here, then read [PROGRESS](PROGRESS.md), [BENCHMARK](BENCHMARK.md), and [D
 
 ## Current baseline
 
-**Next implementation work:** W01/W02 have been committed. Follow [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) R01–R03 for the founder's plain-URL inspection workflow; W03 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remains next for the shop. Windows verification found script portability failures and one CLI test timeout; historical passed gates below are not current certification. Root-URL inspection already exists; W12 is needed for automatic benchmark subject preparation, not inspecting a website. Keep actual A/B experiments pinned to their recorded source/detector/grader revisions.
+**Next implementation work:** W01/W02 and R01 have been committed. The current product requires developers to install ANWC; R02–R06 in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) are future runtime-only work. W03 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) is next for the shop. Standard Windows integration now passes; Linux CI has not been rerun in this checkpoint. Root-URL inspection already exists for installed ANWC apps; W12 is needed for automatic benchmark subject preparation, not inspecting a website. Keep actual A/B experiments pinned to their recorded source/detector/grader revisions.
 
 - Repository: `git@github.com:somerandomguy-coder/anwc.git`
 - Branch: `main`

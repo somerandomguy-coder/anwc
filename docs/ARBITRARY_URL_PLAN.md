@@ -1,6 +1,6 @@
 # Inspecting arbitrary websites: current behavior and implementation plan
 
-Reviewed revision: `bcdaf302d9af4b6002f3909e5e2747ce4a2c2808`. Status: R01–R06 are planned, not implemented. This document responds to the founder's Amazon/Instagram errors and supersedes advice that root-URL inspection must wait for benchmark subject generation.
+Reviewed revision: `0718ef7`. Status: R01 is complete in the next commit; R02–R06 are planned and deferred until installed-runtime work, fixture behavior, and benchmark controls are stronger. This document responds to the founder's Amazon/Instagram errors and supersedes advice that root-URL inspection must wait for benchmark subject generation.
 
 ## The product behavior we want
 
@@ -12,7 +12,7 @@ npm run anwc -- inspect "https://www.example.com/" --viewport 390x844 --format t
 
 The command should inspect the rendered page without requiring the website to install ANWC, use React, or expose a special route. Reuse compatible installed instrumentation when available; otherwise attach the collector in this inspection's temporary browser session. Return bounded browser evidence or an actionable explanation of the unsupported condition. A successful capture is not a guarantee that the website has no visual or functional bugs.
 
-The compiler remains useful: apps that install the plugin can map a rendered element back to original JSX. An arbitrary deployed site normally has no such map, so report `source unavailable`. Runtime inspection is useful independently of source linkage. Inspection does not provide editable source for a remote website.
+The compiler remains useful: apps that install the plugin can map a rendered element back to original JSX. For the current product scope, ANWC requires that installed runtime path. A future runtime-only inspector should report `source unavailable` on arbitrary deployed sites. Inspection does not provide editable source for a remote website.
 
 The `/lab?case=...` URL only selects a deliberately broken demo. It does not teach the detector what to report. Root URLs already work: they inspect whatever is rendered at `/`. Preparing an isolated defective app at `/` is benchmark infrastructure, not a prerequisite for URL inspection.
 
@@ -24,7 +24,7 @@ The existing external-page attempt is:
 npm run anwc -- inspect "https://www.amazon.com.au/" --runtime-only --viewport 390x844 --format text
 ```
 
-Use a plain URL, not Markdown's `[label](URL)` syntax. This is an existing command, not a promise that Amazon or Instagram currently succeeds. Neither site was rerun during this planning update.
+Use a plain URL, not Markdown's `[label](URL)` syntax. This is an existing future-path command, not a promise that Amazon or Instagram currently succeeds. Neither site was rerun during this planning update.
 
 In `packages/cli/src/index.ts`:
 
@@ -57,22 +57,24 @@ An opaque layer with `pointer-events:none` may visually hide a control while all
 
 ## Fixed scope and rollout
 
-Continue W03–W14 for repair fixtures and comparison tooling. The R track can start without waiting for those tasks or paid model runs. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
+The current product scope is installed ANWC only: developers add the Vite plugin/runtime to an application they control. Continue W03–W14 for repair fixtures and comparison tooling. R01 fixes the shared developer workflow now. R02–R06 remain the future runtime-only inspector track and must not delay the installed-runtime work. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
 
 | Task | Deliverable | Dependencies |
 | --- | --- | --- |
 | R01 | Portable commands and useful URL errors | Current CLI |
-| R02 | Automatic collector attachment with precise failures | R01 |
+| R02 | Automatic collector attachment and precise failures | R01; deferred future runtime-only scope |
 | R03 | Prove detection without scenario names or ANWC annotations | R02, W05/W06 corrections |
 | R04 | Explicit inspection targets for custom elements | R03 |
 | R05 | Honest coverage, readiness, and page-state reporting | R02, W07 |
 | R06 | Repeatable compatibility checks and operator guide | R03–R05 |
 
-First usable milestone: R01–R03, including strict-CSP local fixtures and an uninstrumented neutral root page. Reliable arbitrary-site claims require R05/R06 as well. Third-party services can still show login/challenge pages or unsupported content; the tool must describe those limits.
+The current usable milestone is R01 plus the installed-runtime workflow. The future runtime-only milestone is R01–R03, including strict-CSP local fixtures and an uninstrumented neutral root page. Reliable arbitrary-site claims require R05/R06 as well. Third-party services can still show login/challenge pages or unsupported content; the tool must describe those limits.
 
 Keep snapshot/error schema `0.1` for this bounded rollout. Use existing error `details`, coverage reasons/capabilities/unsupportedFeatures, assessment limitations, and source-null fields. CLI option additions require coordinated parser/schema/consumer/test changes in the owning task. Do not silently add snapshot fields. A browser-session attachment API or new structured page/frame model requires a separately scoped follow-up.
 
 ### R01 — Portable commands and URL validation
+
+**Status:** complete on Windows. The root dev command directly invokes Vite with `examples/shop` as its root; root/shop build and test scripts use no Unix-only environment assignment or forced Playwright host platform. The standard full integration command passed: 36 unit tests, 10 Chromium tests, TypeScript, and production build. A root startup check accepted `--host 127.0.0.1 --port 4180` and served at that address. Linux CI has not been rerun in this checkpoint.
 
 **Own:** root/shop npm scripts, generated subject scripts in `packages/benchmark/src/subject.ts`, CLI argument validation, focused tests/docs.
 

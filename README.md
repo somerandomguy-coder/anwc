@@ -2,7 +2,7 @@
 
 **A proposed compiler and browser inspection layer that helps AI agents diagnose rendered UI defects using compact, source-linked evidence.**
 
-Status on 2026-09-15: the source-linked compiler/runtime prototype and W01/W02 benchmark tooling are committed. Windows command portability, runtime reliability, broader fixtures, arbitrary-site inspection, and actual paired-agent evaluation remain open; see the progress board for observed verification limits.
+Status on 2026-09-15: the source-linked compiler/runtime prototype and W01/W02 benchmark tooling are committed. Standard Windows commands passed their full integration suite; runtime reliability, broader fixtures, and actual paired-agent evaluation remain open. The current product requires an installed ANWC integration; arbitrary-site runtime-only inspection is a future track.
 
 The first experiment: keep normal React, CSS, Vite, and Chromium; add a JSX instrumentation plugin and a browser runtime that report overflow, clipping, text layout, and blocked pointer interactions. Compare an agent using its usual browser tools with the same agent additionally using ANWC.
 
@@ -10,7 +10,7 @@ The browser still performs layout. The compiler adds source identity and optiona
 
 ## Start here
 
-For continued implementation while human agent runs are pending, start with [CONTINUATION_PLAN](docs/CONTINUATION_PLAN.md). W01/W02 are committed; W03–W14 cover further correctness fixes, healthy controls, two additional fixture apps, automatic A/B preparation, and independent repair grading. The new [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) adds R01–R06 for inspecting uninstrumented websites, including CSP errors and custom elements; these R tasks are planned.
+For continued implementation while human agent runs are pending, start with [CONTINUATION_PLAN](docs/CONTINUATION_PLAN.md). W01/W02 and portable-command R01 are committed; W03–W14 cover further correctness fixes, healthy controls, two additional fixture apps, automatic A/B preparation, and independent repair grading. The [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) keeps future runtime-only inspection scoped separately; R02–R06 are deferred.
 
 1. [Co-founder handoff](docs/TOMORROW.md): verified baseline, exact commands, boundaries, and tomorrow's task.
 2. [Agent testing guide](docs/TESTING.md): public smoke test, fair A/B setup, pilot recording, and interpretation.
@@ -36,9 +36,9 @@ npm run test:integration
 npm run bench -- validate bench/pilot.example.json
 ```
 
-The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`, or inspect a page without the plugin using `--runtime-only`.
+The shop has a clean default plus deterministic public scenarios, such as `/?scenario=blocked-checkout`. Inspect a Vite development page with `npm run anwc -- inspect http://127.0.0.1:5173 --format text`. The current supported path is an app using the ANWC Vite/runtime integration.
 
-Use plain URL strings in terminal commands, not Markdown links. The current external-site attempt is `npm run anwc -- inspect "https://www.example.com/" --runtime-only --viewport 390x844 --format text`. Runtime injection is not yet reliable under strict site script policies; external DOM normally reports source unavailable. Omitting the flag currently expects ANWC to already be installed on the page. See the [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) for failure explanations and the intended automatic behavior.
+Use plain URL strings in terminal commands, not Markdown links. Runtime-only inspection is a future path because injection is not yet reliable under strict site script policies. See the [arbitrary URL plan](docs/ARBITRARY_URL_PLAN.md) for its planned scope.
 
 For an explicit manual defect page, open `http://127.0.0.1:5173/lab?case=blocked-checkout`. The public lab has ten selectable defect cases and clean storefront routes at `/`, `/catalog`, `/checkout`, and `/account`. It is for learning and regression checks, never as a blinded agent subject.
 

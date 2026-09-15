@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-15, Australia/Sydney.
 
-**Current state: the prototype and W01/W02 commits are present; actual paired-agent runs remain unrun. Windows verification at `bcdaf30` found nonportable npm scripts and one CLI test timeout, so the current integration suite is not certified green on Windows. W03–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. R01–R06 in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) add planned arbitrary-site inspection, neutral-page checks, and clearer runtime/coverage behavior. T00–T09 records describe historical prototype scope, not production readiness.**
+**Current state: the prototype, W01/W02, and portable-command R01 commits are present; actual paired-agent runs remain unrun. The standard Windows integration suite passed after R01. The current product requires developers to install the ANWC Vite/runtime integration; runtime-only inspection is future R02–R06 work. W03–W14 in [CONTINUATION_PLAN](CONTINUATION_PLAN.md) remain planned. T00–T09 records describe historical prototype scope, not production readiness.**
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -71,7 +71,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Resolve the observed Windows command failures using R01, then implement R02/R03 for ordinary URL inspection. W01/W02 are committed; W03 remains the next shop task.
+1. Implement W03: functional shop controls and lab. R01 portable commands are complete; R02–R06 remain future runtime-only work.
 2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
@@ -285,4 +285,12 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Updated files: new `docs/ARBITRARY_URL_PLAN.md`, continuation plan, decision record, README, progress, and co-founder handoff. R01/R02/R03 are the first proposed plain-URL milestone; W12 is benchmark packaging, not a prerequisite for root inspection.
 - Validation: documentation link/whitespace checks; no implementation or new runtime tests this turn.
 - Remaining evidence: strict-CSP compatibility, neutral uninstrumented before/after repairs, broader false-positive coverage, and human time/cost comparisons remain unproved.
+
+### R01 — Portable installed-runtime commands — Codex
+- Status: done.
+- Owned files: root/shop package scripts, Playwright config, current/future-scope documentation.
+- Change: removed Unix-only `NODE_OPTIONS='...'` assignments and the forced Ubuntu Playwright override. Root `npm run dev` now invokes Vite with `examples/shop` as its root so normal `--host` and `--port` flags reach Vite.
+- Evidence: `npm run test:integration` passed on Windows: TypeScript, 36 unit tests, 10 Chromium tests, and production build. `npm run dev -- --host 127.0.0.1 --port 4180` served the app at `http://127.0.0.1:4180/`.
+- Remaining limit: Linux CI was not rerun. R02–R06 remain planned future runtime-only work; current support is an app that installs ANWC.
+- Next task: W03 — functional shop controls and lab.
 
