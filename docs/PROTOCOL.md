@@ -149,6 +149,8 @@ type Snapshot = {
 
 `paintVisibility` is unknown in v0 even when hit samples reach the target. `render` describes non-paint facts that callers may use independently. This avoids implying that pointer tests detect opaque overlays with `pointer-events:none`.
 
+For `visibility`, the collector uses the target's computed value. CSS inheritance permits a descendant to restore `visibility:visible` under a hidden ancestor, so ancestor iteration would misreport that child. `display:none` and zero opacity are still collected across the element's ancestry. These are render-state facts, not paint-visibility guarantees.
+
 The label is a best-effort label with provenance, not a conforming computed accessible name. Prefer platform semantics and test common roles; do not claim a full accessibility audit.
 
 ## 3. Intent attributes

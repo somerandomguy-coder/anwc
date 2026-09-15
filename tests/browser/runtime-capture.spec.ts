@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { diagnose } from '../../packages/diagnostics/src/index.js';
 
 test('captures repeated sites, source-null nodes, mutations, and bounded coverage without mutation', async ({ page }) => {
   await page.goto('/');
@@ -40,4 +41,31 @@ test('captures repeated sites, source-null nodes, mutations, and bounded coverag
   await page.evaluate(async () => { await import('/src/test-runtime.ts'); });
   const afterNavigation = await page.evaluate(() => window.__ANWC_TEST__!.capture());
   expect(afterNavigation.sessionId).not.toBe(first.sessionId);
+});
+
+test('uses a target computed visibility while preserving display and opacity ancestry', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => { await import('/src/test-runtime.ts'); });
+  await page.evaluate(() => {
+    document.body.innerHTML = `<main>
+      <div style="visibility:hidden"><button data-anwc-key="restored" data-anwc-expect="visible" style="visibility:visible">Restored child</button></div>
+      <div><button data-anwc-key="hidden-child" data-anwc-expect="visible" style="visibility:hidden">Hidden child</button></div>
+      <div style="display:none"><button data-anwc-key="display-ancestor" data-anwc-expect="visible" style="visibility:visible">Display ancestor</button></div>
+      <div style="opacity:0"><button data-anwc-key="opacity-ancestor" data-anwc-expect="visible" style="opacity:1">Opacity ancestor</button></div>
+      <button data-anwc-key="visible" data-anwc-expect="visible">Visible control</button>
+    </main>`;
+  });
+
+  const capture = await page.evaluate(() => window.__ANWC_TEST__!.capture());
+  const byKey = (key: string) => capture.nodes.find((node) => node.semanticKey === key)!;
+  expect(byKey('restored').render.cssHiddenReasons).toEqual([]);
+  expect(byKey('hidden-child').render.cssHiddenReasons).toEqual(['visibility:hidden']);
+  expect(byKey('display-ancestor').render.cssHiddenReasons).toContain('display:none');
+  expect(byKey('opacity-ancestor').render.effectiveOpacityZero).toMatchObject({ status: 'known', value: true });
+  expect(byKey('visible').render.cssHiddenReasons).toEqual([]);
+
+  const hiddenFindings = diagnose(capture as Parameters<typeof diagnose>[0]).filter((finding) => finding.code === 'EXPECTED_VISIBLE_BUT_HIDDEN');
+  expect(hiddenFindings.map((finding) => finding.nodeId)).toEqual(expect.arrayContaining([byKey('hidden-child').nodeId, byKey('display-ancestor').nodeId, byKey('opacity-ancestor').nodeId]));
+  expect(hiddenFindings.map((finding) => finding.nodeId)).not.toContain(byKey('restored').nodeId);
+  expect(hiddenFindings.map((finding) => finding.nodeId)).not.toContain(byKey('visible').nodeId);
 });

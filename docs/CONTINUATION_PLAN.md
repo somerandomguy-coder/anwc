@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01/W02/W03/W04 were committed in `ba386e1`/`bcdaf30`/`e18468d`/the next W04 commit; W05–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
+**Status: W01/W02/W03/W04/W05 were committed in `ba386e1`/`bcdaf30`/`e18468d`/`24570ef`/the next W05 commit; W06–W14 remain planned.** Windows verification subsequently found script portability failures and one CLI test timeout; R01 resolved those in `a6896a1`; see [PROGRESS](PROGRESS.md). T00–T09 describe the original prototype; T10 remains the actual agent comparison. A green prototype suite does not mean every original acceptance detail or production use case is complete.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -72,7 +72,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W02 | Honest result accounting and paired endpoints | existing ledger | done |
 | W03 | Functional shop controls and lab | existing shop | done |
 | W04 | Ten defects with ten explicit healthy counterparts | W03 | done |
-| W05 | Correct inherited render visibility | existing runtime | ready |
+| W05 | Correct inherited render visibility | existing runtime | done |
 | W06 | Bounded pointer probes in the current viewport | existing runtime | ready |
 | W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | ready |
 | W08 | Reliable source registration and production checks | existing Vite plugin | ready |
@@ -168,6 +168,8 @@ Use independent test geometry helpers; do not import ANWC clipping/text/hit-test
 **Acceptance fixtures:** hidden parent with explicitly visible child (no hidden finding for the child); hidden child under visible parent (hidden); display-none ancestor with visible child (hidden); opacity-zero ancestor with opaque child (effective zero opacity); plain visible control. Give each target the same current-visibility intent. Validate snapshots.
 
 **Done when:** hidden-state findings follow the actual state without inventing paint guarantees.
+
+**Completed evidence:** `renderState` now reads the target's computed visibility, while retaining display-none and opacity-zero ancestry checks. Browser coverage verifies a child that restores `visibility:visible`, a hidden child, display-none ancestor, opacity-zero ancestor, and visible control; diagnostics only flag the truly hidden expected controls.
 
 ## W06 — Respect pointer sampling limits and viewport
 

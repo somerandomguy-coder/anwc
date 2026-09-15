@@ -108,9 +108,12 @@ function renderState(element: Element): Measurement['render'] {
   for (let current: Element | null = element; current; current = current.parentElement) {
     const style = getComputedStyle(current);
     if (style.display === 'none') hidden.push('display:none');
-    if (style.visibility === 'hidden' || style.visibility === 'collapse') hidden.push(`visibility:${style.visibility}`);
     if (Number(style.opacity) === 0) opacityZero = true;
   }
+  // `visibility` inherits, but a descendant can explicitly restore `visible`.
+  // The target's computed value already reflects that CSS inheritance/override rule.
+  const visibility = getComputedStyle(element).visibility;
+  if (visibility === 'hidden' || visibility === 'collapse') hidden.push(`visibility:${visibility}`);
   return {
     hasBox: element.getClientRects().length > 0,
     cssHiddenReasons: [...new Set(hidden)],
