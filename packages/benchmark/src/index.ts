@@ -58,6 +58,7 @@ const resultRunSchema = z.object({
     regressions: z.number().int().nonnegative().nullable(),
     fullSuccess: z.boolean().nullable()
   }).strict(),
+  grade: z.object({ receiptHash: sha256, status: z.enum(['passed', 'failed']), submittedArtifactHash: sha256.optional() }).strict().optional(),
   notes: z.string()
 }).strict();
 
@@ -434,4 +435,5 @@ export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema
 export { allFixtures, fixtureMatrix, fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture, type FixtureState, type FixtureMatrixEntry } from './fixtures/registry.js';
 export { preparePair, checkPreparedPair, checkReturnedSubject, checkEvaluatorReceipt, readPreparedPairReceipt, extractSourceIntent, hashSourceIntent, type PreparePairOptions, type PreparedPairReceipt, type SourceIntentDeclaration } from './prepare.js';
 export { gradeRepair, gradeResultSchema, type GradeOptions, type GradeResult } from './grade.js';
+export { hashReceipt, importGradeFiles, importGradeIntoResults, type ImportedGrade } from './pilot.js';
 export { rehearseBenchmark, rehearsalReportSchema, type RehearsalOptions, type RehearsalReport } from './rehearse.js';

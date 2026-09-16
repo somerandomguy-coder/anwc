@@ -545,4 +545,10 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Scored pilot manifests now require a SHA-256 receipt hash for every planned run. This binds each future ordinary or assisted result to the exact prepared evaluator receipt before the grade-import command is added.
 - Evidence on Windows: TypeScript and the focused scored-manifest validation test passed. Grade import, duplicate handling, and operator artifacts remain P08 work.
 
+## 2026-09-17 — P08 explicit grade import
+
+- Added `receipt-hash` and `import-grade` benchmark commands. A grade import requires a completed/time-capped ledger run, its matching frozen receipt hash, fixture, state, and condition, plus a behavioral evaluator result. It records verified repair/full success and preserves detection/regression fields for human adjudication.
+- The ledger rejects duplicate imports and any attempt to overwrite manually entered scoring. The evaluator setup and scoring guide now contain the exact operator commands and limitations.
+- Focused evidence on Windows: TypeScript and grade-import mismatch/duplicate tests passed. The full integration suite was started after this batch; its early unit/CLI/external-consumer stages passed before the long staged-grader tests continued.
+
 

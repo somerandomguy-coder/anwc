@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -419,6 +419,20 @@ describe('benchmark plan', () => {
     expect(renderResultsSummary(plan, results)).toContain('| ordinary | 1 | 1 | 1 | 1 | 0 | 42 | NA |');
     expect(renderResultsSummary(plan, results)).toContain('| anwc-assisted | 1 | 1 | 0 | 0 | 0 | 1200 | NA |');
     expect(() => validateBenchmarkResults(plan, { ...results, runs: results.runs.slice(0, 1) })).toThrow('missing runId');
+  });
+  test('imports one matching evaluator grade without overwriting a pilot ledger row', () => {
+    const plan = validateBenchmarkPlan(validPlan());
+    const results = validateBenchmarkResults(plan, { schemaVersion: '0.1', planId: 'pilot', runs: [
+      { runId: 'pair-a', status: 'completed', wallSeconds: 30, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+      { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+    ] });
+    const receipt = { fixtureId: 'heldout-a', fixtureState: 'initial' } as unknown as Awaited<ReturnType<typeof readPreparedPairReceipt>>;
+    const grade = { schemaVersion: '0.3', fixtureId: 'heldout-a', condition: 'ordinary', subject: 'C:/subject', status: 'passed', exitCode: 0, repairVerified: true, checks: [], integrityIssues: [], submittedArtifactHash: 'c'.repeat(64), logs: { install: '', server: '', pageErrors: [] }, cleanup: 'complete' };
+    const imported = importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, grade);
+    expect(imported.runs[0]!.grade).toMatchObject({ receiptHash: 'a'.repeat(64), status: 'passed' });
+    expect(imported.runs[0]!.scoring).toMatchObject({ verifiedRepairs: 1, fullSuccess: true });
+    expect(() => importGradeIntoResults(plan, imported, 'pair-a', 'a'.repeat(64), receipt, grade)).toThrow('already has an imported grade');
+    expect(() => importGradeIntoResults(plan, results, 'pair-a', 'b'.repeat(64), receipt, grade)).toThrow('receipt hash does not match');
   });
 
   test('rejects answer-bearing or condition-inappropriate subject inventory', () => {

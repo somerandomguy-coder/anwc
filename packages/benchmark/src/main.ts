@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
+import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, hashReceipt, importGradeFiles, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA]';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench receipt-hash RECEIPT.json | anwc-bench import-grade PLAN.json RESULTS.json --run RUN_ID --receipt RECEIPT.json --grade GRADE.json --output RESULTS.json | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA]';
 }
 
 export type BenchmarkIo = {
@@ -13,11 +13,27 @@ export type BenchmarkIo = {
 
 export async function run(args: string[], io: BenchmarkIo = process): Promise<number> {
   const [command, planPath, ...rest] = args;
-  if ((!planPath && command !== 'grade') || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject', 'package-subject', 'prepare-pair', 'check-pair', 'grade', 'rehearse'].includes(command ?? '')) {
+  if ((!planPath && command !== 'grade') || !['validate', 'runbook', 'receipt-hash', 'import-grade', 'validate-results', 'summarize', 'check-subject', 'package-subject', 'prepare-pair', 'check-pair', 'grade', 'rehearse'].includes(command ?? '')) {
     io.stderr.write(`${usage()}\n`);
     return 2;
   }
   try {
+    if (command === 'receipt-hash') {
+      if (rest.length !== 0) { io.stderr.write(`${usage()}\n`); return 2; }
+      io.stdout.write(`${hashReceipt(await readFile(planPath))}\n`);
+      return 0;
+    }
+    if (command === 'import-grade') {
+      const resultsPath = rest.shift();
+      const [runFlag, runId, receiptFlag, receiptPath, gradeFlag, gradePath, outputFlag, output] = rest;
+      if (!resultsPath || runFlag !== '--run' || !runId || receiptFlag !== '--receipt' || !receiptPath || gradeFlag !== '--grade' || !gradePath || outputFlag !== '--output' || !output || rest.length !== 8) { io.stderr.write(`${usage()}\n`); return 2; }
+      const plan = validateBenchmarkPlan(JSON.parse(await readFile(planPath, 'utf8')));
+      const results = validateBenchmarkResults(plan, JSON.parse(await readFile(resultsPath, 'utf8')));
+      const updated = await importGradeFiles({ plan, results, runId, receiptPath, gradePath });
+      await mkdir(dirname(output), { recursive: true }); await writeFile(output, `${JSON.stringify(updated, null, 2)}\n`);
+      io.stdout.write(`Imported grade for ${runId} into ${output}\n`);
+      return 0;
+    }
     if (command === 'rehearse') {
       let output: string | undefined;
       let sourceRevision: string | undefined;

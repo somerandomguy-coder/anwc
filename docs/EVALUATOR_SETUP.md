@@ -50,6 +50,22 @@ The grader first rejects changed immutable inputs, declared intent, or evaluator
 
 Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. CLI exits are 0 verified, 1 behavioral failure, 2 integrity/invalid invocation, and 3 infrastructure/incomplete. These are still provisional development-case checks, not complete repair certification. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
 
+## Pilot grade import
+
+For a scored P08 plan, calculate each prepared receipt hash before assigning it to that run's `receiptHash` field:
+
+```powershell
+npm run bench -- receipt-hash C:\evaluator\pairs\run-01\receipt.json
+```
+
+After recording the agent's completed or time-capped row in the ledger, import its evaluator result without editing scoring by hand:
+
+```powershell
+npm run bench -- import-grade C:\pilot\plan.json C:\pilot\results.json --run run-01 --receipt C:\evaluator\pairs\run-01\receipt.json --grade C:\evaluator\results\run-01.json --output C:\pilot\results.with-grade.json
+```
+
+The command rejects an unknown run, a receipt hash/fixture/state mismatch, a condition mismatch, incomplete evaluator infrastructure results, manual scoring already present, and a duplicate import. It imports only the verified-repair/full-success outcome. Detection precision, recall, and regression counts remain evaluator adjudication rather than automatic claims.
+
 ## Existing rehearsal
 
 ```powershell
