@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01–W13 are complete; W14 remains planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
+**Status: W01–W14 are complete.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -81,7 +81,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W11 | Dashboard application with four defect pairs | W09 | done |
 | W12 | One-command A/B subject preparation | W01, W02, W09–W11 | done |
 | W13 | Independent repair grader and integrity checks | W09, W12 | done |
-| W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | queued |
+| W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | done |
 
 Run sequentially for the initial rollout. The table is not an instruction to launch multiple agents.
 
@@ -317,6 +317,8 @@ Ensure documentation says:
 **Acceptance:** one documented command completes the rehearsal from a clean install. Stop on failed checks. No hidden truths or answer patches appear in subjects. Update STATUS with real counts and known gaps rather than carrying forward historical passed gates.
 
 **Done when:** the user can start a fresh agent with a folder and TASK.md, obtain a repair, then run a deterministic evaluator command.
+
+**Completed evidence:** `npm run bench -- rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA` executes the evaluator-owned, no-model rehearsal. The 2026-09-16 run wrote `C:\Users\Nam\AppData\Local\Temp\anwc-w14-final\rehearsal-report.json` with `pricing-blocked` and `dashboard-outside-save`, each at `390×844` and `1440×900`: the seeded subject failed, a valid source-only repair passed, and a deletion that left the app runnable failed. The command stops on an unexpected result and retains the JSON evidence outside subject folders. The report explicitly records that no provider/model claim was made and preserves paint/shape/transform limitations.
 
 ## How much more testing is enough before the next product decision?
 

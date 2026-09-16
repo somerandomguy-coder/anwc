@@ -8,7 +8,7 @@ import { evaluatorFixtureFor } from './fixtures/evaluator.js';
 import { fixtureFor } from './fixtures/registry.js';
 import type { SubjectCondition } from './subject.js';
 
-export type GradeOptions = { receipt: string; subject: string; condition: SubjectCondition; port: number; output?: string };
+export type GradeOptions = { receipt: string; subject: string; condition: SubjectCondition; port: number; output?: string; cleanInstall?: boolean };
 export type GradeResult = {
   schemaVersion: '0.2'; fixtureId: string; condition: SubjectCondition; subject: string;
   status: 'passed' | 'failed' | 'integrity-failed' | 'infrastructure-failed'; repairVerified: boolean;
@@ -72,7 +72,7 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   let child: ReturnType<typeof spawn> | undefined;
   const checks: GradeResult['checks'] = [];
   try {
-    await runNpm(npmCli, ['ci', '--ignore-scripts'], resolve(options.subject));
+    if (options.cleanInstall !== false) await runNpm(npmCli, ['ci', '--ignore-scripts'], resolve(options.subject));
     const subjectRoot = resolve(options.subject);
     child = spawn(process.execPath, [join(subjectRoot, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(options.port)], { cwd: join(subjectRoot, 'examples', receipt.appId), stdio: 'ignore', windowsHide: true });
     await waitForServer(url);

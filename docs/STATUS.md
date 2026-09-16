@@ -4,7 +4,7 @@
 
 ANWC is a development-only Vite/React inspection layer. It attaches source identity to JSX and reports browser geometry, clipping, text layout, CSS-hidden controls, overflow, and sampled pointer blockers. It does not take screenshots or prove paint-level visibility.
 
-**Current work:** W14 in [ROADMAP](ROADMAP.md): rehearse one complete benchmark pair and package the handoff. W01–W13 are complete. The installed Vite/runtime integration is the supported product path. Inspecting arbitrary uninstrumented sites is future work in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md).
+**Current work:** the initial W01–W14 rollout is complete. The next product decision follows real paired agent runs, not more speculative framework work. The installed Vite/runtime integration is the supported product path. Inspecting arbitrary uninstrumented sites is future work in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md).
 
 **Repository:** `git@github.com:somerandomguy-coder/anwc.git` on `main`.
 
@@ -16,7 +16,7 @@ npx playwright install chromium
 npm run test:integration
 ```
 
-The latest W13 verification passes TypeScript, 41 unit tests, 20 Chromium tests, and production builds for shop, landing, and dashboard. A standalone ordinary subject also completes `npm ci` and its production build.
+The latest W13 verification passes TypeScript, 41 unit tests, 20 Chromium tests, and production builds for shop, landing, and dashboard. W14 also completed its no-model rehearsal at `C:\Users\Nam\AppData\Local\Temp\anwc-w14-final\rehearsal-report.json`: two representative fixtures, two viewports each, broken failure, valid-repair pass, and deletion failure. A standalone ordinary subject completes `npm ci` and its production build.
 
 Make one roadmap task per commit. Run its focused tests while working, run `npm run test:integration` before committing, update this file only when the current task or verification baseline changes, then push `main`.
 

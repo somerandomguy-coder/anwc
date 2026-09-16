@@ -60,6 +60,14 @@ npm run bench -- grade --receipt C:\temp\anwc-pair\receipt.json --subject C:\tem
 
 Use a distinct port for the assisted subject. A `failed` result means required behavior remains broken; `integrity-failed` means the agent altered a frozen task, tool, config, or application file outside `examples/<app>/src/`; `infrastructure-failed` preserves the server/browser error instead of being scored as a repair.
 
+To verify the evaluator path without using a model, run the two-app rehearsal from a clean checkout. Its report remains outside the subject folders.
+
+```sh
+npm run bench -- rehearse . --out C:\temp\anwc-rehearsal --source-revision SOURCE_SHA --detector-revision DETECTOR_SHA
+```
+
+It proves only the preparation and grading machinery: public seeded defects fail, evaluator-owned repairs pass, and runnable deletion patches fail. It does not establish a model, cost, or productivity result.
+
 ## Legacy manual subject packaging
 
 Keep the private overlay in a directory outside the repository. It contains only replacement files that materialize one fixture. At minimum it replaces `examples/shop/src/main.tsx` so there is no query-driven public scenario switch. An ordinary overlay also replaces `examples/shop/vite.config.ts` with a normal React/Vite configuration that omits ANWC.
