@@ -61,4 +61,65 @@ describe('ANWC CLI', () => {
       expect(snapshot.findings.some((finding) => finding.code === code)).toBe(true);
     }
   }, 30_000);
+
+  test('rejects markdown URLs and displays recovery instructions in text and JSON formats', async () => {
+    const textStdout: string[] = [];
+    const textStderr: string[] = [];
+    const textIo = { stdout: (m: string) => textStdout.push(m), stderr: (m: string) => textStderr.push(m) };
+
+    const exit1 = await run(['inspect', '[Shop](http://127.0.0.1:4174/)', '--format', 'text'], textIo);
+    expect(exit1).toBe(2);
+    expect(textStderr.join('\n')).toContain('ANWC INVALID_USAGE: Invalid URL');
+    expect(textStderr.join('\n')).toContain('Recovery: Strip Markdown formatting');
+
+    const jsonStdout: string[] = [];
+    const jsonStderr: string[] = [];
+    const jsonIo = { stdout: (m: string) => jsonStdout.push(m), stderr: (m: string) => jsonStderr.push(m) };
+
+    const exit2 = await run(['inspect', '<http://127.0.0.1:4174/>', '--format', 'json'], jsonIo);
+    expect(exit2).toBe(2);
+    const jsonReport = JSON.parse(jsonStdout.join(''));
+    expect(jsonReport.error.code).toBe('INVALID_USAGE');
+    expect(jsonReport.error.details.recovery).toContain('Strip Markdown formatting');
+  });
+
+  test('provides actionable recovery guidance when runtime is missing in text and JSON modes', async () => {
+    const textStdout: string[] = [];
+    const textStderr: string[] = [];
+    const textIo = { stdout: (m: string) => textStdout.push(m), stderr: (m: string) => textStderr.push(m) };
+
+    const exit = await run(['inspect', 'data:text/html,<button>Plain button</button>', '--format', 'text'], textIo);
+    expect(exit).toBe(2);
+    const textOut = textStderr.join('\n');
+    expect(textOut).toContain('ANWC RUNTIME_MISSING: ANWC runtime is not present on this page.');
+    expect(textOut).toContain("Recovery: Ensure '@anwc/vite-plugin' is added to plugins in vite.config.ts");
+
+    const jsonStdout: string[] = [];
+    const jsonStderr: string[] = [];
+    const jsonIo = { stdout: (m: string) => jsonStdout.push(m), stderr: (m: string) => jsonStderr.push(m) };
+
+    await run(['inspect', 'data:text/html,<button>Plain button</button>', '--format', 'json'], jsonIo);
+    const jsonReport = JSON.parse(jsonStdout.join(''));
+    expect(jsonReport.error.details.recovery).toContain("Ensure '@anwc/vite-plugin' is added");
+  }, 20_000);
+
+  test('formats understandable CLI text output with target names, measured evidence, blocker details, and drilldown', async () => {
+    // Inspect blocked checkout scenario
+    const blockedSnapshot = await inspect(parseArguments(['inspect', `${url}/?scenario=blocked-checkout`, '--viewport', '390x844', '--format', 'json']));
+    const formatted = formatText(blockedSnapshot, 10, 10_000);
+
+    expect(formatted).toContain('ANWC 0.1 | 390x844');
+    expect(formatted).toContain('POINTER_BLOCKED_AT_SAMPLES');
+    expect(formatted).toContain('<button>');
+    expect(formatted).toContain('source: examples/shop/src/main.tsx');
+    expect(formatted).toContain('evidence: tested 25 sample points, 25 blocked');
+    expect(formatted).toContain('blocker: <div>');
+    expect(formatted).toContain('Drilldown: re-run with --format json or --output report.json');
+
+    // Inspect clean storefront (zero findings)
+    const cleanSnapshot = await inspect(parseArguments(['inspect', `${url}/`, '--viewport', '1440x900', '--format', 'json']));
+    const cleanFormatted = formatText(cleanSnapshot, 10, 10_000);
+    expect(cleanFormatted).toContain('0 actionable findings for inspected rules');
+    expect(cleanFormatted).toContain('paint visibility unknown');
+  }, 30_000);
 });

@@ -187,10 +187,41 @@ export default defineConfig({
 }
 `, 'utf8');
 
+      await writeFile(join(consumerRoot, 'src', 'ProfileSection.tsx'), `export function ProfileSection({ blocked, actionLabel }: { blocked: boolean; actionLabel: string }) {
+  return (
+    <section className="profile-section" style={{ position: 'relative', marginTop: '20px' }}>
+      <h2>Account Profile</h2>
+      <div className="profile-card">
+        <button id="profile-action" type="button" style={{ padding: '10px 20px' }}>
+          {actionLabel}
+        </button>
+      </div>
+      {blocked && (
+        <div
+          className="announcement-banner"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            zIndex: 10
+          }}
+        >
+          <span>Maintenance Announcement</span>
+        </div>
+      )}
+    </section>
+  );
+}
+`, 'utf8');
+
       await writeFile(join(consumerRoot, 'src', 'App.tsx'), `import React, { Suspense, useState } from 'react';
+import { ProfileSection } from './ProfileSection.js';
 const LazyWidget = React.lazy(() => import('./LazyWidget.js'));
 
-export function App() {
+export function App({ blocked = false, actionLabel = 'Save Profile' }: { blocked?: boolean; actionLabel?: string }) {
   const [showLazy, setShowLazy] = useState(false);
   const items = ['Item Alpha', 'Item Beta', 'Item Gamma'];
 
@@ -206,6 +237,7 @@ export function App() {
           <li key={item} className="item-row">{item}</li>
         ))}
       </ul>
+      <ProfileSection blocked={blocked} actionLabel={actionLabel} />
       {showLazy && (
         <Suspense fallback={<div>Loading...</div>}>
           <LazyWidget />
@@ -221,7 +253,10 @@ import { App } from './App.js';
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  createRoot(rootElement).render(<App />);
+  const urlParams = new URLSearchParams(window.location.search);
+  const blocked = urlParams.get('blocked') === '1';
+  const label = urlParams.get('label') || 'Save Profile';
+  createRoot(rootElement).render(<App blocked={blocked} actionLabel={label} />);
 }
 `, 'utf8');
 
@@ -266,12 +301,14 @@ if (rootElement) {
       const devUrl = `http://127.0.0.1:${devPort}/`;
       await waitForServer(devUrl, 15_000);
 
-      // Run the installed anwc CLI binary
+      // Run the installed anwc CLI binary in JSON mode
       const anwcBin = join(consumerRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'anwc.cmd' : 'anwc');
+      const startJson = performance.now();
       const { stdout: cliOutput } = await pExecFile(anwcBin, ['inspect', devUrl, '--format', 'json'], {
         cwd: consumerRoot,
         windowsHide: true
       });
+      const latencyJsonMs = Math.round(performance.now() - startJson);
 
       const snapshot = snapshotSchema.parse(JSON.parse(cliOutput));
       expect(snapshot.schemaVersion).toBe('0.1');
@@ -295,11 +332,101 @@ if (rootElement) {
         expect(li.source?.tag).toBe('li');
       }
 
+      // Assert custom component source mapping
+      const profileBtnNode = snapshot.nodes.find((n) => n.tag === 'button' && n.label.includes('Save Profile'));
+      expect(profileBtnNode).toBeDefined();
+      expect(profileBtnNode?.source?.file).toBe('src/ProfileSection.tsx');
+      expect(profileBtnNode?.source?.tag).toBe('button');
+
+      // Assert no hidden intent is inferred for arbitrary divs
+      const profileCardDiv = snapshot.nodes.find((n) => n.tag === 'div' && n.parentNodeId === profileBtnNode?.parentNodeId);
+      if (profileCardDiv) {
+        expect(profileCardDiv.intent.expectedCurrent).toBeNull();
+        expect(profileCardDiv.intent.maxLines).toBeNull();
+      }
+
       // Assert genuinely uninstrumented nodes have source: null
       const rootNode = snapshot.nodes.find((n) => n.nodeId === 'n-root' || (n.tag === 'div' && n.label === ''));
       if (rootNode) {
         expect(rootNode.source).toBeNull();
       }
+
+      // 9. Inspect clean state in text mode with latency & byte measurements
+      const startText = performance.now();
+      const { stdout: textOutput } = await pExecFile(anwcBin, ['inspect', devUrl, '--viewport', '1440x900', '--format', 'text'], {
+        cwd: consumerRoot,
+        windowsHide: true
+      });
+      const latencyTextMs = Math.round(performance.now() - startText);
+
+      expect(textOutput).toContain('ANWC 0.1 | 1440x900');
+      expect(textOutput).toContain('0 actionable findings for inspected rules');
+      expect(textOutput).toContain('paint visibility unknown');
+      expect(textOutput).toContain('Drilldown: re-run with --format json');
+
+      // 10. Inspect blocked state (?blocked=1) in text mode: verify understandable evidence & blocker details
+      const blockedUrl = `http://127.0.0.1:${devPort}/?blocked=1`;
+      let blockedText = '';
+      try {
+        const res = await pExecFile(anwcBin, ['inspect', blockedUrl, '--viewport', '390x844', '--format', 'text', '--fail-on', 'warning'], {
+          cwd: consumerRoot,
+          windowsHide: true
+        });
+        blockedText = res.stdout;
+      } catch (err: unknown) {
+        const error = err as { stdout?: string; exitCode?: number; code?: number };
+        expect(error.code ?? error.exitCode).toBe(1);
+        blockedText = error.stdout || '';
+      }
+
+      expect(blockedText).toContain('POINTER_BLOCKED_AT_SAMPLES');
+      expect(blockedText).toContain('<button> "Save Profile"');
+      expect(blockedText).toContain('src/ProfileSection.tsx');
+      expect(blockedText).toContain('evidence: tested 25 sample points, 25 blocked');
+      expect(blockedText).toContain('blocker:');
+      expect(blockedText).toContain('Maintenance Announcement');
+
+      // 11. Title/label change invariance: verify renaming label leaves geometric findings unchanged
+      const renamedUrl = `http://127.0.0.1:${devPort}/?blocked=1&label=Update+Settings`;
+      const { stdout: renamedJson } = await pExecFile(anwcBin, ['inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], {
+        cwd: consumerRoot,
+        windowsHide: true
+      });
+      const renamedSnapshot = snapshotSchema.parse(JSON.parse(renamedJson));
+      const renamedFinding = renamedSnapshot.findings.find((f) => f.code === 'POINTER_BLOCKED_AT_SAMPLES');
+      expect(renamedFinding).toBeDefined();
+      expect(renamedFinding?.evidence.kind).toBe('pointer-blocked');
+      if (renamedFinding?.evidence.kind === 'pointer-blocked') {
+        expect(renamedFinding.evidence.tested).toBe(25);
+        expect(renamedFinding.evidence.blocked).toBe(25);
+        expect(renamedFinding.evidence.blockerNodeIds.length).toBeGreaterThan(0);
+      }
+
+      // 12. Actionable error recovery verification via installed CLI binary
+      let mdUrlError = '';
+      try {
+        await pExecFile(anwcBin, ['inspect', `[App](${devUrl})`], {
+          cwd: consumerRoot,
+          windowsHide: true
+        });
+      } catch (err: unknown) {
+        const error = err as { stderr?: string; exitCode?: number; code?: number };
+        expect(error.code ?? error.exitCode).toBe(2);
+        mdUrlError = error.stderr || '';
+      }
+      expect(mdUrlError).toContain('ANWC INVALID_USAGE');
+      expect(mdUrlError).toContain('Recovery: Strip Markdown formatting');
+
+      // Log report size and latency benchmarks for P07
+      const measurements = {
+        cleanJsonChars: cliOutput.length,
+        cleanTextChars: textOutput.length,
+        blockedTextChars: blockedText.length,
+        latencyJsonMs,
+        latencyTextMs
+      };
+      expect(measurements.cleanTextChars).toBeLessThan(measurements.cleanJsonChars);
+
     } finally {
       if (devProcess && devProcess.pid) {
         try {

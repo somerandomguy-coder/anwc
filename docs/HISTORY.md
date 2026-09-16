@@ -499,3 +499,45 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
   - Untested platforms: macOS, Windows (fresh P06 pass).
 - Next task: P07 — Make the first real inspection understandable.
 
+## 2026-09-16 — P07 understandable inspection workflow and external consumer demo
+
+- Milestone M2 (external adoption: P06–P07) is certified.
+- Developer quickstart & 5-minute walkthrough in `README.md`:
+  - Step-by-step instructions: build local alpha tarballs, install in external consumer project, configure `anwc()` before React in `vite.config.ts`, start dev server, inspect at desktop (`1440x900`) and mobile (`390x844`), follow source/blocker evidence to JSX lines, repair, and re-inspect to verify zero actionable findings.
+  - Documents handling of custom components, repeated `.map()` items, authoritative JSON drilldown (`--format json`, `--output report.json`), and actionable recovery for common errors.
+- Actionable CLI error handling and recovery guidance (`packages/cli/src/index.ts`):
+  - Added detection of pasted Markdown URL links (`[url](url)`, `<url>`) with recovery advice directing to raw URL syntax.
+  - Standardized specific recovery advice in `details.recovery` for programmatic JSON output and human-readable text output on `stderr`:
+    - `RUNTIME_MISSING`: advises adding `@anwc/vite-plugin` before `@vitejs/plugin-react` in `vite.config.ts` or passing `--runtime-only`.
+    - `BROWSER_MISSING`: advises running `npx playwright install chromium`.
+    - `NAVIGATION_FAILED`: advises verifying dev server URL and port.
+    - `TIMEOUT`: advises checking animations or increasing timeout budget via `--timeout-ms`.
+  - Guaranteed JSON error envelope output to `stdout` when `--format json` is requested, even if CLI option parsing fails before options validation.
+- Understandable CLI text output (`formatText`):
+  - Formats concise severity and rule code with target tag and label: `<button> "Save Profile" (node n-12)`.
+  - Resolves relative JSX source location: `source: src/ProfileSection.tsx:14:9`.
+  - Prints empirical measured vs expected geometry:
+    - `pointer-blocked`: `tested 25 sample points, 25 blocked`.
+    - `blocker`: identifies blocking element tag, label, node ID, and source location (`blocker: <div className="announcement-banner"> (node n-15) at src/ProfileSection.tsx:21:9`).
+    - `horizontal-overflow`: reports scrollWidth vs clientWidth and overflow amount.
+    - `clipped-by-ancestor`: reports percentage clipped and ancestor element details.
+    - `text-clipped`: reports clipped fragment counts and line counts.
+    - `text-line-budget-exceeded`: reports observed lines vs max allowed lines.
+    - `expected-visible-but-hidden`: reports expected intent vs hidden reasons.
+  - Explicitly states limitations, suggestions, omitted counts, and JSON drilldown command.
+  - Preserves authoritative Snapshot `0.1` protocol schema without modifications.
+- External consumer demonstration & acceptance tests (`tests/unit/consumer.test.ts`, `tests/unit/cli.test.ts`):
+  - Verified neutral external consumer app containing a custom component (`ProfileSection`), repeated items, and an announcement overlay without defect-revealing query strings or class names.
+  - Verified that title/label changes (e.g., renaming button text) leave geometric measurements and evidence unchanged (identical sample points, blocked count, box coordinates, blocker id).
+  - Verified that no hidden intent is inferred for arbitrary `div`s (`intent: { expectedCurrent: null, maxLines: null, allow: [] }`).
+  - Verified clean text mode inspection reports `0 actionable findings for inspected rules`.
+  - Verified blocked text mode inspection reports concise evidence and blocker element.
+  - Recorded report size and latency benchmarks (text output is significantly more concise than raw JSON while providing immediate source links and blocker details).
+- Integration status on Linux:
+  - `npm run typecheck`: 0 errors.
+  - `npm run test:unit`: 8 test files, 61/61 tests passed.
+  - `npm run test:browser`: 26/26 Chromium tests passed.
+  - `npm run build`: Production builds succeeded for packages and apps.
+- Next task: P08 — Freeze a small usable agent pilot.
+
+
