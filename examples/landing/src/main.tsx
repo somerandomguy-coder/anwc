@@ -22,7 +22,7 @@ function App() {
 
   return <main className="landing-shell" data-anwc-scenario={`pricing-${caseId}-${variant}`}>
     <header><p className="eyebrow">Northstar plans</p><h1>Pricing that grows with your team.</h1><p>Choose a plan, then see a local confirmation. Every case uses this same plan selector.</p></header>
-    <nav aria-label="Pricing fixture cases">{caseIds.map((id) => <a key={id} href={`/?case=${id}&variant=${variant}`}>{id}</a>)}<a href={`/?case=${caseId}&variant=${broken ? 'healthy' : 'broken'}`}>View {broken ? 'healthy' : 'broken'}</a></nav>
+    <nav aria-label="Pricing fixture cases"><span data-fixture-navigation>{caseIds.map((id) => <a key={id} href={`/?case=${id}&variant=${variant}`}>{id}</a>)}<a href={`/?case=${caseId}&variant=${broken ? 'healthy' : 'broken'}`}>View {broken ? 'healthy' : 'broken'}</a></span></nav>
     <section className="plans" aria-label="Pricing plans">{plans.map((plan, index) => {
       const affected = index === 1;
       const cropped = broken && affected && caseId === 'description-crop';

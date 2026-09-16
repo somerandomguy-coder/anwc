@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json | anwc-bench rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json | anwc-bench rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA';
 }
 
 export type BenchmarkIo = {
@@ -30,7 +30,7 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
       if (receiptFlag !== '--receipt' || !receipt || subjectFlag !== '--subject' || !subject || conditionFlag !== '--condition' || !['ordinary', 'anwc-assisted'].includes(condition ?? '') || portFlag !== '--port' || !port || outputFlag !== '--output' || !output || rest.length !== 9) { io.stderr.write(`${usage()}\n`); return 2; }
       const result = await gradeRepair({ receipt, subject, condition: condition as SubjectCondition, port: Number(port), output });
       io.stdout.write(`Repair grade: ${result.status}. ${result.checks.length} checks recorded.\n`);
-      return result.status === 'passed' ? 0 : 1;
+      return result.exitCode;
     }
     if (command === 'check-pair') {
       if (rest.length !== 0) { io.stderr.write(`${usage()}\n`); return 2; }
@@ -44,12 +44,13 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
       let ordinaryPort = 4181;
       let assistedPort = 4182;
       if (fixtureFlag !== '--fixture' || !fixtureId || outFlag !== '--out' || !output || sourceFlag !== '--source-revision' || !sourceRevision || detectorFlag !== '--detector-revision' || !detectorRevision) { io.stderr.write(`${usage()}\n`); return 2; }
+      let practice = false;
+      if (ports.includes('--practice')) { practice = true; ports.splice(ports.indexOf('--practice'), 1); }
       if (ports.length !== 0) {
         if (ports.length !== 4 || ports[0] !== '--ordinary-port' || ports[2] !== '--assisted-port') { io.stderr.write(`${usage()}\n`); return 2; }
-        ordinaryPort = Number(ports[1]);
-        assistedPort = Number(ports[3]);
+        ordinaryPort = Number(ports[1]); assistedPort = Number(ports[3]);
       }
-      const pair = await preparePair({ sourceRoot: planPath, output, fixtureId, sourceRevision, detectorRevision, ordinaryPort, assistedPort });
+      const pair = await preparePair({ sourceRoot: planPath, output, fixtureId, sourceRevision, detectorRevision, ordinaryPort, assistedPort, practice });
       io.stdout.write(`Prepared ordinary subject at ${pair.ordinary} and assisted subject at ${pair.assisted}. Receipt: ${pair.receipt}\n`);
       return 0;
     }

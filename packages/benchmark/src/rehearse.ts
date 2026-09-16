@@ -34,15 +34,15 @@ export async function rehearseBenchmark(options: RehearsalOptions): Promise<Rehe
   ] as const;
 
   for (const scenario of scenarios) {
-    const pair = await preparePair({ sourceRoot: options.sourceRoot, output: join(output, scenario.fixtureId), fixtureId: scenario.fixtureId, sourceRevision: options.sourceRevision, detectorRevision: options.detectorRevision, ordinaryPort: scenario.ports[0], assistedPort: scenario.ports[1] });
+    const pair = await preparePair({ sourceRoot: options.sourceRoot, output: join(output, scenario.fixtureId), fixtureId: scenario.fixtureId, sourceRevision: options.sourceRevision, detectorRevision: options.detectorRevision, ordinaryPort: scenario.ports[0], assistedPort: scenario.ports[1], practice: true });
     const broken = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: scenario.ports[0], output: join(output, `${scenario.fixtureId}-broken.json`) });
     assertStatus(broken.status, 'failed', scenario.fixtureId, 'broken grade');
     const mainPath = join(pair.ordinary, 'examples', scenario.fixtureId.startsWith('pricing') ? 'landing' : 'dashboard', 'src', 'main.tsx');
     await replaceSource(mainPath, scenario.valid, '');
-    const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: scenario.ports[1], output: join(output, `${scenario.fixtureId}-repaired.json`), cleanInstall: false });
+    const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: scenario.ports[1], output: join(output, `${scenario.fixtureId}-repaired.json`) });
     assertStatus(repaired.status, 'passed', scenario.fixtureId, 'repaired grade');
     await replaceSource(mainPath, scenario.deletion, scenario.deletionReplacement);
-    const deletion = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: scenario.ports[2], output: join(output, `${scenario.fixtureId}-deletion.json`), cleanInstall: false });
+    const deletion = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: scenario.ports[2], output: join(output, `${scenario.fixtureId}-deletion.json`) });
     assertStatus(deletion.status, 'failed', scenario.fixtureId, 'deletion grade');
     cases.push({ fixtureId: scenario.fixtureId, broken: broken.status, repaired: repaired.status, deletion: deletion.status, viewports: broken.checks.map((check) => check.viewport).filter((viewport, index, all) => index === all.findIndex((candidate) => candidate.width === viewport.width && candidate.height === viewport.height)) });
   }

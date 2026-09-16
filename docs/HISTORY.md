@@ -4,7 +4,7 @@
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Historical summary:** W01–W14 implementations shipped. The 2026-09-16 Phase 2 audit below corrects the earlier blanket completion claim: some W09–W14 acceptance is incomplete. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
+**Historical summary:** W01–W14 implementations shipped. The 2026-09-16 Phase 2 audit corrected the earlier blanket completion claim; the later P01–P04 implementation batch addresses its first foundations but remains under acceptance review. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -78,7 +78,7 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Implement P01 from the Phase 2 ROADMAP.
+1. Finish P02's independent 18-pair behavior matrix from the Phase 2 ROADMAP.
 2. Complete M1 evaluation reliability and M2 external-project adoption.
 3. Use P08/P09 for a frozen small pilot. Keep T10 pending until actual agent outcomes exist.
 
@@ -384,3 +384,12 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Earlier “41 unit / 20 browser / three builds” counts are reported historical evidence. The visible final W14 record establishes typecheck/rehearsal, not a fresh full integration run. No new passed gate is claimed by this planning change.
 - Decision: Phase 2 M1 trustworthy evaluator, M2 locally installable external React/Vite alpha, then a six-run founder pilot. P06–P08 engineering can proceed without paid model results. Runtime-only R02–R06 and Next.js integration remain deferred.
 - Documentation: active cards now live only in ROADMAP; original W cards moved to archive/W_ROLLOUT.md. STATUS, README, TESTING, EVALUATOR_SETUP, BENCHMARK and future-plan cross-references were reconciled.
+
+## 2026-09-16 — P01–P04 evaluator-foundation implementation batch
+
+- Implemented ordered checker execution with exact single-target resolution, bounded check timeouts, duplicate-ID rejection, explicit rendered/viewport/pointer evidence, Range-based text checks, physical pointer/focus/typing input checks, and transition checks that reject pre-satisfied status.
+- Added one registry for all 18 development states. Landing/dashboard materialization removes only marked public fixture links; the shop exporter emits a single-state application retaining navigation, catalogue, cart, and local confirmation. TASK.md now contains neutral behavior plus viewports, URL, commands, and editable paths.
+- Replaced receipt `0.2` with strict Zod `0.3`: full Git revision verification, clean scored mode or clearly recorded practice mode, evaluator hashes, app/immutable hashes, declared source-intent hashes, toolchain fields, ports, route/viewports, and editable paths. A `0.2` receipt returns a migration message rather than being reinterpreted.
+- The grader now verifies receipt/evaluator integrity, stages a copy outside the submitted subject, ignores returned dependencies/build/cache/logs, performs a bounded clean install, starts Vite on loopback with `--strictPort`, uses fresh pages for mutating checks, records capped logs/page errors, and reports 0/1/2/3 exit classes.
+- Evidence on Windows: `npm run typecheck`; focused `npx vitest run tests/unit/benchmark.test.ts` (22 passed); `npm run test:browser` (22 passed). The browser suite includes new checker regressions for ambiguous actions, obstruction, empty content, opacity, pre-satisfied status, and delayed valid transitions.
+- Remaining: all 18 broken/healthy pairs still need independent two-viewport measurement; source-intent extraction is declarative-attribute based rather than the planned parser-backed semantic comparison; cross-platform lifecycle, stalled install/server, occupied-port, and full integration coverage remain. Do not claim M1 or a scored benchmark yet.

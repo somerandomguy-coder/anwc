@@ -427,8 +427,8 @@ export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResu
   ].join('\n');
 }
 
-export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema, applySetup, runChecks, repairVerified, type FixtureCase, type FixtureCheck, type CheckResult } from './fixtures/index.js';
-export { fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture } from './fixtures/registry.js';
-export { preparePair, checkPreparedPair, checkReturnedSubject, readPreparedPairReceipt, type PreparePairOptions, type PreparedPairReceipt } from './prepare.js';
-export { gradeRepair, type GradeOptions, type GradeResult } from './grade.js';
+export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema, applySetup, runChecks, repairVerified, isMutatingCheck, type FixtureCase, type FixtureCheck, type CheckResult } from './fixtures/index.js';
+export { allFixtures, fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture } from './fixtures/registry.js';
+export { preparePair, checkPreparedPair, checkReturnedSubject, checkEvaluatorReceipt, readPreparedPairReceipt, type PreparePairOptions, type PreparedPairReceipt } from './prepare.js';
+export { gradeRepair, gradeResultSchema, type GradeOptions, type GradeResult } from './grade.js';
 export { rehearseBenchmark, type RehearsalOptions, type RehearsalReport } from './rehearse.js';

@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -32,23 +32,33 @@ describe('benchmark plan', () => {
   });
   test('materializes a neutral fixture into one broken app variant and public task', () => {
     const fixture = fixtureFor('pricing-blocked');
-    const source = `const search = new URLSearchParams(location.search);\n  const caseId = (caseIds.find((value) => value === search.get('case')) ?? 'title-overflow') as CaseId;\n  const variant: Variant = search.get('variant') === 'healthy' ? 'healthy' : 'broken';\n  const broken = variant === 'broken';\n  <nav aria-label="Pricing fixture cases">links</nav><main data-anwc-scenario="x" />`;
+    const source = `const search = new URLSearchParams(location.search);\n  const caseId = (caseIds.find((value) => value === search.get('case')) ?? 'title-overflow') as CaseId;\n  const variant: Variant = search.get('variant') === 'healthy' ? 'healthy' : 'broken';\n  const broken = variant === 'broken';\n  <nav aria-label="Pricing fixture cases"><span data-fixture-navigation>links</span><button>Keep this control</button></nav><main data-anwc-scenario="x" />`;
     const materialized = materializeFixtureSource(source, fixture);
     expect(materialized).toContain('const broken = true');
     expect(materialized).not.toContain('URLSearchParams');
-    expect(materialized).not.toContain('<nav');
+    expect(materialized).toContain('<nav');
+    expect(materialized).toContain('Keep this control');
     expect(materialized).not.toContain('data-anwc-scenario');
     expect(materializeFixtureStyles('.title-overflow { color: red }.selection-blocker { color: blue }', fixture)).not.toContain('title-overflow');
-    expect(taskMarkdown(fixture)).toContain('make Growth selectable');
+    expect(taskMarkdown(fixture)).toContain('Editable paths: examples/landing/src/**');
+    expect(taskMarkdown(fixture)).not.toContain('make Growth selectable');
   }, 20_000);
+  test('registry freezes all planned app states without copying the shop laboratory switchboard', () => {
+    expect(allFixtures()).toHaveLength(18);
+    const shop = materializeFixtureSource('', fixtureFor('shop-blocked-checkout'));
+    expect(shop).toContain('data-subject="prepared"');
+    expect(shop).toContain('Store navigation');
+    expect(shop).not.toContain('scenarioFromSearch');
+    expect(shop).not.toContain('blocked-checkout');
+  });
   test('prepares matching A/B subjects and catches a one-sided app edit before a run', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-prepared-pair-'));
     const output = join(root, 'pair');
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
     try {
-      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', sourceRevision: 'abcdef0', detectorRevision: '1234567', ordinaryPort: 4181, assistedPort: 4182 });
+      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', ordinaryPort: 4181, assistedPort: 4182, practice: true });
       expect(await checkPreparedPair(output)).toEqual([]);
-      expect(await readFile(join(pair.ordinary, 'TASK.md'), 'utf8')).toContain('make Growth selectable');
+      expect(await readFile(join(pair.ordinary, 'TASK.md'), 'utf8')).toContain('Editable paths: examples/landing/src/**');
       expect(await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8')).not.toContain('URLSearchParams');
       await writeFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), '\n// changed after preparation\n', { flag: 'a' });
       expect(await checkPreparedPair(output)).toContain('ordinary: application files differ from the frozen receipt');
@@ -61,7 +71,7 @@ describe('benchmark plan', () => {
     const output = join(root, 'pair');
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
     try {
-      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', sourceRevision: 'abcdef0', detectorRevision: '1234567', ordinaryPort: 4391, assistedPort: 4392 });
+      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', ordinaryPort: 4391, assistedPort: 4392, practice: true });
       const broken = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4391 });
       expect(broken.status).toBe('failed');
       expect(broken.repairVerified).toBe(false);

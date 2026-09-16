@@ -1,174 +1,128 @@
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { promisify } from 'node:util';
+import { z } from 'zod';
 import { fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown } from './fixtures/registry.js';
 import { BenchmarkPlanError } from './index.js';
-import { checkSubjectWorkspace, packageSubjectWorkspace, type SubjectCondition } from './subject.js';
+import { checkSubjectWorkspace, type SubjectCondition } from './subject.js';
 
-export type PreparePairOptions = {
-  sourceRoot: string;
-  output: string;
-  fixtureId: string;
-  sourceRevision: string;
-  detectorRevision: string;
-  ordinaryPort: number;
-  assistedPort: number;
-};
+const pExecFile = promisify(execFile);
+const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
+const port = z.number().int().min(1).max(65_535);
+const pathKey = z.string().min(1).refine((value) => !value.split('/').includes('..') && !value.split('\\').includes('..'), 'path traversal is not allowed');
 
-export type PreparedPairReceipt = {
-  schemaVersion: '0.2';
-  fixtureId: string;
-  appId: string;
-  sourceRevision: string;
-  detectorRevision: string;
-  route: string;
-  setup: [];
-  ports: { ordinary: number; assisted: number };
-  applicationFiles: Record<string, string>;
-  immutableFiles: { ordinary: Record<string, string>; assisted: Record<string, string> };
-  taskHash: string;
-};
+export type PreparePairOptions = { sourceRoot: string; output: string; fixtureId: string; sourceRevision?: string; detectorRevision?: string; ordinaryPort: number; assistedPort: number; practice?: boolean };
 
-function normalizedPath(path: string): string {
-  return path.split(sep).join('/');
-}
+const receiptSchema = z.object({
+  schemaVersion: z.literal('0.3'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), appId: z.enum(['shop', 'landing', 'dashboard']),
+  source: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/), dirty: z.boolean() }).strict(),
+  detector: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/) }).strict(),
+  evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256 }).strict(),
+  route: z.string().startsWith('/'), setup: z.array(z.record(z.unknown())), viewports: z.array(z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict()).min(1),
+  ports: z.object({ ordinary: port, assisted: port }).strict(), editablePaths: z.array(pathKey).min(1),
+  toolchain: z.object({ node: z.string().min(1), npm: z.string().min(1), browser: z.string().min(1) }).strict(),
+  applicationFiles: z.record(sha256), immutableFiles: z.object({ ordinary: z.record(sha256), assisted: z.record(sha256) }).strict(),
+  intentHashes: z.object({ ordinary: sha256, assisted: sha256 }).strict(), taskHash: sha256
+}).strict();
+export type PreparedPairReceipt = z.infer<typeof receiptSchema>;
 
-async function exists(path: string): Promise<boolean> {
-  try { await stat(path); return true; } catch { return false; }
-}
+function normalizedPath(path: string): string { return path.split(sep).join('/'); }
+function isSameOrSubpath(child: string, parent: string): boolean { const rel = relative(parent, child); return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)); }
+async function exists(path: string): Promise<boolean> { try { await stat(path); return true; } catch { return false; } }
+async function hashFile(path: string): Promise<string> { return hash(await readFile(path)); }
 
-async function hashFile(path: string): Promise<string> {
-  return createHash('sha256').update(await readFile(path)).digest('hex');
-}
-
-/** Hash application inputs, deliberately excluding generated Vite configuration. */
 async function hashApplicationFiles(root: string, appId: string): Promise<Record<string, string>> {
-  const appRoot = join(root, 'examples', appId);
-  const hashes: Record<string, string> = {};
-  async function visit(directory: string): Promise<void> {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const full = join(directory, entry.name);
-      if (entry.isDirectory()) await visit(full);
-      else if (entry.isFile() && entry.name !== 'vite.config.ts') hashes[normalizedPath(relative(root, full))] = await hashFile(full);
-    }
-  }
-  await visit(appRoot);
-  return Object.fromEntries(Object.entries(hashes).sort(([left], [right]) => left.localeCompare(right)));
+  const appRoot = join(root, 'examples', appId); const hashes: Record<string, string> = {};
+  async function visit(directory: string): Promise<void> { for (const entry of await readdir(directory, { withFileTypes: true })) { const full = join(directory, entry.name); if (entry.isSymbolicLink()) throw new BenchmarkPlanError([`symbolic link is not allowed in application inputs: ${normalizedPath(relative(root, full))}`]); if (entry.isDirectory()) await visit(full); else if (entry.isFile() && entry.name !== 'vite.config.ts') hashes[normalizedPath(relative(root, full))] = await hashFile(full); } }
+  await visit(appRoot); return Object.fromEntries(Object.entries(hashes).sort(([a], [b]) => a.localeCompare(b)));
 }
-
-/** Inputs an agent may not change: tool/config files, task, and application files outside src/. */
 async function hashImmutableFiles(root: string, appId: string): Promise<Record<string, string>> {
-  const hashes: Record<string, string> = {};
-  const ignoredDirectories = new Set(['node_modules', 'dist', 'build', '.vite', '.cache']);
-  async function visit(directory: string): Promise<void> {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const full = join(directory, entry.name);
-      const path = normalizedPath(relative(root, full));
-      if (entry.isDirectory()) {
-        if (!ignoredDirectories.has(entry.name) && path !== `examples/${appId}/src`) await visit(full);
-      } else if (entry.isFile()) {
-        hashes[path] = await hashFile(full);
-      }
-    }
-  }
-  await visit(root);
-  return Object.fromEntries(Object.entries(hashes).sort(([left], [right]) => left.localeCompare(right)));
+  const hashes: Record<string, string> = {}; const ignored = new Set(['node_modules', 'dist', 'build', '.vite', '.cache', '.turbo']);
+  async function visit(directory: string): Promise<void> { for (const entry of await readdir(directory, { withFileTypes: true })) { const full = join(directory, entry.name); const key = normalizedPath(relative(root, full)); if (entry.isSymbolicLink()) throw new BenchmarkPlanError([`symbolic link is not allowed in frozen inputs: ${key}`]); if (entry.isDirectory()) { if (!ignored.has(entry.name) && key !== `examples/${appId}/src`) await visit(full); } else if (entry.isFile()) hashes[key] = await hashFile(full); } }
+  await visit(root); return Object.fromEntries(Object.entries(hashes).sort(([a], [b]) => a.localeCompare(b)));
 }
+function equalHashes(left: Record<string, string>, right: Record<string, string>): boolean { return JSON.stringify(left) === JSON.stringify(right); }
 
-function equalHashes(left: Record<string, string>, right: Record<string, string>): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+/** Lightweight declarative intent extraction. Dynamic expectations are rejected by the empty marker. */
+async function intentHash(root: string, appId: string): Promise<string> {
+  const source = await readFile(join(root, 'examples', appId, 'src', 'main.tsx'), 'utf8');
+  const declarations = [...source.matchAll(/data-anwc-(expect|max-lines)=(?:\{)?["']?([^\s"'}]+)/g)].map((match) => `${match[1]}:${match[2]}`).sort();
+  if (source.includes('data-anwc-') && declarations.length === 0) throw new BenchmarkPlanError([`unverifiable dynamic ANWC intent in examples/${appId}/src/main.tsx`]);
+  return hash(JSON.stringify(declarations));
+}
+async function gitState(sourceRoot: string, requested: string | undefined, practice: boolean): Promise<{ revision: string; dirty: boolean }> {
+  try {
+    const { stdout: revision } = await pExecFile('git', ['rev-parse', 'HEAD'], { cwd: sourceRoot, windowsHide: true });
+    const { stdout: status } = await pExecFile('git', ['status', '--porcelain'], { cwd: sourceRoot, windowsHide: true });
+    const full = revision.trim(); const dirty = status.trim().length > 0;
+    if (!/^[a-f0-9]{40}$/.test(full)) throw new Error('HEAD did not resolve to a full commit');
+    if (!practice && dirty) throw new Error('scored preparation requires a clean Git checkout');
+    if (requested && requested !== full) throw new Error(`requested source revision ${requested} does not match HEAD ${full}`);
+    return { revision: full, dirty };
+  } catch (error) { throw new BenchmarkPlanError([`cannot verify source Git revision: ${error instanceof Error ? error.message : String(error)}`]); }
+}
+async function evaluatorHashes(sourceRoot: string): Promise<PreparedPairReceipt['evaluator']> {
+  const root = join(sourceRoot, 'packages', 'benchmark', 'src', 'fixtures');
+  return { checker: await hashFile(join(root, 'index.ts')), registry: await hashFile(join(root, 'registry.ts')), sidecar: await hashFile(join(root, 'evaluator.ts')) };
 }
 
 export async function readPreparedPairReceipt(path: string): Promise<PreparedPairReceipt> {
   const receiptPath = resolve(path);
   try {
-    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as PreparedPairReceipt;
-    if (receipt.schemaVersion !== '0.2' || !receipt.appId || !receipt.applicationFiles || !receipt.immutableFiles) throw new Error('unsupported schema or missing frozen hashes');
-    return receipt;
-  } catch (error) {
-    throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]);
-  }
+    const raw: unknown = JSON.parse(await readFile(receiptPath, 'utf8'));
+    if (typeof raw === 'object' && raw !== null && (raw as { schemaVersion?: string }).schemaVersion === '0.2') throw new Error('receipt schema 0.2 is historical and uncertified; regenerate from the original pinned source with schema 0.3');
+    return receiptSchema.parse(raw);
+  } catch (error) { throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]); }
 }
 
-/** Ensures a returned agent subject retained its frozen non-application inputs. */
+/** Ensures evaluator code still matches the sidecar/checker captured at preparation. */
+export async function checkEvaluatorReceipt(receipt: PreparedPairReceipt, sourceRoot = process.cwd()): Promise<string[]> {
+  const actual = await evaluatorHashes(resolve(sourceRoot)).catch((error) => ({ error: error instanceof Error ? error.message : String(error) }));
+  if ('error' in actual) return [`cannot verify evaluator hashes: ${actual.error}`];
+  return Object.entries(receipt.evaluator).filter(([key, value]) => actual[key as keyof typeof actual] !== value).map(([key]) => `evaluator ${key} hash differs from the frozen receipt`);
+}
+
+/** Ensures a returned agent subject retained frozen inputs while allowing application source edits. */
 export async function checkReturnedSubject(receipt: PreparedPairReceipt, subject: string, condition: SubjectCondition): Promise<string[]> {
-  const root = resolve(subject);
-  if (!(await exists(root))) return [`missing ${condition} subject: ${root}`];
+  const root = resolve(subject); if (!(await exists(root))) return [`missing ${condition} subject: ${root}`];
   const issues = (await checkSubjectWorkspace(root, condition, receipt.appId, true)).map((issue) => `${condition}: ${issue}`);
-  const expected = receipt.immutableFiles[condition === 'ordinary' ? 'ordinary' : 'assisted'];
-  const actual = await hashImmutableFiles(root, receipt.appId);
-  if (!equalHashes(actual, expected)) {
-    const changed = [...new Set([...Object.keys(expected), ...Object.keys(actual)])].filter((path) => expected[path] !== actual[path]);
-    issues.push(`${condition}: immutable tool, config, or task files differ from the frozen receipt: ${changed.join(', ')}`);
-  }
+  const arm = condition === 'ordinary' ? 'ordinary' : 'assisted'; const actual = await hashImmutableFiles(root, receipt.appId);
+  if (!equalHashes(actual, receipt.immutableFiles[arm])) { const changed = [...new Set([...Object.keys(receipt.immutableFiles[arm]), ...Object.keys(actual)])].filter((key) => receipt.immutableFiles[arm][key] !== actual[key]); issues.push(`${condition}: immutable tool, config, or task files differ from the frozen receipt: ${changed.join(', ')}`); }
+  const submittedIntent = await intentHash(root, receipt.appId).catch((error) => `ERROR:${error instanceof Error ? error.message : String(error)}`);
+  if (submittedIntent !== receipt.intentHashes[arm]) issues.push(`${condition}: declared source intent differs from the frozen receipt`);
   return issues;
 }
 
-/** Checks a pair before an agent starts work. W13 permits designated app edits after a repair. */
 export async function checkPreparedPair(output: string): Promise<string[]> {
-  const root = resolve(output);
-  const receiptPath = join(root, 'receipt.json');
-  if (!(await exists(receiptPath))) return [`missing evaluator receipt: ${receiptPath}`];
-  let receipt: PreparedPairReceipt;
-  try { receipt = await readPreparedPairReceipt(receiptPath); } catch (error) { return [error instanceof Error ? error.message : `invalid evaluator receipt: ${receiptPath}`]; }
-
+  const root = resolve(output); const receiptPath = join(root, 'receipt.json'); if (!(await exists(receiptPath))) return [`missing evaluator receipt: ${receiptPath}`];
+  let receipt: PreparedPairReceipt; try { receipt = await readPreparedPairReceipt(receiptPath); } catch (error) { return [error instanceof Error ? error.message : String(error)]; }
   const issues: string[] = [];
-  for (const condition of ['ordinary', 'anwc-assisted'] as const) {
-    const subject = join(root, condition === 'ordinary' ? 'ordinary' : 'assisted');
-    if (!(await exists(subject))) { issues.push(`missing ${condition} subject`); continue; }
-    issues.push(...await checkReturnedSubject(receipt, subject, condition));
-    if (!equalHashes(await hashApplicationFiles(subject, receipt.appId), receipt.applicationFiles)) issues.push(`${condition}: application files differ from the frozen receipt`);
-    const taskHash = await hashFile(join(subject, 'TASK.md')).catch(() => 'missing');
-    if (taskHash !== receipt.taskHash) issues.push(`${condition}: TASK.md differs from the frozen receipt`);
-  }
+  for (const condition of ['ordinary', 'anwc-assisted'] as const) { const arm = condition === 'ordinary' ? 'ordinary' : 'assisted'; const subject = join(root, arm); if (!(await exists(subject))) { issues.push(`missing ${condition} subject`); continue; } issues.push(...await checkReturnedSubject(receipt, subject, condition)); if (!equalHashes(await hashApplicationFiles(subject, receipt.appId), receipt.applicationFiles)) issues.push(`${condition}: application files differ from the frozen receipt`); if (await hashFile(join(subject, 'TASK.md')).catch(() => 'missing') !== receipt.taskHash) issues.push(`${condition}: TASK.md differs from the frozen receipt`); }
   return issues;
 }
 
-/** Prepares matching, runnable ordinary and ANWC-assisted subject folders. */
+/** Prepares matching, runnable ordinary and ANWC-assisted subjects from a pinned source tree. */
 export async function preparePair(options: PreparePairOptions): Promise<{ ordinary: string; assisted: string; receipt: string }> {
-  const sourceRoot = resolve(options.sourceRoot);
-  const output = resolve(options.output);
-  const fixture = fixtureFor(options.fixtureId);
-  const mainPath = join(sourceRoot, 'examples', fixture.appId, 'src', 'main.tsx');
-  const stylesPath = join(sourceRoot, 'examples', fixture.appId, 'src', 'styles.css');
+  const sourceRoot = resolve(options.sourceRoot); const output = resolve(options.output); const fixture = fixtureFor(options.fixtureId); const practice = options.practice === true;
   if (await exists(output)) throw new BenchmarkPlanError([`pair output already exists: ${output}`]);
+  if (isSameOrSubpath(output, sourceRoot) || isSameOrSubpath(sourceRoot, output)) throw new BenchmarkPlanError([`pair output overlaps source root: ${output}`]);
+  if (!Number.isInteger(options.ordinaryPort) || !Number.isInteger(options.assistedPort) || options.ordinaryPort < 1 || options.assistedPort < 1 || options.ordinaryPort > 65_535 || options.assistedPort > 65_535 || options.ordinaryPort === options.assistedPort) throw new BenchmarkPlanError(['ordinary and assisted ports must be distinct ports between 1 and 65535']);
+  const sourceState = await gitState(sourceRoot, options.sourceRevision, practice); if (options.detectorRevision && options.detectorRevision !== sourceState.revision) throw new BenchmarkPlanError(['detector revision must match the pinned source revision for this evaluator']);
+  const mainPath = join(sourceRoot, 'examples', fixture.appId, 'src', 'main.tsx'); const stylesPath = join(sourceRoot, 'examples', fixture.appId, 'src', 'styles.css');
   if (!(await exists(mainPath)) || !(await exists(stylesPath))) throw new BenchmarkPlanError([`fixture application source is missing: ${mainPath} or ${stylesPath}`]);
-  if (!Number.isInteger(options.ordinaryPort) || !Number.isInteger(options.assistedPort) || options.ordinaryPort < 1 || options.assistedPort < 1 || options.ordinaryPort === options.assistedPort) throw new BenchmarkPlanError(['ordinary and assisted ports must be distinct positive integers']);
-
-  const overlay = await mkdtemp(join(tmpdir(), 'anwc-fixture-overlay-'));
-  const ordinary = join(output, 'ordinary');
-  const assisted = join(output, 'assisted');
-  let outputCreated = false;
+  const overlay = await mkdtemp(join(tmpdir(), 'anwc-fixture-overlay-')); const ordinary = join(output, 'ordinary'); const assisted = join(output, 'assisted'); let created = false;
   try {
-    await mkdir(output, { recursive: true });
-    outputCreated = true;
-    await mkdir(join(overlay, 'examples', fixture.appId, 'src'), { recursive: true });
-    await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'main.tsx'), materializeFixtureSource(await readFile(mainPath, 'utf8'), fixture), 'utf8');
-    await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'styles.css'), materializeFixtureStyles(await readFile(stylesPath, 'utf8'), fixture), 'utf8');
-    await packageSubjectWorkspace({ sourceRoot, destination: ordinary, overlayRoot: overlay, condition: 'ordinary', appId: fixture.appId });
-    await packageSubjectWorkspace({ sourceRoot, destination: assisted, overlayRoot: overlay, condition: 'anwc-assisted', appId: fixture.appId });
-
-    const task = taskMarkdown(fixture);
-    await Promise.all([writeFile(join(ordinary, 'TASK.md'), task, 'utf8'), writeFile(join(assisted, 'TASK.md'), task, 'utf8')]);
-    const applicationFiles = await hashApplicationFiles(ordinary, fixture.appId);
-    const assistedApplicationFiles = await hashApplicationFiles(assisted, fixture.appId);
-    if (!equalHashes(applicationFiles, assistedApplicationFiles)) {
-      const differing = [...new Set([...Object.keys(applicationFiles), ...Object.keys(assistedApplicationFiles)])]
-        .filter((path) => applicationFiles[path] !== assistedApplicationFiles[path]);
-      throw new BenchmarkPlanError([`prepared application files differ between conditions: ${differing.join(', ')}`]);
-    }
-
-    const receiptPath = join(output, 'receipt.json');
-    const receipt: PreparedPairReceipt = { schemaVersion: '0.2', fixtureId: fixture.id, appId: fixture.appId, sourceRevision: options.sourceRevision, detectorRevision: options.detectorRevision, route: '/', setup: [], ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, taskHash: createHash('sha256').update(task).digest('hex') };
-    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
-    const issues = await checkPreparedPair(output);
-    if (issues.length > 0) throw new BenchmarkPlanError(['prepared pair did not pass readiness:', ...issues]);
-    return { ordinary, assisted, receipt: receiptPath };
-  } catch (error) {
-    if (outputCreated) await rm(output, { recursive: true, force: true });
-    throw error;
-  } finally {
-    await rm(overlay, { recursive: true, force: true });
-  }
+    await mkdir(output, { recursive: false }); created = true; await mkdir(join(overlay, 'examples', fixture.appId, 'src'), { recursive: true });
+    await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'main.tsx'), materializeFixtureSource(await readFile(mainPath, 'utf8'), fixture)); await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'styles.css'), materializeFixtureStyles(await readFile(stylesPath, 'utf8'), fixture));
+    const { packageSubjectWorkspace } = await import('./subject.js');
+    await packageSubjectWorkspace({ sourceRoot, destination: ordinary, overlayRoot: overlay, condition: 'ordinary', appId: fixture.appId }); await packageSubjectWorkspace({ sourceRoot, destination: assisted, overlayRoot: overlay, condition: 'anwc-assisted', appId: fixture.appId });
+    const task = taskMarkdown(fixture); await Promise.all([writeFile(join(ordinary, 'TASK.md'), task), writeFile(join(assisted, 'TASK.md'), task)]);
+    const applicationFiles = await hashApplicationFiles(ordinary, fixture.appId); if (!equalHashes(applicationFiles, await hashApplicationFiles(assisted, fixture.appId))) throw new BenchmarkPlanError(['prepared application files differ between conditions']);
+    const receipt: PreparedPairReceipt = { schemaVersion: '0.3', scored: !practice, fixtureId: fixture.id, appId: fixture.appId, source: sourceState, detector: { revision: sourceState.revision }, evaluator: await evaluatorHashes(sourceRoot), route: fixture.route, setup: fixture.setup, viewports: fixture.viewports, ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, editablePaths: [`examples/${fixture.appId}/src`], toolchain: { node: process.version, npm: process.env.npm_config_user_agent ?? 'unknown', browser: 'playwright' }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, intentHashes: { ordinary: await intentHash(ordinary, fixture.appId), assisted: await intentHash(assisted, fixture.appId) }, taskHash: hash(task) };
+    const receiptPath = join(output, 'receipt.json'); await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`); const issues = await checkPreparedPair(output); if (issues.length > 0) throw new BenchmarkPlanError(['prepared pair did not pass readiness:', ...issues]); return { ordinary, assisted, receipt: receiptPath };
+  } catch (error) { if (created) await rm(output, { recursive: true, force: true }); throw error; } finally { await rm(overlay, { recursive: true, force: true }); }
 }

@@ -1,6 +1,6 @@
 # Phase 2: a trustworthy, installable ANWC alpha
 
-Planning review: 2026-09-16. Source reviewed: `d616943bcb07597cc6424bbb53ff0894e99143f7`. **Planning only: P01–P09 below are not implemented. Start with P01.**
+Planning review: 2026-09-16. The P01–P04 evaluator-foundation implementation batch is in review. It has targeted unit/browser evidence, but it is not acceptance-certified; retain the remaining acceptance work below.
 
 ## Outcome and sequence
 
@@ -47,10 +47,10 @@ These are source-review findings, not new browser reproduction results:
 
 | Task | Concrete result | Depends on | Status |
 | --- | --- | --- | --- |
-| P01 | Deterministic independent checks that reject false repairs | shipped W09/W13 | ready |
-| P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | queued |
-| P03 | Verified provenance and frozen intent/grade contracts | P02 | queued |
-| P04 | Bounded grading in a clean evaluator copy | P03 | queued |
+| P01 | Deterministic independent checks that reject false repairs | shipped W09/W13 | implemented; acceptance evidence in progress |
+| P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | implemented registry; matrix evidence in progress |
+| P03 | Verified provenance and frozen intent/grade contracts | P02 | implemented contract; provenance acceptance in progress |
+| P04 | Bounded grading in a clean evaluator copy | P03 | implemented lifecycle; failure-mode coverage in progress |
 | P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | queued |
 | P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | ready after M1 by default |
 | P07 | Clear first-inspection workflow on an unfamiliar app | P06 | queued |

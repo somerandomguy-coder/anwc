@@ -1,6 +1,6 @@
 # Evaluator setup
 
-Updated 2026-09-16 against `d616943`. These commands exist today, but the generated subjects and grader remain **development practice tools**. P01–P05 in [ROADMAP](ROADMAP.md) close acceptance gaps before certified scored runs. Do not confuse command availability with benchmark validity.
+Updated 2026-09-16. The evaluator uses receipt/result contract `0.3`, neutral materialized subjects, and a fresh staging copy for grading. It remains a **development practice workflow** until the P02 matrix and P03/P04 acceptance coverage are complete. Do not confuse command availability with benchmark validity.
 
 ## Separate evaluator and agents
 
@@ -19,9 +19,11 @@ npm run bench -- prepare-pair . --fixture pricing-blocked --out "$anwcPair" --so
 npm run bench -- check-pair "$anwcPair"
 ```
 
-Current IDs: `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, `dashboard-outside-save`. Shop is not currently in this preparer registry.
+The default command requires a clean checkout and both full revision labels to equal `git rev-parse HEAD`. For an explicitly unscored local experiment from a dirty checkout, append `--practice`; the receipt records `scored: false` and dirty state. It never becomes a scored result later.
 
-The command creates ordinary/, assisted/, and receipt.json. Current revision arguments are recorded labels, not verified provenance. TASK.md currently hints at the selected defect, and materialized source retains fixture machinery. Keep these runs explicitly unblinded until P02/P03 land.
+Current IDs are ten `shop-*` cases (`shop-horizontal-overflow` through `shop-outside-viewport`), `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, and `dashboard-outside-save`.
+
+The command creates ordinary/, assisted/, and receipt.json. The receipt binds full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, declared source intent, task, route/viewports, allowed editable paths, and available toolchain identifiers. TASK.md describes common app behavior and the local environment without naming a seeded defect. Keep these public development cases explicitly unblinded until P05 lands.
 
 Install/build/start each subject in its own terminal. Substitute the generated path; do not type PLACEHOLDER literally:
 
@@ -33,7 +35,7 @@ npm run build
 npm run dev --workspace=@anwc/landing -- --host 127.0.0.1 --port 4301
 ```
 
-Repeat in assisted/ on 4302. For a dashboard fixture use @anwc/dashboard as the workspace. Open the root URL; do not append the public lab query. Verify which port Vite actually reports: these generated scripts do not yet guarantee strict port ownership. The receipt records chosen ports, but does not itself start/configure servers. `check-pair` is intended before agent edits/build artifacts; it is not a returned-repair check.
+Repeat in assisted/ on 4302. For a dashboard fixture use @anwc/dashboard; for shop use @anwc/shop. Open the root URL; do not append the public lab query. `check-pair` is intended before agent edits/build artifacts; it is not a returned-repair check.
 
 Give each agent only its own folder and matching URL. Assisted can run its available `npm run anwc -- inspect "http://127.0.0.1:4302/" --viewport 390x844 --format text`. Both may use screenshots and ordinary DOM tools. Stop the agent's server before grading.
 
@@ -44,9 +46,9 @@ npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\o
 npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --output "$anwcPair\assisted-result.json"
 ```
 
-The current grader installs and runs inside the submitted folder, uses the current evaluator registry, and checks some frozen config/tool inputs. It does not yet freeze source intent or verify Git/grader provenance. P03/P04 will grade a new evaluator copy with strict deadlines and process ownership.
+The grader first rejects changed immutable inputs, declared intent, or evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Result output must stay outside the submitted subject. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
 
-Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. These are provisional check results, not complete repair certification. Current CLI returns 0 for passed and 1 for all other grade results (2 for invocation/caught errors); P04's refined exits are planned only. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
+Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. CLI exits are 0 verified, 1 behavioral failure, 2 integrity/invalid invocation, and 3 infrastructure/incomplete. These are still provisional development-case checks, not complete repair certification. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
 
 ## Existing rehearsal
 
@@ -55,7 +57,7 @@ $anwcRehearsal = Join-Path (Split-Path (Get-Location).Path -Parent) ("anwc-rehea
 npm run bench -- rehearse . --out "$anwcRehearsal" --source-revision "$anwcRevision" --detector-revision "$anwcRevision"
 ```
 
-Current rehearsal creates both subjects but grades only ordinary for pricing-blocked and dashboard-outside-save. It uses ports 4511–4513 and 4521–4523, changes the ordinary source through repaired and deletion variants, and leaves those modified outputs as evidence. Do not reuse them as fresh agent subjects. It does not cover shop or verify assisted source linkage. The repeated grades reuse dependencies after the initial install. P05 owns the full three-app/two-arm certified rehearsal.
+Current rehearsal creates both subjects but grades only ordinary for pricing-blocked and dashboard-outside-save. It uses ports 4511–4513 and 4521–4523, changes the ordinary source through repaired and deletion variants, and leaves those modified outputs as evidence. Do not reuse them as fresh agent subjects. It does not cover shop or verify assisted source linkage. Each grade now uses its own clean evaluator stage. P05 owns the full three-app/two-arm certified rehearsal.
 
 Wait for the actual process exit and report. A partial log or observation timeout does not establish completion. Retain reports outside subjects; no model calls occur.
 
