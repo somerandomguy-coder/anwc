@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-16. Phase 2 evaluator-foundation batch is committed through `38d37ad`; P02 detector evidence is ready to commit.
+Updated 2026-09-16. Phase 2 evaluator-foundation batch is committed through `c2bb752`; P02 detector evidence is ready for review.
 
 ## Start here
 
