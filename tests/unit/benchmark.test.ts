@@ -17,8 +17,8 @@ const validPlan = () => ({
   budget: { wallMinutes: 20, tokenLimit: null },
   promptId: 'repair-v1',
   runs: [
-    { id: 'pair-a', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' },
-    { id: 'pair-b', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' }
+    { id: 'pair-a', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: 'a'.repeat(64) },
+    { id: 'pair-b', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: 'b'.repeat(64) }
   ]
 });
 
@@ -393,6 +393,9 @@ describe('benchmark plan', () => {
     const runbook = renderRunbook(plan);
     expect(runbook).toContain('| pair | ordinary | heldout-a |');
     expect(runbook).toContain('does not score repairs');
+    const missingReceipt = validPlan();
+    delete missingReceipt.runs[0]!.receiptHash;
+    expect(() => validateBenchmarkPlan(missingReceipt)).toThrow('scored plans require the frozen receiptHash');
   });
 
   test('rejects incomplete and mismatched pairs', () => {

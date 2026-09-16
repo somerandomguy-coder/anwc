@@ -540,4 +540,9 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
   - `npm run build`: Production builds succeeded for packages and apps.
 - Next task: P08 — Freeze a small usable agent pilot.
 
+## 2026-09-17 — P08 frozen receipt identity
+
+- Scored pilot manifests now require a SHA-256 receipt hash for every planned run. This binds each future ordinary or assisted result to the exact prepared evaluator receipt before the grade-import command is added.
+- Evidence on Windows: TypeScript and the focused scored-manifest validation test passed. Grade import, duplicate handling, and operator artifacts remain P08 work.
+
 

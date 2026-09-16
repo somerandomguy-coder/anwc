@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const gitRef = z.string().regex(/^[0-9a-f]{7,64}$/i, 'must be a Git commit SHA');
 const nonEmpty = z.string().trim().min(1);
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/i, 'must be a SHA-256 hash');
 
 const runSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/, 'must use lowercase letters, digits, and hyphens'),
@@ -11,7 +12,8 @@ const runSchema = z.object({
   condition: z.enum(['ordinary', 'anwc-assisted']),
   viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict(),
   state: nonEmpty,
-  subjectUrl: z.string().url()
+  subjectUrl: z.string().url(),
+  receiptHash: sha256.optional()
 }).strict();
 
 export const benchmarkPlanSchema = z.object({
@@ -136,6 +138,7 @@ export function validateBenchmarkPlan(input: unknown): BenchmarkPlan {
   if (plan.kind === 'scored') {
     for (const [field, value] of Object.entries(plan.agent)) if (isPlaceholder(value)) issues.push(`agent.${field}: scored plans cannot use placeholder values`);
     if (isPlaceholder(plan.promptId)) issues.push('promptId: scored plans cannot use a placeholder value');
+    for (const run of plan.runs) if (!run.receiptHash) issues.push(`runs.${run.id}: scored plans require the frozen receiptHash`);
   }
 
   if (issues.length > 0) throw new BenchmarkPlanError(issues);

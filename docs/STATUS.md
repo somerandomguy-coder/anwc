@@ -8,7 +8,7 @@ ANWC is a working development-only React/Vite inspection prototype. Its compiler
 
 Milestone M1 (trustworthy evaluation: P01–P05) is certified. Milestone M2 (external adoption: P06–P07) is certified: independently installable local alpha packages (`0.1.0-alpha.0`), 5-minute developer quickstart in README, actionable CLI error recovery, understandable CLI text formatting with measured vs expected geometry and blocker details, neutral external consumer verification, title/label invariance, and zero hidden intent for arbitrary divs.
 
-**Next task: P08 freeze a small usable agent pilot**, in [ROADMAP](ROADMAP.md): freeze three representative cases across all three apps, one model, one ordinary and one assisted run per case (six initial runs), matched prompts, editable paths, and frozen receipts. Phase 2 delivers trustworthy evaluation (P01–P05, complete), external adoption (P06–P07, complete), then the founder-run pilot (P08–P09).
+**Next task: finish P08's usable agent pilot kit**, in [ROADMAP](ROADMAP.md): freeze three representative cases across all three apps, one model, one ordinary and one assisted run per case (six initial runs), matched prompts, editable paths, and frozen receipts. Scored run manifests now require a receipt hash per run; the remaining work is explicit grade import, pilot artifacts, and operator instructions. Phase 2 delivers trustworthy evaluation (P01–P05, complete), external adoption (P06–P07, complete), then the founder-run pilot (P08–P09).
 
 The W01–W14 implementation rollout shipped through `d616943`. The roadmap records concrete source-review gaps and follow-ups. The commands are useful for development practice; current generated subjects/grades are verified for reproducible evaluation before any agent pilot.
 
