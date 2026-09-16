@@ -8,6 +8,7 @@
     { "path": "./packages/benchmark" },
     { "path": "./packages/vite-plugin" },
     { "path": "./packages/cli" },
-    { "path": "./examples/shop" }
+    { "path": "./examples/shop" },
+    { "path": "./examples/landing" }
   ]
 }

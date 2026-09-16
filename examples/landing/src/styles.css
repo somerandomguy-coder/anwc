@@ -1,0 +1,8 @@
+:root { font-family: Inter, system-ui, sans-serif; color: #152420; background: #f6f5ef; }
+* { box-sizing: border-box; } body { margin: 0; } .landing-shell { max-width: 1040px; margin: auto; padding: 42px 24px; }
+header { max-width: 660px; } .eyebrow { color: #426557; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; } h1 { font-size: clamp(2.4rem, 6vw, 4.5rem); line-height: 1; margin: 12px 0; }
+nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 32px 0; } nav a { color: #173b30; }
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } .plan { position: relative; min-height: 260px; padding: 24px; overflow: visible; border-radius: 18px; background: #fff; box-shadow: 0 8px 28px #14231b14; }
+.plan h2 { font-size: 1.35rem; } .plan p { line-height: 1.5; } button { padding: 10px 14px; border: 0; border-radius: 8px; background: #173b30; color: white; font: inherit; cursor: pointer; }
+.title-overflow { white-space: nowrap; } .description-crop { height: 170px; overflow: hidden; } .hidden-selection { opacity: 0; } .selection-blocker { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; background: #173b30f2; color: white; border-radius: inherit; }
+#selection-status { min-height: 1.5em; margin-top: 28px; font-weight: 700; } @media (max-width: 560px) { .plans { grid-template-columns: 1fr; } .landing-shell { padding: 28px 18px; } }

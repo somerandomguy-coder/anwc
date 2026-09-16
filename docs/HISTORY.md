@@ -354,3 +354,10 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Change: added benchmark-only `0.2` public-case and private-sidecar schemas, bounded UI setup steps, and independent browser checks for content, width, line count, rendered actions, and actions that change public UI state.
 - Evidence: `npm run test:integration` passed on Windows: TypeScript, 38 unit tests, 16 Chromium tests, and production build. The checker test rejects a hidden action and a target-deletion workaround, then accepts a working repair.
 - Next task: W10 — landing/pricing fixture pairs.
+
+### W10 — Landing/pricing fixture pairs — Codex
+
+- Status: done.
+- Change: added a local React/Vite pricing app with shared plan selection confirmation and four broken/healthy cases: title overflow, cropped description, blocked selection, and opacity-hidden selection.
+- Evidence: `npm run test:integration` passed: 38 unit tests, 18 Chromium tests, TypeScript, and production builds for shop and landing. Healthy cases preserve the Growth selection action at desktop and mobile widths.
+- Next task: W11 — dashboard fixture pairs.
