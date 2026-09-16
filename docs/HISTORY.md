@@ -551,4 +551,9 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - The ledger rejects duplicate imports and any attempt to overwrite manually entered scoring. The evaluator setup and scoring guide now contain the exact operator commands and limitations.
 - Focused evidence on Windows: TypeScript and grade-import mismatch/duplicate tests passed. The full integration suite was started after this batch; its early unit/CLI/external-consumer stages passed before the long staged-grader tests continued.
 
+## 2026-09-17 — P08 three-app practice manifest
+
+- Added [bench/pilot.practice.json](../bench/pilot.practice.json): six matched ordinary/assisted practice runs across Shop, Pricing, and Dashboard, using the public development corpus at its declared responsive viewports.
+- Evidence on Windows: `npm run bench -- validate bench/pilot.practice.json` passed. It is deliberately an `example`, not a scored or held-out plan; the founder still selects one actual model, private subjects, and frozen receipts before P09.
+
 
