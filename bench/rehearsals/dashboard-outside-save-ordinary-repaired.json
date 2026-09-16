@@ -1,0 +1,316 @@
+{
+  "schemaVersion": "0.3",
+  "fixtureId": "dashboard-outside-save",
+  "condition": "ordinary",
+  "subject": "/tmp/anwc-rehearsal-staging-IQhJKV/dashboard-outside-save/ordinary",
+  "status": "passed",
+  "exitCode": 0,
+  "repairVerified": true,
+  "checks": [
+    {
+      "id": "content-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Atlas workspaceProject deliveryOpen task drawerOverviewTasksThis weekCoordinate research, content, engineering, and customer review before releaseDue FridayActivityDesign reviewResearch summaryRelease checklistCustomer notesDecision logProject notesNoteSave changesUnsaved changes\n"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "content-2",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Atlas workspaceProject deliveryOpen task drawerOverviewTasksThis weekCoordinate research, content, engineering, and customer review before releaseDue FridayActivityDesign reviewResearch summaryRelease checklistCustomer notesDecision logProject notesNoteSave changesUnsaved changes\n"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "action-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "rendered": true,
+        "box": {
+          "x": 52,
+          "y": 489.6875,
+          "width": 126.046875,
+          "height": 40
+        },
+        "clipped": false,
+        "clipSupported": true,
+        "visibleRect": {
+          "left": 52,
+          "right": 178.046875,
+          "top": 489.6875,
+          "bottom": 529.6875
+        },
+        "ancestry": [
+          {
+            "tag": "BUTTON",
+            "display": "inline-block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "ASIDE",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "HTML",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "save-in-viewport",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "box": {
+          "x": 52,
+          "y": 489.6875,
+          "width": 126.046875,
+          "height": 40
+        },
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "reachable": true
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "save-updates-status",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "beforeText": "Unsaved changes",
+        "text": "Changes saved",
+        "point": {
+          "x": 115.0234375,
+          "y": 509.6875
+        },
+        "physicalInteraction": true
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "content-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Atlas workspaceProject deliveryOpen task drawerOverviewTasksThis weekCoordinate research, content, engineering, and customer review before releaseDue FridayActivityDesign reviewResearch summaryRelease checklistCustomer notesDecision logProject notesNoteSave changesUnsaved changes\n"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "content-2",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Atlas workspaceProject deliveryOpen task drawerOverviewTasksThis weekCoordinate research, content, engineering, and customer review before releaseDue FridayActivityDesign reviewResearch summaryRelease checklistCustomer notesDecision logProject notesNoteSave changesUnsaved changes\n"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "action-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "rendered": true,
+        "box": {
+          "x": 906,
+          "y": 446.6875,
+          "width": 126.046875,
+          "height": 40
+        },
+        "clipped": false,
+        "clipSupported": true,
+        "visibleRect": {
+          "left": 906,
+          "right": 1032.046875,
+          "top": 446.6875,
+          "bottom": 486.6875
+        },
+        "ancestry": [
+          {
+            "tag": "BUTTON",
+            "display": "inline-block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "ASIDE",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "display": "flex",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "HTML",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "save-in-viewport",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "box": {
+          "x": 906,
+          "y": 446.6875,
+          "width": 126.046875,
+          "height": 40
+        },
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "reachable": true
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "save-updates-status",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "beforeText": "Unsaved changes",
+        "text": "Changes saved",
+        "point": {
+          "x": 969.0234375,
+          "y": 466.6875
+        },
+        "physicalInteraction": true
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    }
+  ],
+  "integrityIssues": [],
+  "submittedArtifactHash": "a7b3c9a0db585793badb804ae1c02e90376e820c154163931bd532635835fa70",
+  "stage": "browser",
+  "logs": {
+    "install": "\nadded 69 packages, and audited 71 packages in 2s\n\n7 packages are looking for funding\n  run `npm fund` for details\n\n2 vulnerabilities (1 moderate, 1 high)\n\nTo address all issues, run:\n  npm audit fix --force\n\nRun `npm audit` for details.\n",
+    "server": "\n  VITE v6.1.0  ready in 407 ms\n\n  ➜  Local:   http://127.0.0.1:41028/\n",
+    "pageErrors": []
+  },
+  "cleanup": "complete"
+}

@@ -51,13 +51,13 @@ These are source-review findings, not new browser reproduction results:
 | P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | implementation and Windows browser evidence complete; ready for review |
 | P03 | Verified provenance and frozen intent/grade contracts | P02 | done; provenance acceptance and Linux cross-platform verified |
 | P04 | Bounded grading in a clean evaluator copy | P03 | done; lifecycle and failure modes verified on Linux |
-| P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | next |
-| P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | ready after M1 by default |
+| P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | done; 18-run rehearsal evidence verified on Linux; Milestone M1 complete |
+| P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | next |
 | P07 | Clear first-inspection workflow on an unfamiliar app | P06 | queued |
 | P08 | Small runnable pilot kit and explicit ledger import | P05, P07 | queued |
 | P09 | Founder-run comparison and next-product decision | P08 | requires human runs |
 
-P01 → P02 → P03 → P04 → P05 is the default first sequence. Then P06 → P07 → P08. If human experiments are delayed, finish M2 and freeze the kit; do not manufacture results or start R/Next.js work automatically.
+P01 → P02 → P03 → P04 → P05 is the default first sequence (Milestone M1 complete). Next is P06 → P07 → P08. If human experiments are delayed, finish M2 and freeze the kit; do not manufacture results or start R/Next.js work automatically.
 
 ## P01 — Make independent checks reliable
 

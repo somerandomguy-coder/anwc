@@ -431,4 +431,4 @@ export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema
 export { allFixtures, fixtureMatrix, fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture, type FixtureState, type FixtureMatrixEntry } from './fixtures/registry.js';
 export { preparePair, checkPreparedPair, checkReturnedSubject, checkEvaluatorReceipt, readPreparedPairReceipt, extractSourceIntent, hashSourceIntent, type PreparePairOptions, type PreparedPairReceipt, type SourceIntentDeclaration } from './prepare.js';
 export { gradeRepair, gradeResultSchema, type GradeOptions, type GradeResult } from './grade.js';
-export { rehearseBenchmark, type RehearsalOptions, type RehearsalReport } from './rehearse.js';
+export { rehearseBenchmark, rehearsalReportSchema, type RehearsalOptions, type RehearsalReport } from './rehearse.js';

@@ -450,4 +450,23 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
   - Untested platforms: macOS.
 - Next task: P05 — finish the cross-app rehearsal evidence (18 grade runs across shop, landing, and dashboard with durable reports).
 
+## 2026-09-16 — P05 cross-app rehearsal evidence and Milestone M1 certification
 
+- Upgraded rehearsal contract to `schemaVersion: '0.3'` with full evaluator hashes (checker, registry, sidecar, grader) and per-check evidence.
+- Expanded rehearsal to cover all 3 apps and both conditions:
+  - 3 representative faults: Shop (`shop-blocked-checkout`), Pricing (`pricing-blocked`), and Dashboard (`dashboard-outside-save`).
+  - Both arms: `ordinary` and `anwc-assisted`.
+  - 3 states per arm: `broken`, `repaired`, and `deletion`.
+  - Both viewports: 390×844 and 1440×900.
+  - Exactly 18 grade runs executed; 100% matched expected outcomes (6 broken failed on expected checks, 6 valid repairs passed, and 6 runnable destructive deletions failed required checks).
+- Ensured collision-free dynamic port allocation via ephemeral port probing (`createServer` on port 0).
+- Fixed dev server ESM TypeScript loader resolution for `anwc-assisted` arm by configuring `NODE_OPTIONS='--import tsx'` in child process environment, resolving `ERR_UNKNOWN_FILE_EXTENSION` when externalizing `@anwc/vite-plugin`.
+- Committed durable compact sanitized report to Git at `bench/rehearsals/rehearsal-report.json`.
+- Certified **Milestone M1 (trustworthy evaluation)**: evaluator can reliably verify returned repairs across all apps, arms, and viewports without model or external billing dependencies.
+- Evidence on Linux: `npm run test:integration` passed cleanly:
+  - `npm run typecheck`: 0 errors.
+  - `npm run test:unit`: 7 test files, 56/56 tests passed (including rehearsal report contract and CLI argument validation).
+  - `npm run test:browser`: 26/26 Chromium tests passed across shop, landing, and dashboard.
+  - `npm run build`: Production builds succeeded for `@anwc/shop`, `@anwc/landing`, and `@anwc/dashboard`.
+  - Untested platforms: macOS.
+- Next task: P06 — Make ANWC installable outside this repository (alpha package packaging and external-consumer acceptance).

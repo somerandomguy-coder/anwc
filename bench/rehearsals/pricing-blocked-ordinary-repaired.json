@@ -1,0 +1,272 @@
+{
+  "schemaVersion": "0.3",
+  "fixtureId": "pricing-blocked",
+  "condition": "ordinary",
+  "subject": "/tmp/anwc-rehearsal-staging-IQhJKV/pricing-blocked/ordinary",
+  "status": "passed",
+  "exitCode": 0,
+  "repairVerified": true,
+  "checks": [
+    {
+      "id": "content-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Northstar plansPricing that grows with your team.Choose a plan, then see a local confirmation. Every case uses this same plan selector.StarterA calm place to collect the work that matters each week.Choose StarterGrowth plan for ambitious cross-functional delivery teamsShared planning, reporting, and approvals for teams coordinating complex work.Choose GrowthScaleControls and support for organisations with several connected teams.Choose ScaleNo plan selected\n\n"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "content-2",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Northstar plansPricing that grows with your team.Choose a plan, then see a local confirmation. Every case uses this same plan selector.StarterA calm place to collect the work that matters each week.Choose StarterGrowth plan for ambitious cross-functional delivery teamsShared planning, reporting, and approvals for teams coordinating complex work.Choose GrowthScaleControls and support for organisations with several connected teams.Choose ScaleNo plan selected\n\n"
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "action-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "rendered": true,
+        "box": {
+          "x": 42,
+          "y": 780.65625,
+          "width": 145.40625,
+          "height": 40
+        },
+        "clipped": false,
+        "clipSupported": true,
+        "visibleRect": {
+          "left": 42,
+          "right": 187.40625,
+          "top": 780.65625,
+          "bottom": 820.65625
+        },
+        "ancestry": [
+          {
+            "tag": "BUTTON",
+            "display": "inline-block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "ARTICLE",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "HTML",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "growth-selects",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "beforeText": "No plan selected",
+        "text": "Growth plan selected",
+        "point": {
+          "x": 114.703125,
+          "y": 800.65625
+        },
+        "physicalInteraction": true
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "id": "content-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Northstar plansPricing that grows with your team.Choose a plan, then see a local confirmation. Every case uses this same plan selector.StarterA calm place to collect the work that matters each week.Choose StarterGrowth plan for ambitious cross-functional delivery teamsShared planning, reporting, and approvals for teams coordinating complex work.Choose GrowthScaleControls and support for organisations with several connected teams.Choose ScaleNo plan selected\n\n"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "content-2",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "text": "Northstar plansPricing that grows with your team.Choose a plan, then see a local confirmation. Every case uses this same plan selector.StarterA calm place to collect the work that matters each week.Choose StarterGrowth plan for ambitious cross-functional delivery teamsShared planning, reporting, and approvals for teams coordinating complex work.Choose GrowthScaleControls and support for organisations with several connected teams.Choose ScaleNo plan selected\n\n"
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "action-1",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "rendered": true,
+        "box": {
+          "x": 584.65625,
+          "y": 563.84375,
+          "width": 145.40625,
+          "height": 40
+        },
+        "clipped": false,
+        "clipSupported": true,
+        "visibleRect": {
+          "left": 584.65625,
+          "right": 730.0625,
+          "top": 563.84375,
+          "bottom": 603.84375
+        },
+        "ancestry": [
+          {
+            "tag": "BUTTON",
+            "display": "inline-block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "ARTICLE",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "SECTION",
+            "display": "grid",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "MAIN",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "DIV",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "BODY",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          },
+          {
+            "tag": "HTML",
+            "display": "block",
+            "visibility": "visible",
+            "opacity": "1",
+            "overflowX": "visible",
+            "overflowY": "visible"
+          }
+        ]
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "id": "growth-selects",
+      "required": true,
+      "status": "pass",
+      "evidence": {
+        "beforeText": "No plan selected",
+        "text": "Growth plan selected",
+        "point": {
+          "x": 657.359375,
+          "y": 583.84375
+        },
+        "physicalInteraction": true
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    }
+  ],
+  "integrityIssues": [],
+  "submittedArtifactHash": "583e1a0206635540141b300b7c164e10a4d0fabc95f29ec7632ed2d164a0222d",
+  "stage": "browser",
+  "logs": {
+    "install": "\nadded 69 packages, and audited 71 packages in 2s\n\n7 packages are looking for funding\n  run `npm fund` for details\n\n2 vulnerabilities (1 moderate, 1 high)\n\nTo address all issues, run:\n  npm audit fix --force\n\nRun `npm audit` for details.\n",
+    "server": "\n  VITE v6.1.0  ready in 345 ms\n\n  ➜  Local:   http://127.0.0.1:41610/\n",
+    "pageErrors": []
+  },
+  "cleanup": "complete"
+}

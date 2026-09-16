@@ -140,7 +140,18 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
     const rawNpmCli = process.env.npm_execpath; if (!rawNpmCli) throw new Error('npm_execpath is unavailable');
     const npmCli = rawNpmCli.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm');
     activeStage = 'install'; logs.install = await runCommand(process.execPath, [npmCli, 'ci', '--ignore-scripts'], stage, Math.min(options.installTimeoutMs ?? 120_000, remaining()));
-    activeStage = 'server'; const serverPath = join(stage, 'node_modules', 'vite', 'bin', 'vite.js'); child = spawn(process.execPath, [serverPath, '--host', '127.0.0.1', '--port', String(options.port), '--strictPort'], { cwd: join(stage, 'examples', receipt.appId), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' }); child.stdout?.on('data', (data) => { logs.server = appendLog(logs.server, data); }); child.stderr?.on('data', (data) => { logs.server = appendLog(logs.server, data); });
+    activeStage = 'server';
+    const serverPath = join(stage, 'node_modules', 'vite', 'bin', 'vite.js');
+    const serverEnv: NodeJS.ProcessEnv = { ...process.env };
+    if (options.condition === 'anwc-assisted') {
+      if (!serverEnv.NODE_OPTIONS?.includes('--import tsx')) {
+        serverEnv.NODE_OPTIONS = `${serverEnv.NODE_OPTIONS || ''} --import tsx`.trim();
+      }
+    } else {
+      delete serverEnv.NODE_OPTIONS;
+    }
+    child = spawn(process.execPath, [serverPath, '--host', '127.0.0.1', '--port', String(options.port), '--strictPort'], { cwd: join(stage, 'examples', receipt.appId), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: serverEnv, detached: process.platform !== 'win32' });
+    child.stdout?.on('data', (data) => { logs.server = appendLog(logs.server, data); }); child.stderr?.on('data', (data) => { logs.server = appendLog(logs.server, data); });
     const url = `http://127.0.0.1:${options.port}${receipt.route}`; await waitForServer(url, child, Math.min(options.startupTimeoutMs ?? 15_000, remaining()));
     activeStage = 'browser'; const browser = await chromium.launch({ headless: true });
     try {

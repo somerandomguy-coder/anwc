@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -822,8 +822,69 @@ describe('W02 result accounting and endpoint fairness', () => {
       io = ioCapture();
       expect(await runBenchmarkCli(['grade', '--receipt', planFile, '--subject', root, '--condition', 'ordinary', '--port', '4399', '--output', outFile, '--evaluator-root'], io)).toBe(2);
       expect(io.getStderr()).toContain('Usage:');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['rehearse'], io)).toBe(2);
+      expect(io.getStderr()).toContain('Usage:');
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['rehearse', root, '--out'], io)).toBe(2);
+      expect(io.getStderr()).toContain('Usage:');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  test('rehearsal report schema enforces 18-run contract and evaluator provenance', async () => {
+    const validReport = {
+      schemaVersion: '0.3' as const,
+      generatedAt: new Date().toISOString(),
+      sourceRevision: '0123456789abcdef',
+      detectorRevision: '0123456789abcdef',
+      evaluatorHashes: {
+        checker: 'a'.repeat(64),
+        registry: 'b'.repeat(64),
+        sidecar: 'c'.repeat(64),
+        grader: 'd'.repeat(64)
+      },
+      cases: Array.from({ length: 18 }, (_, idx) => ({
+        fixtureId: idx < 6 ? 'shop-blocked-checkout' : idx < 12 ? 'pricing-blocked' : 'dashboard-outside-save',
+        appId: idx < 6 ? 'shop' : idx < 12 ? 'landing' : 'dashboard',
+        condition: (idx % 2 === 0 ? 'ordinary' : 'anwc-assisted') as 'ordinary' | 'anwc-assisted',
+        state: (idx % 3 === 0 ? 'broken' : idx % 3 === 1 ? 'repaired' : 'deletion') as 'broken' | 'repaired' | 'deletion',
+        status: (idx % 3 === 1 ? 'passed' : 'failed') as 'passed' | 'failed',
+        exitCode: (idx % 3 === 1 ? 0 : 1) as 0 | 1,
+        repairVerified: idx % 3 === 1,
+        port: 4100 + idx,
+        failingChecks: idx % 3 === 1 ? [] : ['test-check'],
+        viewports: [{ width: 390, height: 844 }, { width: 1440, height: 900 }]
+      })),
+      summary: {
+        totalRuns: 18 as const,
+        brokenFailed: 6,
+        repairedPassed: 6,
+        deletionFailed: 6,
+        allMatched: true
+      },
+      limitations: [
+        'No model or provider usage was exercised in this automated rehearsal.',
+        'The development cases are public and unblinded practice data.',
+        'Paint, shape, and transform visibility remain outside ANWC guarantees.'
+      ]
+    };
+    expect(rehearsalReportSchema.parse(validReport).summary.totalRuns).toBe(18);
+    expect(() => rehearsalReportSchema.parse({ ...validReport, schemaVersion: '0.2' })).toThrow();
+    expect(() => rehearsalReportSchema.parse({ ...validReport, summary: { ...validReport.summary, totalRuns: 12 } })).toThrow();
+    expect(() => rehearsalReportSchema.parse({ ...validReport, evaluatorHashes: { checker: 'a' } })).toThrow();
+
+    const committedReportPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../bench/rehearsals/rehearsal-report.json');
+    const diskReport = JSON.parse(await readFile(committedReportPath, 'utf8'));
+    const parsedDiskReport = rehearsalReportSchema.parse(diskReport);
+    expect(parsedDiskReport.summary.totalRuns).toBe(18);
+    expect(parsedDiskReport.summary.allMatched).toBe(true);
+    expect(parsedDiskReport.summary.brokenFailed).toBe(6);
+    expect(parsedDiskReport.summary.repairedPassed).toBe(6);
+    expect(parsedDiskReport.summary.deletionFailed).toBe(6);
+    expect(parsedDiskReport.cases).toHaveLength(18);
   });
 });

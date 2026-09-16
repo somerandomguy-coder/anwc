@@ -1,0 +1,478 @@
+{
+  "schemaVersion": "0.3",
+  "generatedAt": "2026-09-16T10:55:50.878Z",
+  "sourceRevision": "cc412c7ed742bce49caaf6d30ed6f432c0de3072",
+  "detectorRevision": "cc412c7ed742bce49caaf6d30ed6f432c0de3072",
+  "evaluatorHashes": {
+    "checker": "71e1afba477f4e4185727364cc98b59a965e5da5bdccc1839b6c4015ce3c6b8f",
+    "registry": "aee438a9995fc05b26c1776e1dcb6f0ee81b27856048ba602795eeac8bcfb60a",
+    "sidecar": "1654ae94b95874960c1e401b3fcf65904f1aace987e45a9249202d657a1fb6f3",
+    "grader": "b1af99f364f9efa55bb7c7a4ca307b607b736cebac7e3d31434aa9c58b0448c6"
+  },
+  "cases": [
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "ordinary",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41952,
+      "failingChecks": [
+        "checkout-confirms",
+        "checkout-confirms"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "3b08a91b2c33dc4f01603f19521204562c8942825202dac28ed5cf1ca627fb20"
+    },
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "ordinary",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 42456,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "3007efa14ce18754b2bdeffb15d8a4e91a78b5fd8f67df7f9ef8407542e1ff80"
+    },
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "ordinary",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 42322,
+      "failingChecks": [
+        "action-1",
+        "checkout-confirms",
+        "action-1",
+        "checkout-confirms"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "a1ef6a16744d8f8fd69f569f8249b95a986878d9980b8776d84f4b56039b1953"
+    },
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "anwc-assisted",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41440,
+      "failingChecks": [
+        "checkout-confirms",
+        "checkout-confirms"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "e878d079186be69b5ba6a4090922e4fc212fb75df762ff9ae2e2d1dcab47b725"
+    },
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "anwc-assisted",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 42464,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "9eeebb041f8674b3bcc5fb2afa39ea3ab3aaf105f2b18ecb5925f896300ad4e0"
+    },
+    {
+      "fixtureId": "shop-blocked-checkout",
+      "appId": "shop",
+      "condition": "anwc-assisted",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41744,
+      "failingChecks": [
+        "action-1",
+        "checkout-confirms",
+        "action-1",
+        "checkout-confirms"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "ecf077cc180ea3d8b0c39457aea5ed4f1362a58bc7a15569b040b27e8827e64a"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "ordinary",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41750,
+      "failingChecks": [
+        "growth-selects",
+        "growth-selects"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "4f7a9c1dc3b225ae3503a7cc82fcb9cf00349ae4debbc3e4528d76067b6ba4c4"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "ordinary",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 41610,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "583e1a0206635540141b300b7c164e10a4d0fabc95f29ec7632ed2d164a0222d"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "ordinary",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41946,
+      "failingChecks": [
+        "content-1",
+        "growth-selects",
+        "content-1",
+        "growth-selects"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "7f4e56caa46c4e4757e84815008528f7c27f8d45761d40be7cac4ff18503ed16"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "anwc-assisted",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41026,
+      "failingChecks": [
+        "growth-selects",
+        "growth-selects"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "418b6442e367c9ac271b2bcdf0afcb293212ffb68d0782821393145793eb3c45"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "anwc-assisted",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 42522,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "184656fe31983e05268e681c86a6b367420ab8ddf449fa76ab646bbdad954219"
+    },
+    {
+      "fixtureId": "pricing-blocked",
+      "appId": "landing",
+      "condition": "anwc-assisted",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41798,
+      "failingChecks": [
+        "content-1",
+        "growth-selects",
+        "content-1",
+        "growth-selects"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "30fcf9f584b07594e1e5fff5778c05702cf7446fc4deda622ffd71306042a1dd"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "ordinary",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41106,
+      "failingChecks": [
+        "save-in-viewport",
+        "save-updates-status",
+        "save-in-viewport",
+        "save-updates-status"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "cd1b903f7f2ec791aef70796c4b5caa4cdcbd5d8fddf29474c1bad17ca1176e5"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "ordinary",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 41028,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "a7b3c9a0db585793badb804ae1c02e90376e820c154163931bd532635835fa70"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "ordinary",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 42358,
+      "failingChecks": [
+        "content-1",
+        "save-in-viewport",
+        "save-updates-status",
+        "content-1",
+        "save-in-viewport",
+        "save-updates-status"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "89b11eb8b83ca357cc667dc523751493ff76a3a22b67509e044d9597da2b5173"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "anwc-assisted",
+      "state": "broken",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41056,
+      "failingChecks": [
+        "save-in-viewport",
+        "save-updates-status",
+        "save-in-viewport",
+        "save-updates-status"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "abd488f9776c63719394177dc5908c69213a5779790b872403ec5bae4fd6ad7f"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "anwc-assisted",
+      "state": "repaired",
+      "status": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "port": 42424,
+      "failingChecks": [],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "2162c7ce939d7b400f654d92dee70862abd38f61b55993fc2132df90babfd408"
+    },
+    {
+      "fixtureId": "dashboard-outside-save",
+      "appId": "dashboard",
+      "condition": "anwc-assisted",
+      "state": "deletion",
+      "status": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "port": 41164,
+      "failingChecks": [
+        "content-1",
+        "save-in-viewport",
+        "save-updates-status",
+        "content-1",
+        "save-in-viewport",
+        "save-updates-status"
+      ],
+      "viewports": [
+        {
+          "width": 390,
+          "height": 844
+        },
+        {
+          "width": 1440,
+          "height": 900
+        }
+      ],
+      "submittedArtifactHash": "57260a310b223883906cbe84ecd39bcca48dc38ac20b4d28679d05844ef53e5d"
+    }
+  ],
+  "summary": {
+    "totalRuns": 18,
+    "brokenFailed": 6,
+    "repairedPassed": 6,
+    "deletionFailed": 6,
+    "allMatched": true
+  },
+  "limitations": [
+    "No model or provider usage was exercised in this automated rehearsal.",
+    "The development cases are public and unblinded practice data.",
+    "Paint, shape, and transform visibility remain outside ANWC guarantees."
+  ]
+}
