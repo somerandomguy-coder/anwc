@@ -78,7 +78,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W08 | Reliable source registration and production checks | existing Vite plugin | done |
 | W09 | Small fixture contract and independent browser checks | W04 | done |
 | W10 | Landing/pricing application with four defect pairs | W09 | done |
-| W11 | Dashboard application with four defect pairs | W09 | queued |
+| W11 | Dashboard application with four defect pairs | W09 | done |
 | W12 | One-command A/B subject preparation | W01, W02, W09–W11 | queued |
 | W13 | Independent repair grader and integrity checks | W09, W12 | queued |
 | W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | queued |
@@ -333,4 +333,5 @@ Copy this prompt and replace only Wxx:
 > Implement Wxx from docs/ROADMAP.md. Read that entire task card, the global decisions, docs/PROTOCOL.md, and the current source in its owned paths. Inspect git status first. Reuse the established dependencies and interfaces. Implement only this task and necessary acceptance tests; do not redesign the architecture, choose model providers, or begin another W task. Use the task's fixed decisions for routine choices. Keep evaluation truth outside exported subjects. Verify behavior with independent browser checks where specified. Report any mismatch with the task's assumptions using a concrete failing example. Run the targeted checks while working, then npm run test:integration once before handoff. Update docs/STATUS.md with the new baseline and docs/HISTORY.md with task evidence. Commit this completed task and push under the user's existing authorization. Never label an unrun check or human agent comparison passed.
 
 Escalate only a demonstrated conflict that cannot be resolved within the task's decisions: required browser schema change, ambiguous new paint semantics, access needed to private evaluator data, or real agent/model selection before paid runs. Do not ask the founder to select an implementation detail already fixed in this document.
+
 

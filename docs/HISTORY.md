@@ -361,3 +361,10 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Change: added a local React/Vite pricing app with shared plan selection confirmation and four broken/healthy cases: title overflow, cropped description, blocked selection, and opacity-hidden selection.
 - Evidence: `npm run test:integration` passed: 38 unit tests, 18 Chromium tests, TypeScript, and production builds for shop and landing. Healthy cases preserve the Growth selection action at desktop and mobile widths.
 - Next task: W11 — dashboard fixture pairs.
+
+### W11 — Dashboard fixture pairs — Codex
+
+- Status: done.
+- Change: added a local React/Vite project dashboard with tabs, task drawer, editable note, save confirmation, an intentionally scrollable activity table, and four broken/healthy cases for clipped save, long title, blocked input, and offscreen save.
+- Evidence: `npm run test:integration` passed: 38 unit tests, 20 Chromium tests, TypeScript, and production builds for all three apps. Healthy dashboard cases retain tab, drawer, and save behavior at mobile and desktop widths.
+- Next task: W12 — one-command A/B subject preparation.

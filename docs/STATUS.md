@@ -4,7 +4,7 @@
 
 ANWC is a development-only Vite/React inspection layer. It attaches source identity to JSX and reports browser geometry, clipping, text layout, CSS-hidden controls, overflow, and sampled pointer blockers. It does not take screenshots or prove paint-level visibility.
 
-**Current work:** W11 in [ROADMAP](ROADMAP.md): build the dashboard fixture with four broken/healthy pairs. W01–W10 are complete. The installed Vite/runtime integration is the supported product path. Inspecting arbitrary uninstrumented sites is future work in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md).
+**Current work:** W12 in [ROADMAP](ROADMAP.md): automate fair ordinary/assisted subject preparation. W01–W11 are complete. The installed Vite/runtime integration is the supported product path. Inspecting arbitrary uninstrumented sites is future work in [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md).
 
 **Repository:** `git@github.com:somerandomguy-coder/anwc.git` on `main`.
 
@@ -56,4 +56,5 @@ The default storefront at `/` is clean. `/lab?case=blocked-checkout` is an inten
 | Future arbitrary-site support | [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) |
 | Decisions and completed-work record | [DECISIONS](DECISIONS.md), [HISTORY](HISTORY.md) |
 | Original architecture proposal | [PLAN](PLAN.md) |
+
 
