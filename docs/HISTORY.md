@@ -347,3 +347,10 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Remaining limit: this proves the Vite adapter ordering contract. Next.js and other framework adapters remain separate future work.
 - Next task: W09 — fixture contract and independent checker library.
 
+
+### W09 — Fixture contract and independent checker — Codex
+
+- Status: done.
+- Change: added benchmark-only `0.2` public-case and private-sidecar schemas, bounded UI setup steps, and independent browser checks for content, width, line count, rendered actions, and actions that change public UI state.
+- Evidence: `npm run test:integration` passed on Windows: TypeScript, 38 unit tests, 16 Chromium tests, and production build. The checker test rejects a hidden action and a target-deletion workaround, then accepts a working repair.
+- Next task: W10 — landing/pricing fixture pairs.

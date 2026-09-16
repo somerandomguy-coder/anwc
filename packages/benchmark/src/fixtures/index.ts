@@ -51,7 +51,7 @@ export async function runChecks(page: Page, checks: FixtureCheck[]): Promise<Che
   return Promise.all(checks.map(async (check): Promise<CheckResult> => {
     try {
       if (check.kind === 'content') {
-        const text = await page.locator(check.selector).textContent();
+        const text = await page.locator(check.selector).textContent({ timeout: 500 });
         return { id: check.id, required: check.required, status: text?.includes(check.text) ? 'pass' : 'fail', evidence: { text } };
       }
       if (check.kind === 'width-within') {
@@ -67,9 +67,12 @@ export async function runChecks(page: Page, checks: FixtureCheck[]): Promise<Che
         return { id: check.id, required: check.required, status: lines <= check.maxLines ? 'pass' : 'fail', evidence: { lines, maxLines: check.maxLines } };
       }
       const action = page.getByRole(check.role as never, { name: check.name });
-      if (check.kind === 'action-rendered') return { id: check.id, required: check.required, status: await action.isVisible() ? 'pass' : 'fail', evidence: { visible: await action.isVisible() } };
-      await action.click();
-      const text = await page.locator(check.statusSelector).textContent();
+      if (check.kind === 'action-rendered') {
+        const visible = await action.isVisible({ timeout: 500 });
+        return { id: check.id, required: check.required, status: visible ? 'pass' : 'fail', evidence: { visible } };
+      }
+      await action.click({ timeout: 500 });
+      const text = await page.locator(check.statusSelector).textContent({ timeout: 500 });
       return { id: check.id, required: check.required, status: text?.includes(check.expectedText) ? 'pass' : 'fail', evidence: { text } };
     } catch (error) { return { id: check.id, required: check.required, status: 'fail', evidence: { error: error instanceof Error ? error.message : String(error) } }; }
   }));

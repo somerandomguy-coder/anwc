@@ -76,7 +76,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W06 | Bounded pointer probes in the current viewport | existing runtime | done |
 | W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | done |
 | W08 | Reliable source registration and production checks | existing Vite plugin | done |
-| W09 | Small fixture contract and independent browser checks | W04 | queued |
+| W09 | Small fixture contract and independent browser checks | W04 | done |
 | W10 | Landing/pricing application with four defect pairs | W09 | queued |
 | W11 | Dashboard application with four defect pairs | W09 | queued |
 | W12 | One-command A/B subject preparation | W01, W02, W09–W11 | queued |
@@ -226,6 +226,8 @@ Implement explicit checks: content retained; width within container; text within
 **Acceptance:** same checker fails an intentionally broken fixture, passes its healthy version, and fails a version that merely deletes the target. Malformed setup/check definitions reject unknown fields.
 
 **Done when:** fixture authors specify intended behavior without writing another private benchmark framework.
+
+**Completed evidence:** benchmark-only `0.2` schemas now distinguish public cases from evaluator sidecars, validate only bounded role/name click/fill and selector-scroll setup, and reject unknown fields. The independent runner uses normal Playwright text, rectangle, Range, role, and click primitives; it never imports diagnostics or ANWC geometry. Required unsupported/failed checks make a repair unverified. Browser coverage proves the same checks reject a hidden action, accept a functioning repair, and reject a page that deletes required content/action.
 
 ## W10 — Landing/pricing app
 

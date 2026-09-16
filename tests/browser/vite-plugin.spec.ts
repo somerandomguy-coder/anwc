@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+test.describe.configure({ mode: 'serial' });
+
 test('development instrumentation links rendered JSX nodes to original source', async ({ page }) => {
   await page.goto('/');
   const report = await page.evaluate(async () => {
