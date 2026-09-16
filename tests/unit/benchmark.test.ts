@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BenchmarkPlanError, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, packageSubjectWorkspace, repairVerified, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, materializeFixtureSource, packageSubjectWorkspace, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -28,6 +28,17 @@ describe('benchmark plan', () => {
     expect(evaluatorSidecarSchema.parse({ fixtureId: 'shop-action', revision: 'abcdef0', defect: 'Checkout is hidden', baselineChecks: [{ id: 'hidden', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }], repairChecks: [{ id: 'usable', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }] }).fixtureId).toBe('shop-action');
     expect(repairVerified([{ id: 'usable', required: true, status: 'pass', evidence: {} }, { id: 'optional', required: false, status: 'unsupported', evidence: {} }])).toBe(true);
     expect(repairVerified([{ id: 'usable', required: true, status: 'unsupported', evidence: {} }])).toBe(false);
+  });
+  test('materializes a neutral fixture into one broken app variant and public task', () => {
+    const fixture = fixtureFor('pricing-blocked');
+    const source = `const search = new URLSearchParams(location.search);\n  const caseId = (caseIds.find((value) => value === search.get('case')) ?? 'title-overflow') as CaseId;\n  const variant: Variant = search.get('variant') === 'healthy' ? 'healthy' : 'broken';\n  <nav aria-label="Pricing fixture cases">links</nav><main data-anwc-scenario="x" />`;
+    const materialized = materializeFixtureSource(source, fixture);
+    expect(materialized).toContain("const caseId: CaseId = 'blocked-selection'");
+    expect(materialized).toContain("const variant: Variant = 'broken'");
+    expect(materialized).not.toContain('URLSearchParams');
+    expect(materialized).not.toContain('<nav');
+    expect(materialized).not.toContain('data-anwc-scenario');
+    expect(taskMarkdown(fixture)).toContain('make Growth selectable');
   });
   test('accepts a fair A/B pair and produces a non-secret runbook', () => {
     const plan = validateBenchmarkPlan(validPlan());

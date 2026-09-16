@@ -428,3 +428,4 @@ export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResu
 }
 
 export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema, applySetup, runChecks, repairVerified, type FixtureCase, type FixtureCheck, type CheckResult } from './fixtures/index.js';
+export { fixtureFor, materializeFixtureSource, taskMarkdown, type PreparedFixture } from './fixtures/registry.js';
