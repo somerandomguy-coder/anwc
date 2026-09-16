@@ -554,6 +554,6 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 ## 2026-09-17 — P08 three-app practice manifest
 
 - Added [bench/pilot.practice.json](../bench/pilot.practice.json): six matched ordinary/assisted practice runs across Shop, Pricing, and Dashboard, using the public development corpus at its declared responsive viewports.
-- Evidence on Windows: `npm run bench -- validate bench/pilot.practice.json` passed. It is deliberately an `example`, not a scored or held-out plan; the founder still selects one actual model, private subjects, and frozen receipts before P09.
+- Evidence on Windows: `npm run bench -- validate bench/pilot.practice.json` and `npm run bench -- validate-results bench/pilot.practice.json bench/pilot.practice.results.json` passed. It is deliberately an `example`, not a scored or held-out plan; the founder still selects one actual model, private subjects, and frozen receipts before P09.
 
 

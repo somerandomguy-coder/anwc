@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "0.1",
+  "planId": "anwc-three-app-practice",
+  "runs": [
+    {
+      "runId": "shop-ordinary",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    },
+    {
+      "runId": "shop-assisted",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    },
+    {
+      "runId": "pricing-ordinary",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    },
+    {
+      "runId": "pricing-assisted",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    },
+    {
+      "runId": "dashboard-ordinary",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    },
+    {
+      "runId": "dashboard-assisted",
+      "status": "planned",
+      "wallSeconds": null,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": null,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "notes": "Not run."
+    }
+  ]
+}
