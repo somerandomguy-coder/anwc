@@ -57,7 +57,7 @@ $anwcRehearsal = Join-Path (Split-Path (Get-Location).Path -Parent) ("anwc-rehea
 npm run bench -- rehearse . --out "$anwcRehearsal" --source-revision "$anwcRevision" --detector-revision "$anwcRevision"
 ```
 
-Current rehearsal creates both subjects but grades only ordinary for pricing-blocked and dashboard-outside-save. It uses ports 4511–4513 and 4521–4523, changes the ordinary source through repaired and deletion variants, and leaves those modified outputs as evidence. Do not reuse them as fresh agent subjects. It does not cover shop or verify assisted source linkage. Each grade now uses its own clean evaluator stage. P05 owns the full three-app/two-arm certified rehearsal.
+The committed rehearsal covers Shop, Pricing, and Dashboard in ordinary and ANWC-assisted conditions, for broken, repaired, and runnable deletion states at both required viewports: 18 grades in total. Its durable report is [bench/rehearsals/rehearsal-report.json](../bench/rehearsals/rehearsal-report.json). Do not reuse any rehearsal subject or patch as a fresh agent subject. Each grade uses its own clean evaluator stage.
 
 Wait for the actual process exit and report. A partial log or observation timeout does not establish completion. Retain reports outside subjects; no model calls occur.
 

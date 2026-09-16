@@ -4,7 +4,7 @@
 
 ANWC adds a development-only JSX transform and browser collector to a React/Vite app. It reports overflow, supported clipping, text layout and sampled pointer blockers with source locations. Existing React and CSS remain your application; Chromium still performs layout.
 
-Status, 2026-09-16: the W implementation rollout shipped through `d616943`; P01–P04 now have an evaluator-foundation implementation pass, and P02 has a public 18-pair matrix with independent two-viewport and target-specific detector coverage. The remaining work is provenance/lifecycle acceptance, rehearsal evidence, and then a locally installable alpha. No verified agent time/cost savings or general paint-visibility claims are made.
+Status, 2026-09-16: Milestone M1 has reproducible cross-app evaluation evidence and Milestone M2 has independently installable local alpha packages plus an external-consumer workflow. P08 is next: freeze the small matched agent pilot. No verified agent time/cost savings or general paint-visibility claims are made.
 
 ## Start here
 

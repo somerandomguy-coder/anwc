@@ -1,6 +1,6 @@
 # ANWC benchmark policy
 
-Updated 2026-09-16. No real paired-agent results or verified time/cost savings are recorded. W export/grade/rehearsal commands are development implementations with acceptance gaps; P01–P05 in [ROADMAP](ROADMAP.md) own certification, P08 the pilot kit, and P09 human runs. [STATUS](STATUS.md) owns test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns runnable commands.
+Updated 2026-09-16. No real paired-agent results or verified time/cost savings are recorded. M1's export, grade, and rehearsal workflow is certified; P08 freezes the pilot kit and P09 records human runs. [STATUS](STATUS.md) owns test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns runnable commands.
 
 Current public corpus: ten shop, four pricing and four dashboard defect/healthy pairs. Public lab URLs and source reveal their cases; they are practice data, not holdout. The existing rehearsal only grades ordinary subjects for two apps. Preserve historical artifacts without treating them as proof of full benchmark coverage.
 
@@ -162,7 +162,7 @@ Save a machine-readable run manifest with runId, start/end timestamps, app commi
 
 `bench/pilot.example.results.json` is the matching zero-result ledger. `npm run bench -- validate-results PLAN.json RESULTS.json` ensures it covers every planned run once and that only completed/time-capped runs have outcome fields. `npm run bench -- summarize PLAN.json RESULTS.json --output artifacts/benchmark/SUMMARY.md` emits a descriptive condition summary; unavailable cost remains `NA` rather than zero.
 
-The helper validates run setup and entered result consistency only. It does not materialize defects, execute agents, grade repairs, infer usage, or isolate evaluator truth. Copy the examples outside the subject checkout, replace placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
+The helper currently validates run setup and entered result consistency only. P08 adds the explicit grade-to-ledger import. It does not execute agents or infer usage. Copy the examples outside the subject checkout, replace placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
 
 Before each agent receives a subject folder, run `npm run bench -- check-subject SUBJECT_PATH --condition ordinary` or `--condition anwc-assisted`. The gate rejects known leakage: `docs/`, `bench/`, `tests/`, `.git/`, the public scenario switch, and ANWC CLI code in the ordinary condition. It also requires the CLI in the assisted condition. It is a deterministic preflight check, not a substitute for host-level filesystem and network isolation.
 

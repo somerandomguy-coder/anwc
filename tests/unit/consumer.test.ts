@@ -44,6 +44,14 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`server at ${url} did not become ready: ${lastError}`);
 }
 
+async function stopOwnedProcess(child: ChildProcess | undefined): Promise<void> {
+  if (!child || child.exitCode !== null || !child.pid) return;
+  const exited = new Promise<void>((resolveExit) => child.once('exit', () => resolveExit()));
+  if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+  else child.kill('SIGTERM');
+  await Promise.race([exited, new Promise<void>((resolveTimeout) => setTimeout(resolveTimeout, 5_000))]);
+}
+
 describe('P06 package distribution and external consumer integration', () => {
   let packsDir: string;
   let tarballs: Record<string, { tarballPath: string; files: string[] }>;
@@ -302,9 +310,9 @@ if (rootElement) {
       await waitForServer(devUrl, 15_000);
 
       // Run the installed anwc CLI binary in JSON mode
-      const anwcBin = join(consumerRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'anwc.cmd' : 'anwc');
+      const anwcCli = join(consumerRoot, 'node_modules', '@anwc', 'cli', 'dist', 'main.js');
       const startJson = performance.now();
-      const { stdout: cliOutput } = await pExecFile(anwcBin, ['inspect', devUrl, '--format', 'json'], {
+      const { stdout: cliOutput } = await pExecFile(process.execPath, [anwcCli, 'inspect', devUrl, '--format', 'json'], {
         cwd: consumerRoot,
         windowsHide: true
       });
@@ -353,7 +361,7 @@ if (rootElement) {
 
       // 9. Inspect clean state in text mode with latency & byte measurements
       const startText = performance.now();
-      const { stdout: textOutput } = await pExecFile(anwcBin, ['inspect', devUrl, '--viewport', '1440x900', '--format', 'text'], {
+      const { stdout: textOutput } = await pExecFile(process.execPath, [anwcCli, 'inspect', devUrl, '--viewport', '1440x900', '--format', 'text'], {
         cwd: consumerRoot,
         windowsHide: true
       });
@@ -368,7 +376,7 @@ if (rootElement) {
       const blockedUrl = `http://127.0.0.1:${devPort}/?blocked=1`;
       let blockedText = '';
       try {
-        const res = await pExecFile(anwcBin, ['inspect', blockedUrl, '--viewport', '390x844', '--format', 'text', '--fail-on', 'warning'], {
+        const res = await pExecFile(process.execPath, [anwcCli, 'inspect', blockedUrl, '--viewport', '390x844', '--format', 'text', '--fail-on', 'warning'], {
           cwd: consumerRoot,
           windowsHide: true
         });
@@ -388,7 +396,7 @@ if (rootElement) {
 
       // 11. Title/label change invariance: verify renaming label leaves geometric findings unchanged
       const renamedUrl = `http://127.0.0.1:${devPort}/?blocked=1&label=Update+Settings`;
-      const { stdout: renamedJson } = await pExecFile(anwcBin, ['inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], {
+      const { stdout: renamedJson } = await pExecFile(process.execPath, [anwcCli, 'inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], {
         cwd: consumerRoot,
         windowsHide: true
       });
@@ -405,7 +413,7 @@ if (rootElement) {
       // 12. Actionable error recovery verification via installed CLI binary
       let mdUrlError = '';
       try {
-        await pExecFile(anwcBin, ['inspect', `[App](${devUrl})`], {
+        await pExecFile(process.execPath, [anwcCli, 'inspect', `[App](${devUrl})`], {
           cwd: consumerRoot,
           windowsHide: true
         });
@@ -428,12 +436,8 @@ if (rootElement) {
       expect(measurements.cleanTextChars).toBeLessThan(measurements.cleanJsonChars);
 
     } finally {
-      if (devProcess && devProcess.pid) {
-        try {
-          devProcess.kill('SIGTERM');
-        } catch { /* ignore */ }
-      }
-      await rm(consumerRoot, { recursive: true, force: true });
+      await stopOwnedProcess(devProcess);
+      await rm(consumerRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   }, 180_000);
 });

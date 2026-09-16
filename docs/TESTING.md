@@ -1,6 +1,6 @@
 # Testing ANWC
 
-Updated 2026-09-16. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for the next tasks. Manual demos are usable now. The existing automatic grader needs P01–P05 before relying on it for certified comparisons.
+Updated 2026-09-16. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for the next tasks. Manual demos and the automatic grader are usable now; M1's cross-app rehearsal is certified. P08 is the remaining pilot-kit work before human model runs.
 
 ## 1. Verify and start the shop
 
