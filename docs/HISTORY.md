@@ -2,15 +2,15 @@
 
 > This is the completed-work record. Start at [STATUS](STATUS.md), then use [ROADMAP](ROADMAP.md) for active work. Entries below are retained as evidence, not an active task list.
 
-Last updated: 2026-09-16, Australia/Sydney.
+Last updated: 2026-09-17, Australia/Sydney.
 
-**Historical summary:** W01–W14 implementations shipped. The 2026-09-16 Phase 2 audit corrected the earlier blanket completion claim; the later P01–P04 implementation batch addresses its first foundations but remains under acceptance review. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
+**Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. The 2026-09-17 audit records remaining integrity and validation gaps; Phase 3 is now planned. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
 ## Historical deliverables
 
-The table records shipped implementations. For remaining acceptance work use the Phase 2 audit at the end of this file and ROADMAP; “done” in older rows does not certify the expanded evaluator.
+The table records shipped implementations. For remaining acceptance work use STATUS and ROADMAP; “done” in older rows does not certify the expanded evaluator.
 
 | Deliverable | Status | Evidence |
 | --- | --- | --- |
@@ -555,5 +555,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 
 - Added [bench/pilot.practice.json](../bench/pilot.practice.json): six matched ordinary/assisted practice runs across Shop, Pricing, and Dashboard, using the public development corpus at its declared responsive viewports.
 - Evidence on Windows: `npm run bench -- validate bench/pilot.practice.json` and `npm run bench -- validate-results bench/pilot.practice.json bench/pilot.practice.results.json` passed. It is deliberately an `example`, not a scored or held-out plan; the founder still selects one actual model, private subjects, and frozen receipts before P09.
+
+## 2026-09-17 — Phase 3 planning and evidence correction
+
+- Reviewed implementation at `4093fcb` for the requested next phase. Created Q01–Q11 with fixed scope, owned modules, dependencies, acceptance, four batches, human gates and stop rules. Product outcome: source-linked repair with reproducible UI state and a readable before/after evidence report.
+- Prioritized grade-to-receipt identity, complete result validation and target-bound intent before stronger repair claims. Source review also found overwrite behavior, misleading full-success inference, text-budget limitations and incomplete Windows executable coverage. These findings are planned fixes, not newly executed adversarial reproductions.
+- Newly reproduced on Windows: `npx vitest run tests/unit/benchmark.test.ts -t "keeps planned, completed, capped, failed, and excluded runs distinct"` exited 1: one failed, 36 skipped. Added scored runs in the test lack mandatory receipt hashes. The initial sandbox attempt could not spawn the test tool; the permitted rerun produced this failure. No full integration run occurred in this planning pass.
+- Archived the Phase 2 cards, reconciled README/STATUS/operator/scoring guides and recorded ADR-020. Removed stale claims that import was unimplemented or that the historical rehearsal covered only two apps. Current docs distinguish historical passes, current failures and unimplemented proposals.
+- Documentation validation: all 76 local Markdown links outside code examples resolve; `git diff --check` passed. Remote refs were fetched before committing the planning handoff.
+- No runtime/compiler/CLI feature was changed. Human model results remain absent. Private cases are needed for holdout claims, not to practise the public six-run workflow. Next implementation: Q01, then Q02/Q03 in Batch A.
 
 

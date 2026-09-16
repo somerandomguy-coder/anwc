@@ -4,19 +4,19 @@
 
 ANWC adds a development-only JSX transform and browser collector to a React/Vite app. It reports overflow, supported clipping, text layout and sampled pointer blockers with source locations. Existing React and CSS remain your application; Chromium still performs layout.
 
-Status, 2026-09-16: Milestone M1 has reproducible cross-app evaluation evidence and Milestone M2 has independently installable local alpha packages plus an external-consumer workflow. P08 is next: freeze the small matched agent pilot. No verified agent time/cost savings or general paint-visibility claims are made.
+Status, 2026-09-17: React/Vite inspection, local alpha packages and cross-app evaluation tooling exist. Phase 3 is planned: trustworthy repair results, human reports, reproducible UI states and honest before/after comparison. Start with Q01's result-integrity corrections; current verification gaps are recorded in STATUS. No verified agent time/cost savings or general paint-visibility claims are made.
 
 ## Start here
 
 - [STATUS](docs/STATUS.md): current capability, evidence and next task.
-- [ROADMAP](docs/ROADMAP.md): Phase 2 P01–P09 with fixed decisions and acceptance checks.
+- [ROADMAP](docs/ROADMAP.md): active Phase 3 Q01–Q11, ordered batches and bounded implementation briefs.
 - [TESTING](docs/TESTING.md): try the public demos.
 - [EVALUATOR_SETUP](docs/EVALUATOR_SETUP.md): existing practice export/grade commands and limits.
 - [BENCHMARK](docs/BENCHMARK.md): fair comparison and scoring policy.
 - [PROTOCOL](docs/PROTOCOL.md): snapshot/CLI contract.
 - [HISTORY](docs/HISTORY.md) and [DECISIONS](docs/DECISIONS.md): evidence and rationale.
 
-Original W cards are in [the archive](docs/archive/W_ROLLOUT.md). Arbitrary-site inspection remains in [the deferred inspector plan](docs/ARBITRARY_URL_PLAN.md).
+Original W cards and [Phase 2](docs/archive/PHASE_2.md) are archived. Arbitrary-site inspection remains in [the deferred inspector plan](docs/ARBITRARY_URL_PLAN.md).
 
 ## Run the repository demo
 
@@ -142,4 +142,4 @@ Current support requires installed ANWC integration. `--runtime-only` is an expe
 
 ## Collaboration
 
-Start with P01 in ROADMAP. Complete one task, verify its acceptance, update STATUS/HISTORY, commit and push to `git@github.com:somerandomguy-coder/anwc.git`. Paid agent runs and public package publication are separate decisions. A fresh repair agent receives its subject folder and local URL, not this evaluator repository.
+Start with Q01 in ROADMAP. Commit each completed card, use focused checks during work, and run full integration once per coherent batch before updating STATUS/HISTORY and pushing to `git@github.com:somerandomguy-coder/anwc.git`. Record actual outcomes, including failures. Paid agent runs and public package publication are separate decisions. A fresh repair agent receives its subject folder and local URL, not this evaluator repository.

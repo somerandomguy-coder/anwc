@@ -1,6 +1,6 @@
 # Historical W01–W14 rollout
 
-Archived 2026-09-16. These are the original task cards and completion claims, preserved for traceability. A subsequent source review found remaining acceptance gaps, especially W09–W14. Do not treat the old “complete” labels as current certification. Start at [STATUS](../STATUS.md) and the [Phase 2 roadmap](../ROADMAP.md).
+Archived 2026-09-16. These are the original task cards and completion claims, preserved for traceability. A subsequent source review found remaining acceptance gaps, especially W09–W14. Do not treat the old “complete” labels as current certification. Start at [STATUS](../STATUS.md) and the [active roadmap](../ROADMAP.md); the subsequent [Phase 2 cards](PHASE_2.md) are also archived.
 
 ---
 

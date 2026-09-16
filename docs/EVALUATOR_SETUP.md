@@ -1,6 +1,6 @@
 # Evaluator setup
 
-Updated 2026-09-16. The evaluator uses receipt/result contract `0.3`, neutral materialized subjects, and a fresh staging copy for grading. It remains a **development practice workflow** until the P02 matrix and P03/P04 acceptance coverage are complete. Do not confuse command availability with benchmark validity.
+Updated 2026-09-17. The evaluator uses receipt/result contract `0.3`, materialized subjects and fresh staging for grading. Use it as a **development practice workflow** while Q01/Q02 close grade identity, result validation and target-bound intent gaps. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
 
 ## Separate evaluator and agents
 
@@ -23,7 +23,7 @@ The default command requires a clean checkout and both full revision labels to e
 
 Current IDs are ten `shop-*` cases (`shop-horizontal-overflow` through `shop-outside-viewport`), `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, and `dashboard-outside-save`.
 
-The command creates ordinary/, assisted/, and receipt.json. The receipt binds full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, declared source intent, task, route/viewports, allowed editable paths, and available toolchain identifiers. TASK.md describes common app behavior and the local environment without naming a seeded defect. Keep these public development cases explicitly unblinded until P05 lands.
+The command creates ordinary/, assisted/, and receipt.json. The receipt records full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, source intent values, task, route/viewports, allowed editable paths, and available toolchain identifiers. Current intent hashing covers `main.tsx` values without binding them to targets; Q02 expands this. TASK.md describes common app behavior without naming a seeded defect, but materialized source may retain hints. These public development cases remain unblinded even after tooling improvements.
 
 Install/build/start each subject in its own terminal. Substitute the generated path; do not type PLACEHOLDER literally:
 
@@ -46,13 +46,13 @@ npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\o
 npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --output "$anwcPair\assisted-result.json"
 ```
 
-The grader first rejects changed immutable inputs, declared intent, or evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Result output must stay outside the submitted subject. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
+The grader first checks immutable inputs, its current intent-value digest, and evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Result output must stay outside the submitted subject. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
 
 Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. CLI exits are 0 verified, 1 behavioral failure, 2 integrity/invalid invocation, and 3 infrastructure/incomplete. These are still provisional development-case checks, not complete repair certification. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
 
 ## Pilot grade import
 
-For a scored P08 plan, calculate each prepared receipt hash before assigning it to that run's `receiptHash` field:
+Scored-plan validation requires each prepared receipt hash in that run's `receiptHash` field. The command is available now; dependable scored use remains gated on Q01/Q02:
 
 ```powershell
 npm run bench -- receipt-hash C:\evaluator\pairs\run-01\receipt.json
@@ -64,7 +64,9 @@ After recording the agent's completed or time-capped row in the ledger, import i
 npm run bench -- import-grade C:\pilot\plan.json C:\pilot\results.json --run run-01 --receipt C:\evaluator\pairs\run-01\receipt.json --grade C:\evaluator\results\run-01.json --output C:\pilot\results.with-grade.json
 ```
 
-The command rejects an unknown run, a receipt hash/fixture/state mismatch, a condition mismatch, incomplete evaluator infrastructure results, manual scoring already present, and a duplicate import. It imports only the verified-repair/full-success outcome. Detection precision, recall, and regression counts remain evaluator adjudication rather than automatic claims.
+Current import rejects unknown runs, supplied-receipt/plan mismatches, fixture/condition mismatches, incomplete infrastructure results, existing manual scoring, and duplicate imports. However, the grade itself has no receipt identity, and its schema permits incomplete/contradictory check evidence. It also derives full success from repair status while regressions remain unadjudicated. Q01 fixes these gaps; do not interpret the current imported full-success field as certification. Detection precision, recall and regression counts require separate evaluator adjudication.
+
+Use a new output path every time and preserve the inputs: current import can overwrite an existing output, including the input ledger if pointed there. Q01 will enforce safe file/version handling. The example's separate output path is intentional.
 
 ## Existing rehearsal
 
@@ -81,8 +83,8 @@ Wait for the actual process exit and report. A partial log or observation timeou
 
 `package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` and `check-subject SUBJECT --condition ordinary|anwc-assisted` are older shop-default commands. The overlay materializes application files; the packager generates condition-specific configs afterward. Do not instruct operators to hand-author two different Vite overlays. Their leakage gate is advisory, not proof of clean installation, hidden answers, protected source intent, or OS isolation.
 
-## Scored workflow after Phase 2
+## Remaining scored-workflow acceptance
 
-P01–P05 establish reliable checks, neutral subjects, strict versioned receipts and isolated grading. P06/P07 establish adoption outside this repo. P08 freezes the pilot kit and explicit ledger import; P09 supplies real agent observations. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public.
+Phase 2 implemented the foundation, packaging and pilot helpers. Q01/Q02 close the remaining trust gaps; Q11 dry-runs the complete procedure with explicitly synthetic submissions before real model sessions. The roadmap proposes benchmark contract `0.4`; it is not implemented yet. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public. Human results are still pending.
 
 See [TESTING](TESTING.md) for demo steps and [BENCHMARK](BENCHMARK.md) for scoring policy.

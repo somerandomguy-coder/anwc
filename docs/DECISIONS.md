@@ -67,4 +67,18 @@ The first supported product remains installed ANWC. The user’s arbitrary-site 
 
 Protocol effect: browser snapshots remain 0.1. P03 will introduce a strict benchmark 0.3 contract because current 0.2 provenance/integrity semantics are insufficient; retain historical records and require explicit regeneration for certification. All P tasks are planned, not newly delivered features.
 
-This planning decision does not authorize paid model runs or claim a reviewed public release. Next implementation: P01. Founder input is needed at the pilot/broader-product gates, not for routine task implementation choices.
+This planning decision does not authorize paid model runs or claim a reviewed public release. Next implementation at that time: P01. Founder input is needed at the pilot/broader-product gates, not for routine task implementation choices.
+
+### ADR-020 — Phase 3: a dependable UI repair workflow
+
+Date: 2026-09-17. Context: the founder requested a useful next phase, edge-case coverage and human-readable output. Review at `4093fcb` found real collector/package/evaluator capabilities, but no recorded human model comparison, a reproduced ledger regression, and source-reviewed gaps in grade identity, result semantics and target-bound intent. Phase 2's blanket certification wording exceeded current evidence.
+
+Decision: Q01–Q11 in [ROADMAP](ROADMAP.md) is the sole active backlog. Repair provenance/intent first, then ship a shared evidence model and offline human reports early. Add independently checked browser conformance cases, explicitly replayed local states, conservative before/after matching, targeted engine fixes, compact agent drill-down, and installed Windows/Linux acceptance. Finish the operator kit; actual model sessions remain a human gate. Archive P cards and keep STATUS short enough for a collaborator to resume without reading historical plans.
+
+The phase-end proof is a source repair in an unrelated React/Vite app, replayed at named states and two widths, with a readable report distinguishing measured change, retained behavior and unknown coverage. Source identity, stable public intent, independent browser oracles and reproducible repair evidence are the intended cumulative advantage. This is a product hypothesis, not demonstrated uniqueness or agent savings.
+
+Alternatives: merely add fixture sites or polish text (misses repair verification); start arbitrary-site/Next.js/MCP work (expands scope before installed adoption evidence); stop all development until model tests (leaves actionable engineering gaps and usability work idle). Keep those broader product tracks deferred, not cancelled.
+
+Contracts: preserve snapshot `0.1` compatibility; version report/state/diff separately. Propose benchmark receipt/result `0.4` with explicit migration instead of silently certifying old grades. Capture remains read-only; declared replay is a separate runner. Supported scope stays local installed React/Vite/Chromium; no hosted service or public package publication in this phase.
+
+Delivery: four coherent batches, a commit for each completed card, focused checks during work and one exit-recorded full integration run per batch. Q05 may complete its measurement harness while recording engine failures for Q08; failures never become passes. No automatic sub-agent delegation. Stop after engineering acceptance with human evidence explicitly pending rather than creating another speculative backlog. This decision records planning only; Q01 is next.

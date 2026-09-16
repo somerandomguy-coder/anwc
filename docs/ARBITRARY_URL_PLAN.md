@@ -1,6 +1,6 @@
 # Inspecting arbitrary websites: current behavior and implementation plan
 
-Current planning status, 2026-09-16: R01 shipped; R02–R06 remain deferred. [ROADMAP](ROADMAP.md) is the active Phase 2 backlog, beginning with evaluator reliability and external React/Vite adoption. The technical R cards below remain design targets, not delivered support. Historical external-site observations are retained; no Amazon/Instagram test was rerun.
+Current planning status, 2026-09-17: R01 shipped; R02–R06 remain deferred. [ROADMAP](ROADMAP.md) is the active Phase 3 backlog for a dependable installed React/Vite repair workflow. Runtime-only support remains a future product track, to be reconsidered after usage evidence. The technical R cards below remain design targets, not delivered support. Historical external-site observations are retained; no Amazon/Instagram test was rerun.
 
 ## The product behavior we want
 
@@ -57,7 +57,7 @@ An opaque layer with `pointer-events:none` may visually hide a control while all
 
 ## Fixed scope and rollout
 
-The current product scope is installed ANWC only: developers add the Vite plugin/runtime to an application they control. The W implementation rollout has shipped, with acceptance corrections assigned to Phase 2 P01–P05. P06–P08 then establish installed-library adoption and the pilot kit. R02–R06 remain the future runtime-only inspector track and must not delay the installed-runtime work. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
+The current product scope is installed ANWC only: developers add the Vite plugin/runtime to an application they control. W and Phase 2 implementations provide the foundation; Phase 3 Q01–Q11 owns current acceptance corrections and the usable repair workflow. R02–R06 remain the future runtime-only inspector track and must not delay installed-runtime work. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
 
 | Task | Deliverable | Dependencies |
 | --- | --- | --- |

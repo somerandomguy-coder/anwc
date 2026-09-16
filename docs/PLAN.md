@@ -1,6 +1,6 @@
 # ANWC implementation plan
 
-> **Implementation status:** This is the original architecture plan. T00–T09 have now been implemented and frozen at `4c6cafe`; active next-phase work is specified in [ROADMAP](ROADMAP.md), including acceptance corrections and an external-project alpha before the paired-agent experiment. Read [STATUS](STATUS.md) for the current handoff and [HISTORY](HISTORY.md) for verified evidence. Where this document describes a proposed or later capability, it is not a claim that the MVP already supports it.
+> **Historical architecture:** T00–T09 were implemented through `4c6cafe`. The sole active backlog is Phase 3 Q01–Q11 in [ROADMAP](ROADMAP.md): result integrity, reports, reproducible state and repair comparison. Read [STATUS](STATUS.md) for current acceptance and [HISTORY](HISTORY.md) for evidence. Proposals below do not imply shipped support; do not replay this original plan as new work.
 
 Planning date: 2026-09-15, Australia/Sydney. Baseline: authenticated SSH clone succeeded; remote repository contained no commits or source. The three supplied notes are concept material, not an implementation to preserve. This document specifies work to do; see [HISTORY](HISTORY.md) for what has actually been done.
 

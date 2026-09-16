@@ -1,8 +1,8 @@
 # ANWC benchmark policy
 
-Updated 2026-09-16. No real paired-agent results or verified time/cost savings are recorded. M1's export, grade, and rehearsal workflow is certified; P08 freezes the pilot kit and P09 records human runs. [STATUS](STATUS.md) owns test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns runnable commands.
+Updated 2026-09-17. No real paired-agent results or verified time/cost savings are recorded. Export, grade, rehearsal and pilot import exist, with trust gaps assigned to Q01/Q02 and operator handoff to Q11 in [ROADMAP](ROADMAP.md). [STATUS](STATUS.md) owns current test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns existing runnable commands.
 
-Current public corpus: ten shop, four pricing and four dashboard defect/healthy pairs. Public lab URLs and source reveal their cases; they are practice data, not holdout. The existing rehearsal only grades ordinary subjects for two apps. Preserve historical artifacts without treating them as proof of full benchmark coverage.
+Current public corpus: ten shop, four pricing and four dashboard defect/healthy pairs. Public lab URLs and source reveal their cases; they are practice data, not holdout. The committed rehearsal contains 18 grades across all three apps and both arms, with broken/repaired/deletion states at two widths. Preserve its recorded revisions without treating it as a current integration pass or a model experiment.
 
 ## 1. The comparison that answers the product question
 
@@ -27,7 +27,7 @@ A may use competent browser APIs and write its own DOM probes. The baseline shou
 
 **Repair:** agent modifies the app, verifies it, and submits a patch. Score independently verified repairs, regressions, total cost, and time. Do not give the repair agent the evaluator's list of seeded defects. The task is “inspect and repair this page,” not “fix the six named bugs below.”
 
-For the first Phase 2 pilot, use three matched cases spanning the three apps, with one fresh A session and one fresh B session per case: six runs with one exact model. Expand repetitions or models only after validating the workflow and agreeing on a run budget. This is a directional pilot; it cannot establish broad cross-website performance. Expand to unfamiliar apps, held-out layouts and more repeats before general claims.
+For the first pilot, use three matched cases spanning the three apps, with one fresh A session and one fresh B session per case: six runs with one exact model. Expand repetitions or models only after validating the workflow and agreeing on a run budget. This is a directional pilot; it cannot establish broad cross-website performance. Expand to unfamiliar apps, held-out layouts and more repeats before general claims.
 
 Reserve different fixture variations for detector development and evaluation. Useful held-out variations include a different wrapping width, nested clipping instead of a single parent, a differently positioned blocker, and longer product names. Do not tune rules on scored runs and then treat reruns as independent holdout results.
 
@@ -69,9 +69,9 @@ Evaluator IDs below belong in evaluator documentation, not readable DOM attribut
 | C07 | Menu intentionally closed without current expectation | Hidden state matches task state | Hidden observation, no error |
 | C08 | Disabled unavailable item | Disabled behavior matches displayed state | Disabled fact, no occlusion claim |
 
-Minimum tonight: D01–D06 and C01–C06 working at both required widths with deterministic setup. Add D07–D10 and L01–L03 when the base gate passes. At least L01 should be present before claiming any screenshot-free visibility capability; inability to diagnose it is acceptable when explicitly reported as unknown.
+The table describes evaluation requirements, not a current implementation checklist. Use STATUS for shipped coverage and Q05 for the next conformance matrix. At least L01 should be present before claiming any screenshot-free visibility capability; inability to diagnose it is acceptable when explicitly reported as unknown.
 
-If a defect is viewport-specific, declare its failing viewport and other-width control in the case registry; do not add faults simply to meet a count. The Phase 2 scope remains the existing 18 development pairs. The combined page can use natural responsive behavior; isolated fixtures make exact gates achievable.
+If a defect is viewport-specific, declare its failing viewport and other-width control in the case registry; do not add faults simply to meet a count. The repair pilot retains the existing 18 development pairs; Q05's conformance corpus is a separate engineering test set. The combined page can use natural responsive behavior; isolated fixtures make exact gates achievable.
 
 Ground truth has two layers: the seeded mutation and observed behavior. A mutation is not automatically a bug if it has no effect at the selected width/state. Validate every scored fixture with independent browser assertions and a human visual check before freezing it. The human can use screenshots while building the corpus; those costs and activities are not agent inspection results.
 
@@ -162,7 +162,7 @@ Save a machine-readable run manifest with runId, start/end timestamps, app commi
 
 `bench/pilot.example.results.json` is the matching zero-result ledger. `npm run bench -- validate-results PLAN.json RESULTS.json` ensures it covers every planned run once and that only completed/time-capped runs have outcome fields. `npm run bench -- summarize PLAN.json RESULTS.json --output artifacts/benchmark/SUMMARY.md` emits a descriptive condition summary; unavailable cost remains `NA` rather than zero.
 
-The helper validates run setup and entered result consistency, and `import-grade` binds a behavioral evaluator result to one completed/time-capped run using that run's frozen receipt hash. It does not execute agents or infer usage. Copy the examples outside the subject checkout, replace placeholder model/prompt fields, and set `kind` to `scored` before an actual pilot. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
+The helper validates run setup and entered result consistency. `import-grade` checks the supplied receipt against a completed/time-capped run's frozen hash, but the grade itself has no receipt identity; Q01 closes this substitution gap and validates check completeness. Current import also assigns full success from repair status without independent regression adjudication. Do not treat that field as certified success. It does not execute agents or infer usage. Copy examples outside the subject checkout and replace placeholder model/prompt fields. Use scored plans only after Q01/Q02 acceptance and exact receipt assignment. Keep generated runbooks, logs, patches, usage records, and scoring output outside the agent-readable workspace.
 
 Before each agent receives a subject folder, run `npm run bench -- check-subject SUBJECT_PATH --condition ordinary` or `--condition anwc-assisted`. The gate rejects known leakage: `docs/`, `bench/`, `tests/`, `.git/`, the public scenario switch, and ANWC CLI code in the ordinary condition. It also requires the CLI in the assisted condition. It is a deterministic preflight check, not a substitute for host-level filesystem and network isolation.
 
@@ -179,4 +179,4 @@ Pre-register these as engineering targets, not statistically validated threshold
 
 With three initial pairs, show every paired outcome and range; avoid sweeping significance claims. With larger repeats, choose an appropriate paired uncertainty analysis and report failed/time-capped runs separately. Generalize only after testing unrelated application layouts and other models.
 
-The Phase 2 decision is whether source-linked evidence helps agents preserve behavior while repairing UI, and which observed adoption problems should guide subsequent work.
+The human pilot decision remains whether source-linked evidence helps agents preserve behavior while repairing UI, and which observed adoption problems should guide subsequent work. Phase 3 adds a usable replay/report/comparison workflow; its engineering acceptance cannot replace that experiment.

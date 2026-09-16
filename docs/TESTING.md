@@ -1,6 +1,6 @@
 # Testing ANWC
 
-Updated 2026-09-16. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for the next tasks. Manual demos and the automatic grader are usable now; M1's cross-app rehearsal is certified. P08 is the remaining pilot-kit work before human model runs.
+Updated 2026-09-17. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for Phase 3 tasks. Existing demos and grading commands are usable for practice. Q01/Q02 address result/intent integrity gaps; Q11 completes operator handoff. Planned HTML reports, state replay and comparisons are not implemented yet.
 
 ## 1. Verify and start the shop
 
@@ -52,17 +52,17 @@ npm run dev --workspace=@anwc/dashboard -- --host 127.0.0.1 --port 4177
 - Landing cases: title-overflow, description-crop, blocked-selection, hidden-selection.
 - Dashboard cases: clipped-save, long-title, blocked-input, outside-save.
 
-Use 390×844 and 1440×900. Reset the page between cases and record any setup/scroll. Presence of a button alone is not proof of the intended failure; P01/P02 add stronger independent checks for these newer apps.
+Use 390×844 and 1440×900. Reset the page between cases and record any setup/scroll. Presence of a button alone is not proof of the intended failure; the independent browser checks exercise behavior and target geometry.
 
 ## 3. Try an editable isolated subject
 
 Follow [EVALUATOR_SETUP](EVALUATOR_SETUP.md), which owns the current export, startup, grading and rehearsal command sequence. Give the agent its exported folder plus URL. Do not give it an ANWC clone, enclosing evaluator directory, grader definitions, earlier answers, receipt, or other condition's patch.
 
-Current exports/grades are practice-only: prompts/source reveal fault hints, source intent is not frozen, provenance is not verified, and full independent acceptance is incomplete. You may learn from them now; do not spend a large comparison budget assuming those gaps are solved.
+Treat current exports/grades as development practice. Neutral briefs, immutable/evaluator hashes and intent-value checks exist, but target-bound intent across modules and grade-to-receipt binding are incomplete. Public source variants can retain fault hints. Q01/Q02 define the fixes; neither a clean CLI exit nor the historical rehearsal closes those gaps.
 
 ## 4. Planned small pilot
 
-After P01–P08, start with **one exact model, three cases spanning three apps, two conditions = six runs**. Keep high thinking if available, matching the founder's preference; no ultra or automatic paid execution. Record the exact provider label/settings actually used, rather than assuming a named version exists.
+After Q01/Q02 acceptance and Q11's operator dry-run, start with **one exact model, three cases spanning three apps, two conditions = six runs**. Keep high thinking if available, matching the founder's preference; no ultra or automatic paid execution. Record the exact provider label/settings actually used, rather than assuming a named version exists. Casual demo testing can happen now.
 
 A: normal source, shell/build, browser DOM/Playwright and screenshots. B: identical inputs and normal tools plus ANWC. Both get the same neutral task, viewport/setup and initial 20-minute cap. Fresh sessions and storage for each run; counterbalance condition order. Keep screenshot usage, interventions, patches and transcripts.
 
@@ -81,6 +81,6 @@ npm run bench -- validate-results PATH_TO_PLAN.json PATH_TO_RESULTS.json
 npm run bench -- summarize PATH_TO_PLAN.json PATH_TO_RESULTS.json --output artifacts/benchmark/summary.md
 ```
 
-The ledger is separate from the grader. P08 plans explicit grade import; until then evaluator entries are manual. It preserves planned, completed, capped, infrastructure-failed and excluded rows. Do not copy repair check outcomes into detection precision/recall.
+The ledger is separate from the grader. Explicit grade import exists; see EVALUATOR_SETUP for its command and current limitations. It represents planned, completed, capped, infrastructure-failed and excluded rows, but the latest ledger regression and result-integrity fixes are still pending in Q01. Do not copy repair check outcomes into detection precision/recall or infer absence of regressions from a passing grade.
 
 Read [BENCHMARK](BENCHMARK.md) before interpreting any result. Geometry and pointer samples do not prove paint visibility; masks, transforms, canvas and unsupported subtrees need explicit limits.
