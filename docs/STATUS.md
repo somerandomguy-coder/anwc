@@ -1,14 +1,14 @@
 # ANWC status
 
-Updated 2026-09-16. P05 cross-app rehearsal evidence is complete and **Milestone M1 (trustworthy evaluation)** is certified; Phase 2 moves to P06 (make ANWC installable outside this repository).
+Updated 2026-09-16. P06 installable local alpha packages and external consumer acceptance is complete; Phase 2 moves to P07 (make the first real inspection understandable).
 
 ## Start here
 
 ANWC is a working development-only React/Vite inspection prototype. Its compiler adds source identity; its browser collector measures layout, clipping, text and sampled pointer access. It does not replace the browser or prove paint visibility.
 
-Milestone M1 (trustworthy evaluation: P01–P05) is certified: ordered independent checks, 18 fixture registry entries, receipt/result contract `0.3`, fresh staged grader, proven matrix/detectors, strict provenance, bounded process lifecycle/failure handling, and the complete 18-run cross-app rehearsal evidence across all three apps and both arms (`ordinary` and `anwc-assisted`).
+Milestone M1 (trustworthy evaluation: P01–P05) is certified. P06 has delivered independently installable local alpha packages (`0.1.0-alpha.0`) for the 6 core packages (`@anwc/protocol`, `@anwc/compiler`, `@anwc/runtime`, `@anwc/diagnostics`, `@anwc/vite-plugin`, and `@anwc/cli`), verified in an isolated plain React/Vite consumer outside repo ancestry with clean install, typecheck, production build stripping, and CLI inspection.
 
-**Next task: P06 make ANWC installable outside this repository**, in [ROADMAP](ROADMAP.md): package manifests, compiled ESM/declaration outputs, explicit exports, versioned local tarballs (`npm pack`), and external-consumer acceptance harness installing into a fresh plain React/Vite consumer outside repo ancestry. Phase 2 delivers trustworthy evaluation (P01–P05, complete), then an external-project alpha (P06–P08). The founder-run pilot is P09.
+**Next task: P07 make the first real inspection understandable**, in [ROADMAP](ROADMAP.md): developer quickstart in README, installed CLI text/errors, source navigation, and one neutral external-consumer demo without new framework adapters. Phase 2 delivers trustworthy evaluation (P01–P05, complete), then an external-project alpha (P06–P08). The founder-run pilot is P09.
 
 The W01–W14 implementation rollout shipped through `d616943`. The roadmap records concrete source-review gaps and follow-ups. The commands are useful for development practice; current generated subjects/grades are verified for reproducible evaluation before any agent pilot.
 
@@ -16,15 +16,15 @@ The W01–W14 implementation rollout shipped through `d616943`. The roadmap reco
 
 | Area | What exists | What remains |
 | --- | --- | --- |
-| Installed Vite/runtime | JSX/source linkage, on-demand inspect, HMR and production stripping tests | Independently installable packages/external-consumer acceptance: P06 |
+| Installed Vite/runtime | Compiled ESM/declaration packages, audited local tarballs (`0.1.0-alpha.0`), zero-config `anwc()`, production stripping, and installed CLI bin | Clear first inspection walkthrough: P07 |
 | Public fixture corpus | 10 shop, 4 landing, 4 dashboard broken/healthy pairs with independent two-viewport browser truth; [public matrix](../bench/fixture-matrix.json); paired target-specific detector evidence; representative materialized states pass/fail correctly | Review P02 evidence; keep public fixtures practice-only |
-| prepare-pair / check-pair | 18 registered app states; neutral TASK.md; contract `0.3` practice/scored receipts; dirty/scored and path traversal acceptance verified | Milestone M1 complete; P06 external packaging is next |
-| grade | Ordered exact checks; evaluator-hash gate with separate tree verification; fresh staged install; strict loopback port; process group cleanup; occupied-port decoy rejection; bounded timeouts; syntax/deletion failure modes | Milestone M1 complete; P06 external packaging is next |
-| rehearse | 18 grade runs across Shop, Pricing, and Dashboard; both ordinary and anwc-assisted arms; broken, repaired, and deletion states at 390×844 and 1440×900; durable report in Git at `bench/rehearsals/rehearsal-report.json` | Milestone M1 complete; P06 external packaging is next |
+| prepare-pair / check-pair | 18 registered app states; neutral TASK.md; contract `0.3` practice/scored receipts; dirty/scored and path traversal acceptance verified | Milestone M1 complete; P06 external packaging complete |
+| grade | Ordered exact checks; evaluator-hash gate with separate tree verification; fresh staged install; strict loopback port; process group cleanup; occupied-port decoy rejection; bounded timeouts; syntax/deletion failure modes | Milestone M1 complete; P06 external packaging complete |
+| rehearse | 18 grade runs across Shop, Pricing, and Dashboard; both ordinary and anwc-assisted arms; broken, repaired, and deletion states at 390×844 and 1440×900; durable report in Git at `bench/rehearsals/rehearsal-report.json` | Milestone M1 complete; P06 external packaging complete |
 | Agent benefit | No real paired results recorded | Pilot P08–P09; no cost/speed claim yet |
 | Arbitrary URLs | Experimental `--runtime-only` injection exists | Supported default still requires installed runtime; R02–R06 deferred |
 
-The evaluator-foundation batch passed `npm run typecheck`, 22 focused benchmark unit tests, and 22 Chromium browser tests on Windows. The P02 matrix and detector slice validates every public broken/healthy pair at mobile and desktop widths plus target-specific codes. The fresh `npm run test:integration` gate passed on Linux: TypeScript, 56 unit tests (covering P01-P05 contracts, 18-run rehearsal report schema validation, provenance, separate evaluator trees, occupied decoy rejection, install/startup timeouts, syntax/deletion failure modes, port release, and file immutability), 26 Chromium browser tests, and production builds for all three apps. Untested platforms: macOS.
+The evaluator-foundation batch passed `npm run typecheck`, 22 focused benchmark unit tests, and 22 Chromium browser tests on Windows. The P02 matrix and detector slice validates every public broken/healthy pair at mobile and desktop widths plus target-specific codes. The fresh `npm run test:integration` gate passed on Linux: TypeScript, 58 unit tests (covering P01-P06 contracts, 18-run rehearsal report schema, tarball leak audits, external consumer installation, typecheck, production stripping, and CLI inspection), 26 Chromium browser tests, and production builds for all three apps. Untested platforms: macOS.
 
 The complete 18-run cross-app rehearsal evidence is committed at `bench/rehearsals/rehearsal-report.json` under contract `0.3` with full evaluator hashes. All 18 runs matched expectations: 6 broken runs failed on expected checks, 6 repaired runs passed, and 6 runnable deletion runs failed. See [HISTORY](HISTORY.md).
 

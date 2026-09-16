@@ -19,8 +19,14 @@ class CliError extends Error {
 let bundledRuntime: Promise<string> | undefined;
 
 async function runtimeScript(): Promise<string> {
+  let entryPoint: string;
+  try {
+    entryPoint = fileURLToPath(import.meta.resolve('@anwc/runtime/browser-entry'));
+  } catch {
+    entryPoint = fileURLToPath(new URL('../../runtime/src/browser-entry.ts', import.meta.url));
+  }
   bundledRuntime ??= build({
-    entryPoints: [fileURLToPath(new URL('../../runtime/src/browser-entry.ts', import.meta.url))],
+    entryPoints: [entryPoint],
     bundle: true,
     format: 'iife',
     platform: 'browser',
@@ -94,7 +100,16 @@ async function capturePage(page: Page, options: InspectOptions): Promise<RawCapt
 }
 
 export async function inspect(options: InspectOptions): Promise<Snapshot> {
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("Executable doesn't exist") || message.includes('playwright install')) {
+      throw new CliError('INTERNAL', "Playwright browser executable is missing. Please run 'npx playwright install chromium' to install the required browser.", { cause: 'BROWSER_MISSING' });
+    }
+    throw error;
+  }
   try {
     const context = await browser.newContext({ viewport: options.viewport });
     try {

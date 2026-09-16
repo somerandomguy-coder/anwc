@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
 import { formatText, inspect, parseArguments, run } from '../../packages/cli/src/index.js';
-import { validSnapshotFixture } from '../../packages/protocol/src/fixtures.js';
+import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
 let server: ViteDevServer;
 const url = 'http://127.0.0.1:4174';

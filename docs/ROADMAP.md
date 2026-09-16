@@ -52,8 +52,8 @@ These are source-review findings, not new browser reproduction results:
 | P03 | Verified provenance and frozen intent/grade contracts | P02 | done; provenance acceptance and Linux cross-platform verified |
 | P04 | Bounded grading in a clean evaluator copy | P03 | done; lifecycle and failure modes verified on Linux |
 | P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | done; 18-run rehearsal evidence verified on Linux; Milestone M1 complete |
-| P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | next |
-| P07 | Clear first-inspection workflow on an unfamiliar app | P06 | queued |
+| P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | done; local alpha packages compiled/packed and external consumer verified |
+| P07 | Clear first-inspection workflow on an unfamiliar app | P06 | next |
 | P08 | Small runnable pilot kit and explicit ledger import | P05, P07 | queued |
 | P09 | Founder-run comparison and next-product decision | P08 | requires human runs |
 

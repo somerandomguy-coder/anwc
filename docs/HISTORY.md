@@ -470,3 +470,32 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
   - `npm run build`: Production builds succeeded for `@anwc/shop`, `@anwc/landing`, and `@anwc/dashboard`.
   - Untested platforms: macOS.
 - Next task: P06 — Make ANWC installable outside this repository (alpha package packaging and external-consumer acceptance).
+
+## 2026-09-16 — P06 local package distribution and external consumer acceptance
+
+- Compiled standard ESM (`.js`) and TypeScript declaration (`.d.ts`) outputs for all 6 public packages (`@anwc/protocol`, `@anwc/compiler`, `@anwc/runtime`, `@anwc/diagnostics`, `@anwc/vite-plugin`, `@anwc/cli`) into `dist/` using TypeScript project references (`composite: true`).
+- Kept `@anwc/benchmark` and example apps (`shop`, `landing`, `dashboard`) strictly `"private": true` with `noEmit: true`.
+- Clean source isolation:
+  - Relocated test fixtures from `packages/protocol/src/fixtures.ts` to `packages/protocol/test/fixtures.ts` to prevent test fixtures or example app paths from leaking into emitted declaration files.
+  - Added shebang `#!/usr/bin/env node` to `packages/cli/src/main.ts` and set executable permissions (`0o755`) in `scripts/build.js`.
+  - Decoupled `packages/cli` from monorepo-relative paths: resolves runtime browser entry via `import.meta.resolve('@anwc/runtime/browser-entry')` with local development fallback.
+  - Wrapped `chromium.launch` in `@anwc/cli` with clear actionable error when Chromium browser binaries are missing.
+- Package manifests & dependencies:
+  - Versioned all 6 packages as `0.1.0-alpha.0` with explicit `main`, `types`, `exports`, and `"files": ["dist", "README.md"]`.
+  - Decoupled internal dependencies to exact `"0.1.0-alpha.0"` workspace matches to prevent npm 11 registry lookup failures for prerelease versions.
+  - Exported `bin: { "anwc": "./dist/main.js" }` from `@anwc/cli`.
+- Automated packaging & tarball audit:
+  - Implemented `scripts/pack.js` (`npm run pack:packages`) to pack tarballs into `dist/packages/*.tgz`.
+  - Added strict tarball content audits verifying zero leakage of test files, fixtures, app files, uncompiled TypeScript (`.ts`/`.tsx`), source maps, or internal monorepo paths.
+- External consumer acceptance test (`tests/unit/consumer.test.ts`):
+  - Packs fresh local tarballs into an isolated directory.
+  - Sets up a standalone React/Vite consumer application in `mkdtemp(tmpdir())` completely outside repo ancestry.
+  - Installs packed tarballs via `npm install --no-audit --no-fund <tarballs>`.
+  - Verifies TypeScript typechecking (`tsc --noEmit`) passes cleanly with emitted `.d.ts` types.
+  - Verifies production stripping: `vite build` produces output containing no `data-anwc-site`, `__ANWC__`, or virtual runtime strings.
+  - Verifies live inspection: launches Vite dev server, runs installed `anwc` CLI binary, and verifies CLI output correctly reports source file and line/col locations pointing to consumer JSX (`App.tsx`), handles repeated list elements, and reports uninstrumented elements with `source: null`.
+- Tested environment matrix documented in `README.md`, `docs/STATUS.md`, `docs/ROADMAP.md`, and `docs/HISTORY.md`:
+  - Node 24.18.0, npm 11.13.0, TypeScript 5.7.3, Vite 6.1.0, React 19.0.0, Vitest 3.0.7, Playwright 1.51.1 / Chromium build 1161 on Linux (x86_64).
+  - Untested platforms: macOS, Windows (fresh P06 pass).
+- Next task: P07 — Make the first real inspection understandable.
+

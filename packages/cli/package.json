@@ -1,12 +1,29 @@
 {
   "name": "@anwc/cli",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "type": "module",
-  "exports": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "anwc": "./dist/main.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
   "dependencies": {
-    "@anwc/diagnostics": "0.0.0",
-    "@anwc/protocol": "0.0.0",
+    "@anwc/diagnostics": "0.1.0-alpha.0",
+    "@anwc/protocol": "0.1.0-alpha.0",
+    "@anwc/runtime": "0.1.0-alpha.0",
     "esbuild": "0.25.0",
     "playwright": "1.51.1"
   }

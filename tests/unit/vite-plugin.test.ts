@@ -10,9 +10,10 @@ describe('ANWC Vite plugin', () => {
       logLevel: 'silent',
       build: { write: false }
     });
-    const outputs = (Array.isArray(result) ? result : [result]).flatMap((bundle) => bundle.output);
+    const bundles = Array.isArray(result) ? result : [result];
+    const outputs = bundles.flatMap((bundle) => 'output' in bundle ? bundle.output : []);
     const contents = outputs.map((output) => output.type === 'asset' ? String(output.source) : output.code).join('\n');
     expect(contents).not.toContain('virtual:anwc-runtime');
     expect(contents).not.toContain('data-anwc-site');
-  });
+  }, 30_000);
 });

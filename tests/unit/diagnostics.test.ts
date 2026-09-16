@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { diagnose } from '../../packages/diagnostics/src/index.js';
-import type { RawCapture } from '../../packages/protocol/src/index.js';
-import { validRawCaptureFixture } from '../../packages/protocol/src/fixtures.js';
+import { snapshotSchema, type RawCapture } from '../../packages/protocol/src/index.js';
+import { validRawCaptureFixture } from '../../packages/protocol/test/fixtures.js';
 
 function captureWithFindings(): RawCapture {
   const capture = JSON.parse(JSON.stringify(validRawCaptureFixture)) as RawCapture;

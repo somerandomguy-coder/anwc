@@ -1,4 +1,4 @@
-import type { RawCapture, Snapshot } from './schema.js';
+import type { RawCapture, Snapshot } from '../src/schema.js';
 
 const known = <T>(value: T) => ({ status: 'known' as const, value, method: 'fixture', limitations: [] });
 const unknown = (limitations: string[]) => ({ status: 'unknown' as const, value: null, method: 'fixture', limitations });

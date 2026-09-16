@@ -42,19 +42,47 @@ npm run bench -- validate bench/pilot.example.json
 
 The integration command covers TypeScript, unit/CLI tests, Chromium tests and production builds. Current and historical evidence live in STATUS rather than duplicated test counts here.
 
-## Integration direction
+## Local alpha packages and external consumer
 
-The plugin already works in the monorepo examples:
+P06 compiles standard ESM (`.js`) and TypeScript declaration (`.d.ts`) artifacts and packages audited local tarballs (`0.1.0-alpha.0`) for installation in external React/Vite projects outside this repository:
 
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { anwc } from '@anwc/vite-plugin';
+1. **Pack the local tarballs:**
+   ```bash
+   npm run pack:packages
+   ```
+   This generates audited tarballs in `dist/packages/` for `@anwc/protocol`, `@anwc/compiler`, `@anwc/runtime`, `@anwc/diagnostics`, `@anwc/vite-plugin`, and `@anwc/cli`.
 
-export default defineConfig({ plugins: [anwc(), react()] });
-```
+2. **Install in your consumer React/Vite project:**
+   ```bash
+   npm install /path/to/anwc/dist/packages/*.tgz
+   npx playwright install chromium
+   ```
 
-Packages currently use private workspace manifests and TypeScript source exports. P06 will provide tested local tarballs and an installed CLI for an unrelated project; public npm availability is not claimed.
+3. **Add plugin to `vite.config.ts`:**
+   ```ts
+   import { defineConfig } from 'vite';
+   import react from '@vitejs/plugin-react';
+   import { anwc } from '@anwc/vite-plugin';
+
+   export default defineConfig({
+     plugins: [anwc(), react()]
+   });
+   ```
+   Calling `anwc()` with no arguments automatically resolves the project root against the consumer's Vite config. In production (`vite build`), runtime attributes and identifiers are completely stripped.
+
+4. **Inspect with the installed CLI:**
+   ```bash
+   npx anwc inspect "http://127.0.0.1:5173/" --viewport 1440x900 --format text
+   ```
+   Source locations point to consumer JSX (e.g., `src/App.tsx:L:C`).
+
+Tested environment matrix:
+- **Node.js**: v22.x (supported: Node.js >= 20.6.0)
+- **npm**: v9.x / v11.x
+- **Vite**: v6.x (peer dependency: `^5.0.0 || ^6.0.0`)
+- **React**: v19.x (and React 18.x)
+- **OS**: Linux (x86_64), Windows 11
+- **Browser prerequisite**: Chromium via Playwright (`npx playwright install chromium`).
 
 An expectation such as `data-anwc-max-lines="2"` supplies a design contract. Wrapping without that contract is an observation. Pointer hits measure event targeting, not whether every pixel of an element is painted visibly. Capture does not click, fill, scroll or take screenshots.
 

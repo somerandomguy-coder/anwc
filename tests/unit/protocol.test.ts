@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { parseRawCapture, parseSnapshot } from '../../packages/protocol/src/index.js';
-import { partialRawCaptureFixture, validRawCaptureFixture, validSnapshotFixture } from '../../packages/protocol/src/fixtures.js';
+import { partialRawCaptureFixture, validRawCaptureFixture, validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
 describe('ANWC protocol 0.1', () => {
   test('round-trips repeat sites, an uninstrumented blocker, and unknown paint', () => {

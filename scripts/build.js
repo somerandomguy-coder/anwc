@@ -11,4 +11,15 @@ const result = spawnSync(cmd, ['run', 'build', '--workspaces', '--if-present'], 
     NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --import ${tsx}`.trim()
   }
 });
+
+if (result.status === 0 && process.platform !== 'win32') {
+  const { chmodSync, existsSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { join } = await import('node:path');
+  const cliBin = fileURLToPath(new URL('../packages/cli/dist/main.js', import.meta.url));
+  if (existsSync(cliBin)) {
+    try { chmodSync(cliBin, 0o755); } catch { /* ignore */ }
+  }
+}
+
 process.exit(result.status ?? 0);
