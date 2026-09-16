@@ -1,343 +1,204 @@
-# ANWC short-term roadmap
+# Phase 2: a trustworthy, installable ANWC alpha
 
-Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
+Planning review: 2026-09-16. Source reviewed: `d616943bcb07597cc6424bbb53ff0894e99143f7`. **Planning only: P01–P09 below are not implemented. Start with P01.**
 
-**Status: W01–W14 are complete.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
+## Outcome and sequence
 
-**Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
+A developer should be able to add ANWC to an existing React/Vite application, inspect it with a plain local URL, get useful source-linked evidence, repair a problem, and check the result. The evaluator should be able to compare that workflow with ordinary agent tools without leaking answers or accepting superficial repairs.
 
-## What to build while agent testing is pending
+Build in two milestones: **M1 — trustworthy evaluation (P01–P05)**, then **M2 — external-project alpha (P06–P08)**. P09 is the founder-run experiment and next-scope decision. P06 can start while human testing is pending; human model runs are not a dependency for engineering. Do not grow the fixture count beyond the existing 18 development pairs during this phase.
 
-Continue engineering. Keep any experiment already started on its recorded revision, while new fixes and fixtures get new revisions. Waiting for human model runs should not block correctness work or make subject preparation remain a manual coding task.
+The long-term AI-native framework remains a direction. This phase establishes the part a normal React developer can adopt with a small configuration change. Keep installed ANWC as the supported default. Arbitrary-site `--runtime-only` remains experimental; R02–R06 in [the future inspector plan](ARBITRARY_URL_PLAN.md) are deferred. Next.js compiler integration, MCP, persistent browser sessions, a new router, and paint-engine research are not this phase's implementation scope.
 
-The intended outcome of this plan is concrete:
+## What the W rollout actually established
 
-1. Export two runnable copies of the same application without hidden benchmark material or stale build output.
-2. Prove a defect exists using ordinary browser evidence, then prove a valid repair removes it while preserving behavior.
-3. Give the evaluator a command that prepares those copies and a command that checks returned repairs.
-4. Add two different small applications, with broken and healthy variants, to test beyond the same shop panel.
+W01–W14 have shipped implementations. Earlier blanket “all complete” statements overstated acceptance coverage. Preserve that work and its history; the corrections below finish the evidence needed to use it confidently. Original cards are in [the W archive](archive/W_ROLLOUT.md); [STATUS](STATUS.md) holds the current baseline.
 
-No new framework architecture is needed for these tasks. Keep TypeScript, npm workspaces, React/Vite, Zod, and Playwright. No external services, real accounts, payments, model API calls, or automatic paid agent runs are part of this backlog.
+These are source-review findings, not new browser reproduction results:
 
-## What the three previously suggested directions meant
-
-| Direction | How it belongs to ANWC | Decision now |
+| Current evidence or gap | Source | Follow-up |
 | --- | --- | --- |
-| Vite product hardening | Make the existing plugin dependable when users change code, load routes, build production, or inspect a page before it is ready | Do the small correctness/integration tasks below |
-| Next.js integration | Let a Next.js app expose the same evidence, ultimately with original JSX locations | Defer the compiler adapter. Runtime-only injection already exists; framework compatibility still needs its own proof |
-| Richer browser visibility | Improve evidence for clipping and coverage beyond the current rectangle and pointer model | Fix false claims and missing limits now. Defer a new paint/compositing engine |
+| Checks share a page through `Promise.all`; clicks may change state/scroll while geometry is measured | `fixtures/index.ts:runChecks` | P01 |
+| Empty check arrays pass; line count can accept zero lines; element box width does not establish text fit; input fill does not prove pointer access | `fixtures/index.ts`, `fixtures/evaluator.ts` | P01 |
+| Opacity is not independently checked by the rendered-action rule; state text is only checked after a click, without proving a transition | same checker | P01 |
+| Landing/dashboard broken tests mainly assert target presence; their full independent defect/healthy matrix is absent | `tests/browser/landing.spec.ts`, `dashboard.spec.ts` | P02 |
+| Materialization removes the entire first nav, including dashboard tabs; it retains `broken = true` and unused conditional source. TASK requirements disclose the selected problem | `fixtures/registry.ts` | P02 |
+| Eight landing/dashboard IDs are preparable; shop is absent from the preparer/grader registry | `fixtures/registry.ts`, `evaluator.ts` | P02 |
+| Receipt revision strings are accepted from the caller without Git verification; grader uses current evaluator definitions; intent inside editable src is not frozen | `prepare.ts`, `grade.ts` | P03 |
+| Grader installs/runs inside the returned folder; server startup lacks strict port ownership and bounded fetch; child errors/logs are insufficient | `grade.ts` | P04 |
+| W14 prepares two arms but grades only ordinary, for two apps; reports have caller-supplied short revisions | `rehearse.ts`; local historical report | P05 |
+| Package manifests are private and export raw TypeScript within the monorepo; no independently installed alpha has been established | package manifests and Vite/CLI entrypoints | P06 |
+| No real paired agent runs or verified time/cost savings | history and benchmark ledger examples | P08–P09 |
 
-MCP and live sessions may later make inspection easier to call from agents. They are not prerequisites for building meaningful tests.
+## Fixed decisions for implementers
 
-## Evidence behind this backlog
+- Keep TypeScript, React, Vite, Chromium/Playwright, npm workspaces, Zod, and the existing parser/toolchain. Add no service, database, account, model API, or new framework.
+- Snapshot schema stays `0.1`. P03 introduces a separate benchmark receipt/result contract `0.3`; never silently reinterpret old `0.2` receipts as certified. Old artifacts remain readable as historical records.
+- Capture remains read-only. Evaluator setup may click, fill and scroll; its actions must be recorded separately. Paint visibility stays unknown.
+- Both arms get the same app, legitimate intent, task, browser tools, and budget; only assisted gets ANWC. Screenshots remain allowed in the initial comparison.
+- Frozen intent means preserving declarations' meaning, not freezing an entire source file or its line numbers. Valid CSS/JSX alternatives must remain possible.
+- Keep evaluator definitions, patches, receipts, reports, and Git history outside agent subjects. Local folders are sufficient; no new repo or npm publication is authorized by this plan.
+- One task per reviewable commit, update STATUS/HISTORY and push under existing user authorization. Sequential is the default; this document does not request subagents.
+- Run meaningful focused checks during implementation, then the full integration gate for code changes before handoff. Docs-only work needs links/commands/consistency checks, not a new browser run.
+- Do not label a command available until its CLI and acceptance checks exist. Proposed flags below are contracts for the owning task.
+- Escalate only a requirement that cannot be resolved with these decisions. Provider choice/payment, public publication, and a broader framework adapter require founder input.
 
-These are code-review observations, not new execution results:
+## Task board
 
-| Location | Current gap | Task |
-| --- | --- | --- |
-| `packages/benchmark/src/index.ts`, `copyTree` / `packageSubjectWorkspace` | Copies complete app/package directories, including generated files; overlay writes happen after root script sanitization; lockfile and TS references are copied from a different workspace layout | W01 |
-| Same file, `sameRunSetup` | Requires identical full URLs even though documented A/B servers use different ports | W02 |
-| Same file, `renderResultsSummary` | Adds null repair/regression counts as zero, hides failure/exclusion counts in aggregates, and shows condition medians rather than paired differences | W02 |
-| `examples/shop/src/main.tsx` | Checkout fixture buttons have no action; full-page links lose React cart state; the lab Details button sets state but the early return omits the modal | W03 |
-| `tests/browser/shop-scenarios.spec.ts` | Line-budget truth checks only that a client rectangle exists; text-clip truth checks a height ratio. Neither proves the claimed text error | W04 |
-| `packages/runtime/src/index.ts`, `renderState` | Accumulates ancestor visibility without handling a child that restores visibility | W05 |
-| `packages/runtime/src/index.ts` / `hit-test.ts` | Declares `maxSamplesPerNode` but does not use it; samples the whole border box, including offscreen parts | W06 |
-| `packages/runtime/src/index.ts`, `waitForReadiness` | Two animation frames are labelled settled without checking geometry stability or fonts | W07 |
-| `packages/vite-plugin/src/index.ts` | Source registration depends on module execution order; current HMR test does not establish lazy-module and cold-start ordering guarantees | W08 |
-| Existing test/benchmark tooling | No committed, working end-to-end repair grader or one-command fair pair preparation | W09–W14 |
-
-The earlier ordinary/assisted export smoke checks are useful but insufficient: the ordinary source tree retains `src/test-runtime.ts`, source folders can contain generated files, and the example overlays used different app attributes. A passing build in a nested export is not proof of an independent clean install or identical A/B application inputs.
-
-## Rules already decided for the implementing model
-
-- Implement one W task per commit, in the order below. Record evidence and push each completed task using the user's existing authorization.
-- No need to ask which library, router, database, model provider, or CSS framework to use. Keep the current dependencies; introduce a dependency only if a task explicitly needs it.
-- Keep browser snapshot schema `0.1`. Tasks below can change behavior without replacing its structure. Benchmark-specific manifests may get their own version as specified.
-- A public development corpus may contain answers in the evaluator repository. Only exported subject folders are agent inputs. Do not call public fixtures a statistical holdout.
-- Source-editing repair agents receive editable app source plus a local URL. URL-only runs are detection-only.
-- Both arms receive identical app content and intent annotations. Tool packages and generated Vite configurations may differ; record those differences.
-- Valid repair means preserved content and functioning actions. Deleting the target, removing the layout contract, or turning off ANWC is not a repair.
-- Capture stays read-only. A test/evaluator may click, fill, and scroll to set up a state; record that separately from the capture.
-- Keep paint visibility unknown. Support limitations belong in output and docs.
-- Do not publish another GitHub repo automatically. A clean export can later be placed in an agent-only repo with a single initial commit and no evaluator history. Start with local folders.
-- No claim of cheaper or better agents until actual paired runs support it.
-
-## Ordered task board
-
-Statuses here describe dependency readiness, not assigned ownership.
-
-| Task | Deliverable | Depends on | Status |
+| Task | Concrete result | Depends on | Status |
 | --- | --- | --- | --- |
-| W01 | Trustworthy subject exports | existing packager | done |
-| W02 | Honest result accounting and paired endpoints | existing ledger | done |
-| W03 | Functional shop controls and lab | existing shop | done |
-| W04 | Ten defects with ten explicit healthy counterparts | W03 | done |
-| W05 | Correct inherited render visibility | existing runtime | done |
-| W06 | Bounded pointer probes in the current viewport | existing runtime | done |
-| W07 | Bounded readiness and truthful timeout errors | existing CLI/runtime | done |
-| W08 | Reliable source registration and production checks | existing Vite plugin | done |
-| W09 | Small fixture contract and independent browser checks | W04 | done |
-| W10 | Landing/pricing application with four defect pairs | W09 | done |
-| W11 | Dashboard application with four defect pairs | W09 | done |
-| W12 | One-command A/B subject preparation | W01, W02, W09–W11 | done |
-| W13 | Independent repair grader and integrity checks | W09, W12 | done |
-| W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | done |
+| P01 | Deterministic independent checks that reject false repairs | shipped W09/W13 | ready |
+| P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | queued |
+| P03 | Verified provenance and frozen intent/grade contracts | P02 | queued |
+| P04 | Bounded grading in a clean evaluator copy | P03 | queued |
+| P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | queued |
+| P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | ready after M1 by default |
+| P07 | Clear first-inspection workflow on an unfamiliar app | P06 | queued |
+| P08 | Small runnable pilot kit and explicit ledger import | P05, P07 | queued |
+| P09 | Founder-run comparison and next-product decision | P08 | requires human runs |
 
-Run sequentially for the initial rollout. The table is not an instruction to launch multiple agents.
+P01 → P02 → P03 → P04 → P05 is the default first sequence. Then P06 → P07 → P08. If human experiments are delayed, finish M2 and freeze the kit; do not manufacture results or start R/Next.js work automatically.
 
-## W01 — Trustworthy subject exports
+## P01 — Make independent checks reliable
 
-**Own:** subject packaging/inventory functions in `packages/benchmark/src/index.ts` (may extract `subject.ts`), benchmark CLI dispatch, focused filesystem tests, export docs.
+**Own:** `packages/benchmark/src/fixtures/index.ts`, evaluator definitions as needed, focused checker/browser tests.
 
 **Build:**
-1. Export an explicit list of required source/config files. Exclude `node_modules`, build output, caches, logs, test bridges, fixture answer files, Git metadata, and source maps at any depth. Do not silently ignore a prohibited payload and then certify a folder containing it.
-2. Ordinary exports must not contain ANWC imports or scripts, including `examples/shop/src/test-runtime.ts`. Assisted exports need runtime tool source, not protocol synthetic fixtures or evaluator code.
-3. Restrict overlays to application files. Generate root scripts, workspace lists, TS references, and condition-specific Vite configs after the overlay; an overlay cannot replace them.
-4. Reject symlinks/junctions and source/overlay/destination path overlap that would cause recursive copies. Reject existing destinations. On failure, either remove only this invocation's verified staging directory or keep an explicit incomplete export that cannot pass preflight.
-5. Produce a matching lockfile for the exported manifests using the installed npm tool. Use argument arrays for subprocesses. Report installation errors; do not assume a copied lockfile is valid.
-6. Validate the finished inventory, not just the original allowlist. The gate remains an advisory preflight, not a filesystem sandbox.
+1. Execute checks in a recorded order. Measure layout/current viewport before actions. Mutating checks get fresh pages with recorded setup unless explicitly defined as one sequential journey; no parallel actions on one page.
+2. Require nonempty required checks. Missing/ambiguous targets, empty required text, zero text fragments, unsupported required geometry, and duplicate check IDs cannot yield a verified repair.
+3. Define supported CSS render checks explicitly: target visibility and display, opacity-zero ancestry, a nonempty box, and supported active client clipping. Do not describe these as paint visibility. Distinguish rendered, inside viewport, and pointer-reachable.
+4. Check overflowing text with Range/scroll evidence and position relative to the intended content boundary, not just the heading element's own width. Apply active ancestor clips for supported normal-flow rectangles; unsupported clip/transform cases stay unverified. Preserve text and meaningful readable styling; document any minimum font size as public design intent.
+5. Give action checks exact/scoped locators. Prove the pre-action status differs, the physical interaction reaches the intended control, and the expected new status appears within a bounded wait. A normal locator click checks actionability; it does not inherently bypass overlays. Use explicit mouse points when testing partial obstruction, with no forced click.
+6. Input obstruction checks use a real pointer/focus/typing path and assert the resulting value. A programmatic fill alone cannot prove pointer access. Keep viewport checks before scrolling; record permitted scrolls separately.
+7. Bound every lookup/evaluation/action (default 2 seconds, max 10 seconds per declared check); absent targets must not consume repeated default 30-second waits.
 
-**Acceptance:** seed an input with old `dist` JS containing an answer, nested tests, a runtime test bridge, and an overlay attempting to replace root scripts. Verify rejection/exclusion exactly as specified. Build A and B in fresh temporary directories outside the repo ancestry; run `npm ci`, clean typecheck, build, and development boot. No parent `node_modules` resolution, pre-existing dist, or TS build info may be used as evidence.
+**Acceptance:** healthy passes; fully transparent/hidden/clipped targets fail the relevant rule; blocker fails a click; partially blocked input fails its specified point; prefilled success status fails the transition rule; unchanged required content survives; deleted target/text, empty checks, zero lines, and ambiguous duplicate names fail; delayed valid status passes; repeated ordered checks produce consistent outcomes. Include an ordinary below-fold reachable action and an explicitly initial-viewport-required action so their contracts differ.
 
-**Done when:** both exported apps boot independently; ordinary has no ANWC; assisted resolves a rendered node to its source; an invalid export never says ready.
+**Handoff:** checker semantics and failed/unsupported evidence documented; regression tests demonstrate errors that old checks could miss. No ANWC diagnostic/geometry imports in scorer code.
 
-## W02 — Result accounting and endpoint fairness
+## P02 — Preserve the app and remove benchmark answers
 
-**Own:** benchmark plan/result validators and summary renderer, examples, benchmark tests/docs.
+**Own:** fixture registry/materialization, landing/dashboard/shop fixtures, independent browser matrix, shared public requirements.
 
-**Decisions:**
-- Endpoints may use different origins/ports. Paired route path, query, viewport, fixture ID, state, and replicate must match; setup is what must be equal.
-- Keep missing measurements unknown. Display repair/regression/success totals as `NA` when any relevant scored row is ungraded; show how many rows have been graded.
-- Show planned, completed, capped, infrastructure-failed, and excluded counts separately. A cap remains an attempted run.
-- Compute per-pair time/cost differences only when both observations exist and are comparable. Show the eligible-pair count; do not substitute zero for missing data.
-- Preserve known costs from failed attempts in total expenditure. No cost-per-success claim when spending is incomplete or there are no successes.
-- Planned rows have no usage/outcome data. Failed/excluded rows may retain time/usage but no repair scores. Require reasons for exclusions and infrastructure failures.
-- Escape pipes/newlines in Markdown table cells.
+**Build:**
+1. Use one registry for each case's app, viewports, route, setup, public requirements and evaluator sidecar. Keep defect classification/expected outcomes evaluator-only. Public requirements describe the app's full behavior/design, consistently across its variants; no “fix the hidden Growth action” hints.
+2. Replace broad nav-removal/boolean substitutions with explicit app-specific materialization boundaries or parser-based transformations using existing dependencies. Produce ordinary app source with one fault; preserve dashboard tabs/drawer, pricing selection, and shop navigation/cart/confirmation. Remove case lists, dead variants, repair switches, preview prose, healthy answers, and defect-revealing identifiers.
+3. Freeze all ten shop cases as well as four landing/four dashboard cases into editable subjects. Do not export the public lab or history. Keep identical application files and shared expectations in both arms.
+4. Validate all 18 broken/healthy pairs at 390×844 and 1440×900 independently of ANWC, then test the expected detector evidence separately. For truly viewport-specific faults explicitly designate the other width as a control. If an authored “healthy” version fails its public contract, repair the fixture; do not loosen the grader or detector to call it healthy.
+5. Prove preserved content and real actions, including inactive/disabled/scrollable healthy controls required by the W cards. Resolve public-task/check inconsistencies such as dashboard drawer save promises missing from grading.
+6. TASK.md contains neutral requirements, viewports/state, editable paths, install/dev/build commands, and URL/port instructions. Tool usage for assisted belongs in a separate condition instruction, not altered app intent.
 
-**Acceptance:** a two-port fair pair passes; different routes fail; a ledger with one missing regression count shows `NA`; capped and failed runs remain visible; a known failed-run cost contributes to spending; missing cost prevents a complete cost claim; duplicate/unknown/missing run IDs fail. Add CLI argument rejection tests, including extra arguments to `validate`.
+**Acceptance:** all declared pairs have measured broken evidence and passing healthy counterparts; valid alternative CSS repair passes; removing unrelated content/actions fails; exported dashboard Tasks and drawer controls still work; no variant switch or explicit defect label remains. Browser-check at least one materialized subject per app before passing to P03.
 
-**Done when:** someone can read a summary without mistaking missing data for success or cheap execution.
+**Handoff:** machine-readable 18-pair matrix and explicit unsupported cells. Public cases remain practice data, never statistical holdout.
 
-## W03 — Give shop fixtures real behavior
+## P03 — Freeze what was actually evaluated
 
-**Own:** shop app/CSS and ordinary browser behavior tests. No detector edits.
+**Own:** `prepare.ts`, `subject.ts`, strict receipt/result schemas, CLI argument validation and filesystem tests.
 
-**Build:** split shared navigation/modal/cart components if useful, without new routing dependencies. Use versioned sessionStorage for cart data so normal links preserve cart items within one browser context and new contexts start clean. Validate stored values before use. Put the modal outside the lab early-return path. Selecting `/lab` without a case should select `blocked-checkout` and show a brief instruction for the human. Preserve `/` as clean.
+**Build:**
+1. Introduce benchmark contract `0.3` with strict Zod validation. Record full Git revisions, fixture/registry and grader hashes, source/detector inputs, Node/npm/browser versions, viewports/setup/task, all app and immutable tool/config hashes, and approved editable paths.
+2. Default preparation verifies clean Git HEAD matching the requested revision; detector initially comes from that same checkout. Reject misleading arbitrary revision strings or different claimed detector commits. Add a clearly labelled practice mode for dirty work only if needed, recording hashes and dirty state; never mark it scored.
+3. Freeze evaluator sidecars outside subjects and bind each grade to their hashes. A mismatched grader version must refuse certified grading or be explicitly recorded as a new evaluation, never silently replace the original grader.
+4. Extract and compare legitimate source intent semantically with the existing parser. Editing CSS/JSX/source locations is permitted; removing/changing required expectations or line budgets fails integrity. Dynamic/unverifiable intent has an explicit limitation and cannot silently pass.
+5. Validate paths, app IDs, condition, hashes, and port range 1–65535. Reject traversal, symlinks/junctions, overlapping roots and existing outputs before writing. Create unique staging atomically; cleanup removes only the verified directory created by that invocation, never a concurrent/preexisting folder.
+6. Readiness before work compares both application hashes; returned-repair integrity allows approved edits. Record submitted artifact hashes and unchanged inputs in the grade. Keep the evaluator receipt immutable.
+7. Give old `0.2` receipts a clear migration message: regenerate from the original pinned source or retain as historical, uncertified results. Do not overwrite previous receipts or ledger rows.
 
-Give each checkout fixture an actual handler with a visible local confirmation; the surrounding expected flow must work once the layout bug is removed. Hidden/blocked variants retain their handler. Lab prose must explain which action to try and link to the healthy counterpart added by W04.
+**Acceptance:** wrong/dirty revision rejected in scored mode; wrong grader/fixture hash rejected; one-arm change fails preflight; CSS repair permitted after submission; disabled tool/removed intent/config changes rejected; malformed receipt/path/symlink rejected before I/O outside allowed roots; existing output and concurrent creation remain intact after failure.
 
-**Acceptance:** add to cart → navigate to checkout → count persists → review opens modal → close works. Lab Details opens and closes. After a test locally removes only the blocking overlay, a normal Playwright click produces the checkout confirmation. Empty cart and new context behave deterministically.
+**Handoff:** versioned schemas and exact current CLI help/commands in EVALUATOR_SETUP.
 
-**Done when:** the grader can verify behavior rather than merely find a button on screen.
+## P04 — Own the evaluator process from start to finish
 
-**Completed evidence:** cart state now uses a validated versioned sessionStorage record, all fixture checkout controls call a shared confirmation path, the modal renders outside the lab path, and `/lab` defaults to the blocked checkout case. The browser tests add cart-navigation, modal-close, default-lab, and blocker-removal action checks. The W04 healthy counterpart links remain pending because those counterpart routes do not exist yet.
+**Own:** `grade.ts`, process/copy helpers, CLI result exits, lifecycle tests.
 
-## W04 — Strong fixture truth and healthy counterparts
+**Build:**
+1. Validate submitted inputs, then stage a new evaluator-owned copy containing only frozen inputs plus allowed source edits. Exclude returned dependencies/build/cache/logs; install from the frozen lockfile there. Leave the returned subject untouched. Do not depend on `cleanInstall:false` for certified grading.
+2. Launch the intended Vite process directly with loopback binding and strict port selection. Refuse an occupied port; never grade an existing page because Vite selected a different port. Observe child exit/error and bounded readiness requests; establish ownership of the served root.
+3. Bound install (120 seconds), startup (15 seconds), navigation/setup/checks (declared limits), and overall grade (180 seconds default). Use cancellation and finally cleanup. Terminate owned descendants and wait for shutdown on Windows/Linux; never kill a unrelated process using a port.
+4. Retain bounded stdout/stderr, page errors, failing stage, versions and artifact hashes in evaluator output. Syntax errors/runtime crashes, unsupported checks, and infrastructure failures cannot be interpreted as successful repairs. A syntax-invalid deletion is not evidence that behavioral deletion checking works.
+5. Separate return codes: 0 verified; 1 behavioral failure; 2 invalid invocation/integrity; 3 infrastructure/incomplete. Update CLI tests and ledger mapping together; browser inspect exits are unchanged.
+6. Output outside submitted source; validate overlap before starting. Record both success and failure results, including timeout and cleanup outcome. No indefinite fetch/locator or orphaned development servers.
 
-**Own:** lab fixture registry, shop fixture styles/components, scenario browser/CLI tests. Keep existing public URLs valid.
+**Acceptance:** healthy completes; broken/deleted fail behavior; syntax crash and stalled install/server give bounded labelled results; occupied port running a healthy decoy cannot pass; missing targets finish promptly; repeated grades leave original files unchanged and release all owned processes/ports. Run lifecycle coverage on Windows and Linux; list untested platforms.
 
-**Build:** public lab supports `/lab?case=ID&variant=broken|healthy`, default broken. Define each pair once in an evaluator-side registry to avoid three divergent lists. Keep observations for the target keyed to a stable semantic identifier; assert findings for that target, not any matching code anywhere in the page.
+## P05 — Finish the cross-app rehearsal evidence
 
-| Existing case | Broken truth, independent of ANWC | Healthy expectation |
-| --- | --- | --- |
-| Horizontal overflow | content scroll width exceeds available width | content fits without deleting text |
-| Ancestor clip | action extent crosses an active client clip | whole action inside clip; click confirms |
-| Nested clip | nested active clip cuts the target | no active clip cuts it; click confirms |
-| Line budget | text ranges occupy more than the declared two lines | at most two lines with text retained |
-| Text clipping | direct-text ranges extend beyond an active clipping boundary | ranges retained inside active clips |
-| Display hidden | action expected in current state has no rendered box | visible action and confirmation |
-| Opacity hidden | box exists but effective opacity is zero | visible action and confirmation |
-| Full pointer block | normal click fails/is intercepted; center belongs to blocker | normal click confirms |
-| Partial pointer block | a documented point hits blocker, another reaches button | both points deliver to action |
-| Outside viewport | required current action below the initial viewport | action lies inside required viewport |
+**Own:** `rehearse.ts`, evaluator-only patches, rehearsal tests/report, history.
 
-Use independent test geometry helpers; do not import ANWC clipping/text/hit-test helpers into ground-truth checks. A visible client rectangle alone is not proof of excess wrapping. Browser Range line grouping is acceptable evidence for simple text; note the shared browser primitive, and keep implementation independent.
+**Build:**
+1. Prepare one representative fault per app (shop, pricing, dashboard), both conditions. For each condition run broken, valid repair, and runnable destructive deletion: **18 grade runs**, each at both required viewports.
+2. Assert the broken failure is the intended measured check, repaired checks all pass, and deletion fails required content/action checks. Reject a generic timeout/crash as satisfying a seeded-defect assertion.
+3. Independently prove ordinary has no runtime API and assisted produces source-linked CLI evidence. Build/install both from independent folders outside repo ancestry without parent dependencies.
+4. Include unchanged-control journeys and at least one alternative CSS repair; verify source expectation/tool tampering separately. Do not hand answer patches to agent subjects before grading.
+5. Write full `0.3` provenance and measured per-check evidence. Save a compact sanitized report under `bench/rehearsals/` in Git, full logs outside subject folders. No sole reliance on a developer's temp path.
+6. One documented command creates new output, stops on unexpected outcomes, and retains a failure report. Use owned available ports instead of fixed global rehearsal ports; record selected endpoints.
 
-**Acceptance:** 10 broken + 10 healthy variants at 1440×900 and 390×844, reset scroll/state between each. Healthy targets produce no relevant actionable finding; explicitly allow only enumerated informational observations. Regressions must not be hidden by loosening assertions or adding blanket intent allowances.
+**Acceptance:** the complete matrix succeeds with no skipped arm/app; selected checks identify the original bug, preserved controls pass, destructive repairs fail for behavior, clean install/build and source-link evidence present. A second run can complete without stale processes or prior generated inputs.
 
-**Done when:** a detector change can demonstrably cause either a false-positive or false-negative test to fail.
+**Milestone M1:** the evaluator can reliably verify a returned repair. This does not yet establish cheaper agents.
 
-**Completed evidence:** `/lab?case=ID&variant=broken|healthy` now exposes every pair; legacy `?scenario=ID` remains a broken public route. The development registry provides each case ID, stable target key, expected rule, and action requirement. Independent Chromium tests check the actual DOM/range/hit-test fact before asserting the expected finding for that target. Healthy variants retain their text/actions, produce no target-specific actionable expected finding, and complete checkout actions at both 1440×900 and 390×844. This public registry is answer-bearing development data; W09 moves the evaluator contract and private sidecar out of subject workspaces.
+## P06 — Make ANWC installable outside this repository
 
-## W05 — Fix inherited visibility semantics
+**Own:** compiler/runtime/protocol/diagnostics/Vite/CLI package manifests/build/export/bin definitions and external-consumer acceptance harness.
 
-**Own:** `renderState`, focused runtime browser test, protocol documentation of behavior.
+**Build:**
+1. Create compiled ESM and declaration outputs using the existing toolchain. Define explicit exports, dependency/peer edges, files allowlists, versioned local prerelease artifacts, and an `anwc` CLI bin. Keep evaluator package and app fixtures private.
+2. Produce local `npm pack` tarballs for required packages; verify no tests, benchmark truth, app files or absolute source paths leak into distributions. This is local packaging, not npm publication.
+3. Install the tarballs into a fresh plain React/Vite consumer outside repo ancestry. No monorepo aliases, TS loader, copied tool src, parent node_modules or ANWC-specific application components.
+4. Verify `import { anwc } from '@anwc/vite-plugin'` with `anwc()` works from the consumer's Vite config. Resolve default source root against the consumer, correct relative filenames, and source-null for genuinely uninstrumented nodes.
+5. Run the installed CLI binary from the consumer; inspect root URL, lazy/HMR updates, and repeated list instances. Confirm default production bundles omit runtime/site identifiers and ordinary UI behavior is unchanged.
+6. Document the tested Node/npm/Vite/React/OS versions, not an untested compatibility range. Provide local package install/uninstall steps. Browser installation must be explicit and errors actionable.
 
-**Decision:** target computed visibility determines inherited/overridden visibility. Ancestor `display:none` and zero opacity still affect descendants. Do not equate Playwright's visible matcher with paint visibility.
+**Acceptance:** clean install/typecheck/dev/CLI/build from the consumer on supported platforms; source points to consumer JSX; no evaluator checkout needed at runtime; packed-file audit passes; published registry availability is never assumed.
 
-**Acceptance fixtures:** hidden parent with explicitly visible child (no hidden finding for the child); hidden child under visible parent (hidden); display-none ancestor with visible child (hidden); opacity-zero ancestor with opaque child (effective zero opacity); plain visible control. Give each target the same current-visibility intent. Validate snapshots.
+**Milestone:** another developer can try the integration on their own local Vite project.
 
-**Done when:** hidden-state findings follow the actual state without inventing paint guarantees.
+## P07 — Make the first real inspection understandable
 
-**Completed evidence:** `renderState` now reads the target's computed visibility, while retaining display-none and opacity-zero ancestry checks. Browser coverage verifies a child that restores `visibility:visible`, a hidden child, display-none ancestor, opacity-zero ancestor, and visible control; diagnostics only flag the truly hidden expected controls.
+**Own:** developer quickstart in README, installed CLI text/errors, source navigation, one neutral external-consumer demo. No new framework adapter.
 
-## W06 — Respect pointer sampling limits and viewport
+**Build:**
+1. Provide a five-minute walkthrough: install local alpha, add plugin before React, start app, inspect a plain URL at two widths, follow source/blocker evidence, fix, inspect again. Include an ordinary custom component and repeated instances.
+2. Use existing snapshot fields for concise severity/rule, target name, relative source, measured versus expected geometry, blocker description and limitation. Show how to drill into JSON; do not produce a universal visibility score or guess business intent.
+3. Give specific recovery for missing runtime, invalid pasted Markdown URL, absent browser, incompatible API and unsettled/incomplete capture. Show page scope/source availability; zero findings describes inspected evidence only.
+4. Keep full JSON authoritative. If text is bounded/truncated, state omitted count and how to get remaining data. P03's benchmark schema change must not silently change snapshot `0.1`.
+5. Measure output bytes/characters, findings count and inspection latency on fixed inputs before/after any report edits. Do not claim token/cost savings from character counts; provider usage comes from P09.
+6. Verify on the external app without defect-revealing queries/classes. Capture remains read-only; run actual interactions through the ordinary browser for repair verification.
 
-**Own:** `hit-test.ts`, capture option validation/passing, browser tests and protocol method notes.
+**Acceptance:** a reader can install, diagnose and fix using only the documented consumer workflow; errors tell them the next action; stable JSON/exit regressions pass; title/label changes leave geometric findings unchanged; no hidden intent inferred for arbitrary divs.
 
-**Decisions:** intersect the target border rectangle with the current viewport before sampling. No intersection means zero samples and a documented limitation, never an all-clear proof. Keep pointer and clipping evidence separate; do not assume an unsupported clip model is known. Generate a deterministic center-first sequence with at most 25 unique interior points. Honor `maxSamplesPerNode` as an integer 1–25 (default 25); reject invalid values explicitly. A deliberately reduced sampling setting is a known method limitation, not silently the full 25-point method.
+## P08 — Freeze a small usable agent pilot
 
-**Acceptance:** partially offscreen target sampled only within viewport; completely offscreen target has zero tests; 1/5/25 caps respected; narrow targets deduplicated; child span hits accepted; transparent input-blocker detected; opaque pointer-events-none layer retains paint unknown. Disabled/inert controls do not become pointer-obstruction errors.
+**Own:** pilot manifests, EVALUATOR_SETUP/TESTING/BENCHMARK, explicit grade-to-ledger import and tests.
 
-**Done when:** reports state exactly which points were tested and never overstate sample coverage.
+**Build:**
+1. After M1 and M2, freeze three cases spanning the three apps, one model, one ordinary and one assisted run per case: six initial runs. Choose and record the exact provider model label and thinking setting at execution time. Respect the founder's high-thinking preference; no ultra, automatic billing, API calls, or invented model availability.
+2. Keep prompt, requirements, editable source, viewports/setup, normal browser/DOM/screenshot access, and 20-minute initial cap matched. Counterbalance A/B order, reset session/storage/context, and record interventions.
+3. Retain provider input/cache/output/cost and wall time only when observed. Unknown is null/NA. Include ANWC help/report/tool context costs; keep failed/capped runs in the ledger.
+4. Implement an explicit grade import keyed by run ID and frozen receipt identity. Import verified repair/regression outcomes only; preserve unrelated runs and usage. Detection precision/recall stays human-adjudicated, never inferred from repaired checks.
+5. Generate a practice operator runbook and neutral subject briefs, with current commands and distinct ports. Existing public fixtures are unblinded practice. A subsequent held-out claim requires independently authored, frozen material outside agent access; a random seed is insufficient.
+6. Keep required evidence together: full versions/hashes, prompt, tool access, start/end times, transcript, submitted patch, grader report, screenshots used, usage and interventions. Reports stay evaluator-side.
 
-**Completed evidence:** pointer sampling now intersects a target's border rectangle with the current viewport and reports a fully offscreen interactive target as `unknown`, with an explicit no-samples limitation. The fixed 25-position order begins at the center, is deduplicated by browser device-pixel hit-test location, and obeys the caller's validated 1–25 cap. Browser coverage checks partial and fully offscreen controls, 1/5/25 caps, narrow deduplication, a transparent input blocker, descendant hits, a pointer-events-none paint-only layer, and disabled/inert controls.
+**Acceptance:** dry-run manifest validation, mismatched grade/run rejected, duplicate import handled explicitly, unrelated records unchanged, missing costs retained as NA. An operator can follow the runbook without reading historical task cards. No model outcomes fabricated.
 
-## W07 — Readiness and timeouts that mean what they say
+## P09 — Decide what to build from observed use
 
-**Own:** runtime readiness helper, CLI capture timeout handling, focused CLI/browser fixtures.
+**Owner:** founders run agents; implementation models prepare/validate artifacts. This step waits for actual results.
 
-**Build:** use a bounded wait for fonts and two successive stable geometry observations of the candidate elements (1 CSS px tolerance). Use the existing timeout budget; continuing movement or missing font readiness yields settled false plus specific reasons. Cancel timers/frame callbacks on completion. Document that stability over a short window is still heuristic.
+Review the six matched runs individually before any aggregate claim. The small sample provides workflow evidence, not general statistical superiority. Expand repetitions/models only after setup and grading are stable and within a founder-approved run budget.
 
-The CLI must distinguish runtime missing from a present runtime throwing or timing out. Preserve the existing error envelope codes and 0/1/2/3 exit semantics. Validate the capture before diagnosing it. Do not start actions or scroll during readiness.
+Record one decision in DECISIONS and update STATUS:
+- If the tool saves repair effort with similar or better verified outcomes, address concrete onboarding/report friction and prepare an alpha release review.
+- If reports are accurate but do not help agents, improve report scope/navigation based on transcripts before expanding the engine.
+- If adopters need arbitrary-site inspection, activate the existing R02–R06 cards deliberately; preserve source-null and strict-CSP limitations.
+- If real Next.js adopters are blocked by integration, scope a runtime adapter first, then original-JSX source mapping with separate SSR/hydration/bundler acceptance.
+- If required defects are paint-only, scope a measured research task. Do not advertise pointer samples as a substitute for paint.
+- If no model runs have occurred, mark “awaiting pilot” and stop inventing product claims. M1/M2 work remains useful.
 
-**Acceptance:** static fixture settles; a controlled late font/layout change is awaited; continuous animation reaches the deadline with settled false; a runtime exception is not reported as missing runtime; no injected runtime still reports missing. Use bounded deterministic fixtures, not arbitrary sleeps.
+## Copyable implementation brief
 
-**Done when:** incomplete or unsettled output cannot masquerade as a reliable clean capture.
-
-**Completed evidence:** the runtime waits for `document.fonts.ready`, then compares interactive/expected-target geometry across two successive animation frames with a 1 CSS px tolerance. It returns an explicit unsettled reason if font readiness does not complete or geometry continues changing before the budget expires. The CLI validates the raw capture before diagnostics, bounds capture evaluation by the same budget, and only uses `RUNTIME_MISSING` when the runtime cannot be found; runtime exceptions become `INTERNAL`. Focused fixtures prove a controlled late layout mutation is awaited, continuous movement becomes unsettled, and a present but throwing runtime is not misclassified.
-
-## W08 — Vite startup, lazy modules, and production isolation
-
-**Own:** Vite plugin, source-link integration tests, a lazy test component.
-
-**Build:** make source registration independent of whether the app module or injected runtime executes first. Choose a shared pending registration queue drained by the runtime, with replacement per module to remove stale sites after HMR. Preserve source mapping through appended code.
-
-**Acceptance:** cold load with delayed runtime; cold load with delayed app; lazy component imported after initial capture; editing lazy JSX updates source locations; removing a source site does not leave a live stale lookup. Compare app text, ordinary behavior, and key rectangles with plugin enabled/disabled. Check production HTML/JS for injected runtime and generated site IDs in an automated test, rather than just a manual search.
-
-**Done when:** source linkage and default production stripping hold across these entry orders.
-
-**Completed evidence:** transformed modules now replace a per-module source record in a global pending registry before attempting live registration. The injected runtime drains records that existed before it, replaces rather than accumulates per-module sites, and uses the fresh server manifest on HMR so deleted JSX sites do not remain addressable. The shop loads its HMR probe lazily. Browser tests cover the pre-runtime queue, a lazy source link, HMR tag replacement, and source removal; a production build test verifies that neither the virtual runtime nor `data-anwc-site` reaches the default output.
-
-## W09 — Fixture contract and independent checker library
-
-**Own:** new `packages/benchmark/src/fixtures/`, fixture schema/tests, small public development examples.
-
-**Contract (new benchmark-only version `0.2`; browser snapshots remain `0.1`):**
-- Case: neutral ID, app ID, public task requirements, required viewports, route, setup steps, required content/actions.
-- Setup steps: only click by role/name, fill with public non-sensitive text, and scroll to a selector, each with bounded timeout. No arbitrary source evaluation strings.
-- Evaluator sidecar: defect description, baseline truth checks, independent repair checks, and a fixture revision/hash. Never export this sidecar.
-- Check results: stable check ID, pass/fail/unsupported, measured evidence, required/non-required marker. No implicit pass for absent elements.
-
-A repair passes only when every required check passes. Unsupported required checks leave the repair unverified; they never count as success. Baseline-defect checks and post-repair checks are separate so the repaired app is not required to retain its original bug.
-
-Implement explicit checks: content retained; width within container; text within active client clip; declared line count; action rendered; action receives click and changes public UI state. Reuse ordinary Playwright/browser primitives, never `diagnose` or ANWC geometry helpers as the scorer.
-
-**Acceptance:** same checker fails an intentionally broken fixture, passes its healthy version, and fails a version that merely deletes the target. Malformed setup/check definitions reject unknown fields.
-
-**Done when:** fixture authors specify intended behavior without writing another private benchmark framework.
-
-**Completed evidence:** benchmark-only `0.2` schemas now distinguish public cases from evaluator sidecars, validate only bounded role/name click/fill and selector-scroll setup, and reject unknown fields. The independent runner uses normal Playwright text, rectangle, Range, role, and click primitives; it never imports diagnostics or ANWC geometry. Required unsupported/failed checks make a repair unverified. Browser coverage proves the same checks reject a hidden action, accept a functioning repair, and reject a page that deletes required content/action.
-
-## W10 — Landing/pricing app
-
-**Own:** `examples/landing/`, evaluator-side public development fixture definitions, its browser tests. Use existing React/Vite versions and local assets.
-
-**Build:** a small landing page with pricing cards, plan selection confirmation, feature list, and a dialog. Four paired development cases:
-1. Plan title overflows at mobile width.
-2. Pricing description is cropped by a fixed-height clip.
-3. Promotional panel intercepts the select-plan action.
-4. Plan action uses zero opacity while still expected in the current state.
-
-Each has broken and healthy variants plus shared meaningful behavior. Break actual components; do not add a disconnected defect box. Public labels and selectors are fine in the evaluator preview but must be materialized away on export.
-
-**Acceptance:** W09 checks fail broken and pass healthy at both widths (or document an intentional viewport-specific defect and its other-width control). Required text and plan selection survive repair. No external asset/network dependence.
-
-**Done when:** the corpus tests a second page structure rather than another copy of the shop panel.
-
-## W11 — Dashboard app
-
-**Own:** `examples/dashboard/`, evaluator-side public definitions, its browser tests.
-
-**Build:** local project dashboard with a task list, detail drawer, tabs, and a harmless save action that updates a visible status. Four paired cases:
-1. Primary save action clipped by a nested normal-flow container.
-2. Long task title exceeds a shared two-line design contract.
-3. Drawer contains a partial input obstruction at an explicit sampled point.
-4. Required save action placed outside the initial viewport for the chosen state.
-
-Include healthy controls: intentionally scrollable data table, closed drawer without a visibility expectation, and disabled action for an unchanged form. The intentional table scroll is not a defect. Do not silently suppress extra false positives; document/fix specific evidence behavior before declaring the control healthy.
-
-**Acceptance:** W09 checks fail broken and pass healthy; tabs/drawer/save still work; action state is set up by ordinary UI steps. Capture itself stays read-only.
-
-**Done when:** there are tests for stateful UI, not just initial page load.
-
-## W12 — Prepare the same app for both agents with one command
-
-**Own:** benchmark `prepare-pair` command, exporter integration, fixture materialization, integration tests.
-
-**Proposed command — not available yet:**
-
-```sh
-npm run bench -- prepare-pair --fixture pricing-03 --out PATH --revision COMMIT
-```
-
-**Build:** accept a case from the evaluator fixture registry and the source commit. Require a clean matching source revision for a scored export. Create `ordinary/`, `assisted/`, and an evaluator receipt outside both subjects. Materialize a single variant into ordinary app JSX/CSS; remove lab routes, variant switching, unselected variants, evaluator imports, and golden healthy source.
-
-Use identical app files in A/B. Configure Vite separately; source hashes in the receipt must match for every application file and shared intent declaration. Generate public `TASK.md` from requirements only, plus install/dev/build commands. Record source/detector/fixture revisions, generated file hashes, endpoint route and setup. No grader/answers in subject receipts.
-
-**Acceptance:** each arm `npm ci` + clean build + boot from a standalone directory. Compare app hashes before agent work starts. Ordinary has no ANWC API; assisted returns source-linked evidence. Two separately assigned ports are supported. Replacing an app file in just one arm before the run causes pair-readiness validation to fail. Agents may subsequently edit designated app files; W13 grades those edits rather than requiring original app hashes after repair.
-
-**Done when:** the human does not have to write two overlays or decide which source files to remove.
-
-**Completed evidence:** `npm run bench -- prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA` now materializes one broken landing or dashboard case into matching `ordinary/` and `assisted/` folders. Each folder has a neutral `TASK.md`; the evaluator-only `receipt.json` records both revisions, route/setup, ports, every application-file hash, and the task hash. `check-pair` confirms the gate and catches a one-sided source or task edit before an agent begins. The exporter copies only the selected app, generates an app-specific Vite/TypeScript workspace, creates its own lockfile, removes public fixture navigation/query switching and unused fixture styles, and uses different Vite integration only where the two conditions should differ. Focused tests prove preparation and edit detection; the ordinary subject also completed standalone `npm ci` and a production build.
-
-## W13 — Grade returned repairs independently
-
-**Own:** benchmark `grade` command and W09 check runner, integrity verification, adversarial repair fixtures.
-
-**Proposed command — not available yet:**
-
-```sh
-npm run bench -- grade --receipt EVALUATOR_RECEIPT --subject SUBJECT --output RESULT.json
-```
-
-**Build:** launch the returned app in a clean local evaluator environment, perform recorded UI setup, check required behavior and content at all required widths, then shut down processes in finally blocks. Apply normal repository execution permissions; never imply arbitrary agent patches are trusted remote code. Preserve the original subject receipt and compare non-editable tool/config/intent inputs.
-
-Produce independent check results and artifact hashes. Import the grade into the ledger explicitly; do not overwrite unrelated run rows or provider usage. Keep defect-detection precision/recall for evaluator adjudication; the grader proves repair behavior, not what the agent understood.
-
-**Acceptance:** broken input fails; healthy source passes; deleted checkout fails; removed content fails; disabled button fails; edited expectation/tool code fails integrity; valid alternative CSS fix passes; runtime crash is a failure with evidence; capped partial repair reports remaining failed checks. Do not use the old defect-presence tests as repair graders.
-
-**Done when:** the evaluator can check a returned patch without relying on the agent's own success claim.
-
-**Completed evidence:** `npm run bench -- grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json` now verifies frozen non-source inputs, runs `npm ci`, boots the selected app through Vite, applies recorded UI setup, and independently evaluates public content/actions plus evaluator-only repair checks at each required viewport. It writes structured per-check evidence and distinguishes `passed`, `failed`, `integrity-failed`, and `infrastructure-failed`. The evaluator truth stays in `packages/benchmark` and is excluded from subjects. Checks use ordinary browser text, geometry, Range, mouse, and input operations; they do not call ANWC. Focused coverage proves the materialized broken pricing action fails, a source-only repair passes, and a changed `TASK.md` is rejected before execution.
-
-## W14 — Rehearsal, explicit limitations, and handoff
-
-**Own:** end-to-end development rehearsal, current docs, optional CI command using existing toolchain.
-
-**Build:** choose one representative case per app. Prepare an A/B pair, run the independent checker on broken subjects, apply a committed evaluator-only valid patch, rerun grading, and confirm preserved controls. Also show a rejected deletion patch. Use no model calls. Export a compact report with actual outcomes, full revisions, viewports, and unsupported cases.
-
-Ensure documentation says:
-- public practice cases are unblinded; new private variants may later be used for holdout;
-- each real pair freezes the same app, detector, task, settings, and grader revisions;
-- newer detector code cannot be substituted halfway through a pair;
-- severe correctness changes create a new benchmark version; earlier results stay attached to the old version;
-- paint/shape/transform limits remain explicit.
-
-**Acceptance:** one documented command completes the rehearsal from a clean install. Stop on failed checks. No hidden truths or answer patches appear in subjects. Update STATUS with real counts and known gaps rather than carrying forward historical passed gates.
-
-**Done when:** the user can start a fresh agent with a folder and TASK.md, obtain a repair, then run a deterministic evaluator command.
-
-**Completed evidence:** `npm run bench -- rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA` executes the evaluator-owned, no-model rehearsal. The 2026-09-16 run wrote `C:\Users\Nam\AppData\Local\Temp\anwc-w14-final\rehearsal-report.json` with `pricing-blocked` and `dashboard-outside-save`, each at `390×844` and `1440×900`: the seeded subject failed, a valid source-only repair passed, and a deletion that left the app runnable failed. The command stops on an unexpected result and retains the JSON evidence outside subject folders. The report explicitly records that no provider/model claim was made and preserves paint/shape/transform limitations.
-
-## How much more testing is enough before the next product decision?
-
-This backlog has a stopping point: 10 shop pairs, 4 landing pairs, 4 dashboard pairs, plus targeted runtime/compatibility cases. That is 18 development defect/healthy pairs. Do not turn every pair into paid agent runs automatically.
-
-For an initial real comparison, sample a small predeclared subset spanning all three apps. Keep the rest for regression checks and later expansion. Truly held-out content must be authored/frozen independently of detector tuning; a changed random seed alone does not establish independence.
-
-After W14, discuss broader feature work with the founder using the evidence:
-- recurring state/setup friction may justify a persistent session API or MCP;
-- demand from actual Next.js users may justify an adapter;
-- paint-only failures may justify a restricted visibility research task;
-- accurate reports with no repair savings suggest report/usability work rather than more fixture generation.
-
-## Prompt for a cheaper implementing model
-
-Copy this prompt and replace only Wxx:
-
-> Implement Wxx from docs/ROADMAP.md. Read that entire task card, the global decisions, docs/PROTOCOL.md, and the current source in its owned paths. Inspect git status first. Reuse the established dependencies and interfaces. Implement only this task and necessary acceptance tests; do not redesign the architecture, choose model providers, or begin another W task. Use the task's fixed decisions for routine choices. Keep evaluation truth outside exported subjects. Verify behavior with independent browser checks where specified. Report any mismatch with the task's assumptions using a concrete failing example. Run the targeted checks while working, then npm run test:integration once before handoff. Update docs/STATUS.md with the new baseline and docs/HISTORY.md with task evidence. Commit this completed task and push under the user's existing authorization. Never label an unrun check or human agent comparison passed.
-
-Escalate only a demonstrated conflict that cannot be resolved within the task's decisions: required browser schema change, ambiguous new paint semantics, access needed to private evaluator data, or real agent/model selection before paid runs. Do not ask the founder to select an implementation detail already fixed in this document.
+> Implement Pxx from docs/ROADMAP.md. First read STATUS, the complete task card, its dependencies and fixed decisions, relevant executable contracts and tests, and git status. Work only on this card and necessary acceptance fixes. Reuse existing tools and dependencies. Keep benchmark truth outside subjects and inspection read-only. Add independent checks that prove the requested behavior, not merely current implementation output. Run focused checks, then the full integration gate for code changes; record exact outcomes, revisions, platforms, limits and remaining gaps. Update STATUS and HISTORY, commit the completed task, and push using the existing authorization. Do not mark a task complete from a summary count alone or silently broaden to a later phase. Ask the founder only for missing product choices or external authorization beyond the fixed decisions.
 
 

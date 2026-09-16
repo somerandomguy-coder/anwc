@@ -1,10 +1,8 @@
-# Tomorrow's experiment: does ANWC reduce agent repair work?
+# ANWC benchmark policy
 
-Status: the development fixture and integration baseline are frozen at `4c6cafe`; no paired-agent benchmark has been run and no cost/performance results exist. Read [STATUS](STATUS.md) for the runnable baseline, then freeze a separate evaluator corpus and scoring rules before the evaluated agent sees the tasks.
+Updated 2026-09-16. No real paired-agent results or verified time/cost savings are recorded. W export/grade/rehearsal commands are development implementations with acceptance gaps; P01–P05 in [ROADMAP](ROADMAP.md) own certification, P08 the pilot kit, and P09 human runs. [STATUS](STATUS.md) owns test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns runnable commands.
 
-The frozen development baseline has 19 unit tests and 9 Chromium tests. The clean page has zero ANWC findings at 1440×900; the blocked-checkout page has the expected `POINTER_BLOCKED_AT_SAMPLES` finding at 390×844. These checks establish detector behavior for the development fixture. They are not benchmark observations and must not be presented as evidence of agent or cost improvement.
-
-The current public development scenarios are `clean`, `horizontal-overflow`, `ancestor-clip`, `line-budget`, `hidden-checkout`, `blocked-checkout`, `partial-checkout`, and `combined`. They are deterministic local URLs using `?scenario=ID`; the six isolated defects are verified by ordinary DOM/layout assertions and then separately through the CLI at 1440×900 and 390×844. These are development fixtures, not a blinded evaluator corpus.
+Current public corpus: ten shop, four pricing and four dashboard defect/healthy pairs. Public lab URLs and source reveal their cases; they are practice data, not holdout. The existing rehearsal only grades ordinary subjects for two apps. Preserve historical artifacts without treating them as proof of full benchmark coverage.
 
 ## 1. The comparison that answers the product question
 
@@ -29,7 +27,7 @@ A may use competent browser APIs and write its own DOM probes. The baseline shou
 
 **Repair:** agent modifies the app, verifies it, and submits a patch. Score independently verified repairs, regressions, total cost, and time. Do not give the repair agent the evaluator's list of seeded defects. The task is “inspect and repair this page,” not “fix the six named bugs below.”
 
-For the initial pilot, use six matched repair scenarios with one fresh A session and one fresh B session per scenario: 12 total runs. If budget permits, repeat three times per condition (36 runs) with independently reset sessions. This is a directional pilot; it cannot establish broad cross-website performance. Expand to unfamiliar apps, held-out layouts and more repeats before general claims.
+For the first Phase 2 pilot, use three matched cases spanning the three apps, with one fresh A session and one fresh B session per case: six runs with one exact model. Expand repetitions or models only after validating the workflow and agreeing on a run budget. This is a directional pilot; it cannot establish broad cross-website performance. Expand to unfamiliar apps, held-out layouts and more repeats before general claims.
 
 Reserve different fixture variations for detector development and evaluation. Useful held-out variations include a different wrapping width, nested clipping instead of a single parent, a differently positioned blocker, and longer product names. Do not tune rules on scored runs and then treat reruns as independent holdout results.
 
@@ -73,7 +71,7 @@ Evaluator IDs below belong in evaluator documentation, not readable DOM attribut
 
 Minimum tonight: D01–D06 and C01–C06 working at both required widths with deterministic setup. Add D07–D10 and L01–L03 when the base gate passes. At least L01 should be present before claiming any screenshot-free visibility capability; inability to diagnose it is acceptable when explicitly reported as unknown.
 
-If a particular defect must be viewport-specific, add a corresponding healthy variant at the other width and add another defect to preserve six tested supported cases per width. The combined page can use natural responsive behavior; isolated fixtures make exact gates achievable.
+If a defect is viewport-specific, declare its failing viewport and other-width control in the case registry; do not add faults simply to meet a count. The Phase 2 scope remains the existing 18 development pairs. The combined page can use natural responsive behavior; isolated fixtures make exact gates achievable.
 
 Ground truth has two layers: the seeded mutation and observed behavior. A mutation is not automatically a bug if it has no effect at the selected width/state. Validate every scored fixture with independent browser assertions and a human visual check before freezing it. The human can use screenshots while building the corpus; those costs and activities are not agent inspection results.
 
@@ -91,7 +89,7 @@ If source variants use an obvious `bugMode` switch, the experiment becomes a swi
 
 Use this shared repair prompt, replacing bracketed run inputs:
 
-> Inspect the supplied shop at [URL] in [VIEWPORT] after [PUBLIC STATE SETUP]. Find and repair layout and interaction problems that affect the intended UI. Preserve product content, navigation, cart behavior, accessibility, and responsive layout. You may edit only application source. Verify the result using the tools available to you. Stop after [20 minutes or the agreed budget] and return a short defect list, files changed, verification evidence, and unresolved limitations. Do not edit tests, tool implementations, or layout expectation declarations to make checks pass.
+> Inspect the supplied application at [URL] in [VIEWPORT] after [PUBLIC STATE SETUP]. Find and repair layout and interaction problems that affect the intended UI. Preserve all public content, navigation, application behavior, accessibility, and responsive layout described in TASK.md. You may edit only approved application source. Verify the result using the tools available to you. Stop after [20 minutes or the agreed budget] and return a short defect list, files changed, verification evidence, and unresolved limitations. Do not edit tests, tool implementations, or weaken layout expectation declarations to make checks pass.
 
 For B add only:
 
@@ -106,8 +104,8 @@ Detection prompt substitutes “Report defects and supporting evidence; do not e
 ## 7. Run procedure
 
 1. Freeze source revision, detector revision, Chromium version, fixture truth, prompts, budget, and evaluation code.
-2. Pick six held-out scenario/viewport/state combinations in advance. Include both widths and varied failure types.
-3. Randomize/counterbalance condition order: half A then B, half B then A. Use fresh sessions and isolated app copies. Do not reuse agent memory, conversation history or patches between conditions.
+2. Predeclare three cross-app case/viewport/state combinations for the first pilot. Public cases are unblinded practice; independently authored private variants are required before describing a later set as held-out.
+3. Predeclare condition order: alternate A then B and B then A; for three pairs, record which order occurs twice. Use fresh sessions and isolated app copies. Do not reuse agent memory, conversation history or patches between conditions.
 4. Launch the same ordinary app. A has instrumentation disabled; B has it enabled. Verify beforehand that instrumentation does not change application layout or behavior on the corpus. If it does, fix that before evaluating.
 5. Record readiness and environment, start the clock at the same task boundary, give the prompt, and capture complete tool and usage logs outside the subject checkout.
 6. Stop at completion or the fixed cap. Save patch, console/tool failures, unresolved findings and agent claims. Failed runs remain in the dataset.
@@ -179,6 +177,6 @@ Pre-register these as engineering targets, not statistically validated threshold
 - Candidate improvement target: at least 25% median cost reduction at comparable success would justify expanding the corpus. Missing billing data means this target cannot yet be evaluated.
 - Reliability warning: fewer tokens with more missed task-critical defects is not a win.
 
-With six pairs, show all paired outcomes and ranges; avoid sweeping significance claims. With larger repeats, choose an appropriate paired uncertainty analysis and report failed/time-capped runs separately. Generalize only after testing unrelated application layouts and other models.
+With three initial pairs, show every paired outcome and range; avoid sweeping significance claims. With larger repeats, choose an appropriate paired uncertainty analysis and report failed/time-capped runs separately. Generalize only after testing unrelated application layouts and other models.
 
-The question tomorrow is whether this narrow tool deserves another week of work. It is not whether ANWC has already replaced screenshots, web frameworks, or browser automation.
+The Phase 2 decision is whether source-linked evidence helps agents preserve behavior while repairing UI, and which observed adoption problems should guide subsequent work.

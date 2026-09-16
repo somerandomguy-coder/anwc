@@ -1,6 +1,6 @@
 # Inspecting arbitrary websites: current behavior and implementation plan
 
-Reviewed revision: `0718ef7`. Status: R01 is complete in the next commit; R02–R06 are planned and deferred until installed-runtime work, fixture behavior, and benchmark controls are stronger. This document responds to the founder's Amazon/Instagram errors and supersedes advice that root-URL inspection must wait for benchmark subject generation.
+Current planning status, 2026-09-16: R01 shipped; R02–R06 remain deferred. [ROADMAP](ROADMAP.md) is the active Phase 2 backlog, beginning with evaluator reliability and external React/Vite adoption. The technical R cards below remain design targets, not delivered support. Historical external-site observations are retained; no Amazon/Instagram test was rerun.
 
 ## The product behavior we want
 
@@ -30,7 +30,7 @@ In `packages/cli/src/index.ts`:
 
 - Without `--runtime-only`, `capturePage` waits up to two seconds for `window.__ANWC__`. Ordinary websites do not install our collector. The reported Amazon timeout is consistent with this missing prerequisite; it does not establish what Amazon rendered.
 - With `--runtime-only`, it bundles our collector and injects an inline script through `page.addScriptTag`. Strict Content Security Policy (CSP) can prevent this path.
-- The reported Instagram error occurred during the runtime wait and says string evaluation was forbidden by CSP. The current catch block mislabels all wait/capture failures as `RUNTIME_MISSING`. Injection is outside that block and may instead surface as `INTERNAL`.
+- The reported Instagram error occurred during the runtime wait and says string evaluation was forbidden by CSP. W07 now separates failures inside capture from runtime absence, but errors during the runtime-presence wait are still broadly classified as `RUNTIME_MISSING`. Injection remains outside that wait and can surface as `INTERNAL`.
 - Each inspection launches a fresh headless browser context. It does not inherit the user's Instagram login, cookies, current tab, consent state, or scroll position.
 
 CSP can restrict inline scripts and string evaluation; changing a timeout does not resolve that. See [MDN script-src](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src). Playwright exposes [script injection and initialization APIs](https://playwright.dev/docs/api/class-page), but their suitability must be verified against the pinned browser/toolchain and our collector, not assumed from method names.
@@ -39,7 +39,7 @@ CSP can restrict inline scripts and string evaluation; changing a timeout does n
 
 `packages/runtime/src/index.ts` discovers ordinary document elements, excluding script/metadata/internal elements, then inspects up to 1,500 in document order. It reads rectangles, computed styles, overflow, and supported text/clip observations. Pointer tests are narrower: native controls and links, selected ARIA roles, and elements with an HTML `onclick` attribute.
 
-`packages/runtime/src/hit-test.ts` samples 25 points in a candidate's box. At each point it asks `document.elementFromPoint` which element receives pointer targeting. The target or its descendant counts as reachable; a different element is recorded as a blocker. This API ignores `pointer-events:none` and does not prove paint visibility ([MDN elementFromPoint](https://developer.mozilla.org/en-US/docs/Web/API/Document/elementFromPoint)).
+`packages/runtime/src/hit-test.ts` uses a configurable 1–25 point cap (default 25), sampling the candidate's intersection with the current viewport; fully offscreen candidates have no samples. At each point it asks `document.elementFromPoint` which element receives pointer targeting. The target or its descendant counts as reachable; a different element is recorded as a blocker. This API ignores `pointer-events:none` and does not prove paint visibility ([MDN elementFromPoint](https://developer.mozilla.org/en-US/docs/Web/API/Document/elementFromPoint)).
 
 Names come from `aria-label`, `aria-labelledby`, or text content. The demo explicitly names its cookie element and includes answer-bearing class/key names. These aid humans and contaminate a blinded test, but the diagnostic rule does not compare them with a list of known defects. `diagnose` uses measurements, not the scenario field.
 
@@ -57,7 +57,7 @@ An opaque layer with `pointer-events:none` may visually hide a control while all
 
 ## Fixed scope and rollout
 
-The current product scope is installed ANWC only: developers add the Vite plugin/runtime to an application they control. Continue W03–W14 for repair fixtures and comparison tooling. R01 fixes the shared developer workflow now. R02–R06 remain the future runtime-only inspector track and must not delay the installed-runtime work. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
+The current product scope is installed ANWC only: developers add the Vite plugin/runtime to an application they control. The W implementation rollout has shipped, with acceptance corrections assigned to Phase 2 P01–P05. P06–P08 then establish installed-library adoption and the pilot kit. R02–R06 remain the future runtime-only inspector track and must not delay the installed-runtime work. Implement sequentially with one owner for shared CLI/protocol files. No automatic parallel agent work is requested.
 
 | Task | Deliverable | Dependencies |
 | --- | --- | --- |
@@ -156,9 +156,9 @@ Public website smoke tests are optional manual observations. For Amazon/Instagra
 
 The compiler inserts source identity, the collector measures Chromium's live DOM, and diagnostics calculate findings from those measurements. That is a functioning prototype. Existing tests also exercise runtime-only inspection, but mainly on a small `data:` page; that does not establish strict-CSP or large-site compatibility.
 
-Our fixture labels and intent annotations make the demonstration easier than an unfamiliar app. The current sample-based pointer model, candidate heuristic, readiness check, source-unavailable mode, and coverage limitations are material. Previous session evidence at this revision was 10 browser tests passed, 35/36 unit tests passed with one timeout, and a direct shop production build passed; standard Windows npm scripts failed. This document does not rerun or upgrade that evidence.
+Our fixture labels and intent annotations make the demonstration easier than an unfamiliar app. The current sample-based pointer model, candidate heuristic, readiness check, source-unavailable mode, and coverage limitations are material. Those external-site concerns came from an earlier revision; Windows script fixes and W07 readiness work have since shipped. See STATUS/HISTORY for dated evidence. This planning update does not rerun or upgrade compatibility results.
 
-The next proof is R03's uninstrumented, neutrally labelled page with a measured before/after repair. The next product claim requires unfamiliar-app precision/false-positive checks and actual paired agent outcomes. Neither a green fixture suite nor a short report proves cost savings.
+When the deferred R track is activated, R03 supplies its uninstrumented, neutrally labelled page with a measured before/after repair. The next product claim requires unfamiliar-app precision/false-positive checks and actual paired agent outcomes. Neither a green fixture suite nor a short report proves cost savings.
 
 ## Implementer prompt
 

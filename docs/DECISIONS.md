@@ -25,7 +25,7 @@ These began as planning defaults on 2026-09-15. T00–T09 implemented the MVP co
 
 Date: 2026-09-15. Context: the prototype suite passes, but source review found incomplete export isolation, weak independent fixture checks, and missing-value accounting gaps. The founder requested a concrete implementation backlog for cheaper models while manual testing takes time.
 
-Decision: execute the bounded W01–W14 backlog in [CONTINUATION_PLAN](ROADMAP.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
+Decision: execute the bounded W01–W14 backlog in [original W roadmap](archive/W_ROLLOUT.md). Preserve each actual experiment's app, detector, fixture, prompt, and grader revisions; do not require development to stop globally. Prioritize reliable exports, healthy controls, functional fixtures, independent grading, and two additional app layouts. Defer Next.js source adapters, MCP, and paint-engine expansion to an evidence-informed scope discussion. New work is planned; no new capability or benchmark improvement is claimed by this decision.
 
 ### ADR-018 — Arbitrary URL inspection is a core product path
 
@@ -56,3 +56,15 @@ Review acknowledgement:
 ```
 
 Do not reopen every decision during each small coding task. Escalate an interface conflict or correctness issue with a minimal concrete example and a proposed contract change.
+
+### ADR-019 — Phase 2: trustworthy evaluation and external-project adoption
+
+Date: 2026-09-16. Context: W01–W14 implementations shipped through `d616943`; source review found that blanket completion exceeded the recorded acceptance evidence. The founder requested next-phase planning and current collaborator docs.
+
+Decision: use P01–P09 in ROADMAP. First fix independent checks, neutral materialization, provenance/intent and clean grader execution; then complete the three-app/two-arm rehearsal. Next package a local alpha and prove installation/source linkage on an external React/Vite app. Freeze a small pilot and await real founder-run observations before broader product claims. Keep development progressing while human tests are pending.
+
+The first supported product remains installed ANWC. The user’s arbitrary-site goal is retained in R02–R06, but is not activated by W rollout completion. Next.js source adapters, MCP, persistent sessions, paint research and public npm publication remain separately scoped decisions. No need to invent more fixture apps before proving the existing 18 pairs.
+
+Protocol effect: browser snapshots remain 0.1. P03 will introduce a strict benchmark 0.3 contract because current 0.2 provenance/integrity semantics are insufficient; retain historical records and require explicit regeneration for certification. All P tasks are planned, not newly delivered features.
+
+This planning decision does not authorize paid model runs or claim a reviewed public release. Next implementation: P01. Founder input is needed at the pilot/broader-product gates, not for routine task implementation choices.

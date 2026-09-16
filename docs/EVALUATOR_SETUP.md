@@ -1,102 +1,70 @@
-# Evaluator workspace model
+# Evaluator setup
 
-An agent that can only open a URL can inspect a page, but it cannot repair the application because it has no source to edit. An agent that clones this repository can repair source, but it can also read public scenarios, expected codes, tests, planning documents, and Git history. Neither arrangement is a fair repair comparison by itself.
+Updated 2026-09-16 against `d616943`. These commands exist today, but the generated subjects and grader remain **development practice tools**. P01–P05 in [ROADMAP](ROADMAP.md) close acceptance gaps before certified scored runs. Do not confuse command availability with benchmark validity.
 
-Use three separate areas:
+## Separate evaluator and agents
 
-```mermaid
-flowchart LR
-  E[Evaluator workspace
-  ANWC repo, docs, hidden truth, grader] --> P[Private overlay
-  one materialized defect]
-  E --> A[Ordinary subject
-  app source only]
-  E --> B[Assisted subject
-  same app source + ANWC]
-  P --> A
-  P --> B
-  A --> OA[Ordinary agent + local dev URL]
-  B --> OB[Assisted agent + local dev URL]
-  OA --> G[Evaluator-only grading]
-  OB --> G
+Keep three areas: the ANWC evaluator checkout, an ordinary subject folder, and an assisted subject folder. Only the evaluator sees fixture definitions, receipts, graders, reports, patches from other runs and Git history. Both agents get identical application inputs and ordinary browser/shell tools; assisted additionally gets ANWC.
+
+An agent with only a URL cannot change application source. An ANWC clone exposes answers and history. Use a fresh exported folder plus its own development URL for a repair task. Folder layout alone is not an access-control boundary if the agent can browse its parent directories.
+
+## Existing practice workflow
+
+Commands below use PowerShell and create a new timestamped output beside the repo. Run from the ANWC root. Do not run a subject inside the evaluator repo or give an agent the enclosing pair directory.
+
+```powershell
+$anwcRevision = git rev-parse HEAD
+$anwcPair = Join-Path (Split-Path (Get-Location).Path -Parent) ("anwc-practice-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+npm run bench -- prepare-pair . --fixture pricing-blocked --out "$anwcPair" --source-revision "$anwcRevision" --detector-revision "$anwcRevision" --ordinary-port 4301 --assisted-port 4302
+npm run bench -- check-pair "$anwcPair"
 ```
 
-## What each party may see
+Current IDs: `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, `dashboard-outside-save`. Shop is not currently in this preparer registry.
 
-| Material | Evaluator | Ordinary agent | Assisted agent |
-| --- | --- | --- | --- |
-| App source with one materialized defect | yes | yes | yes |
-| Local URL served from that source | yes | yes | yes |
-| ANWC CLI/runtime | yes | no | yes |
-| Public fixture lab and scenario switch | yes | no | no |
-| Benchmark docs, test matrix, expected codes | yes | no | no |
-| Hidden mutation, truth, grader, prior patches | yes | no | no |
-| Git history and remote origin | yes | no | no |
+The command creates ordinary/, assisted/, and receipt.json. Current revision arguments are recorded labels, not verified provenance. TASK.md currently hints at the selected defect, and materialized source retains fixture machinery. Keep these runs explicitly unblinded until P02/P03 land.
 
-The two subject folders must have the same application files and the same defect. The only intended difference is that the assisted folder can invoke ANWC.
+Install/build/start each subject in its own terminal. Substitute the generated path; do not type PLACEHOLDER literally:
 
-## Do not give the agent an ANWC clone
-
-The evaluator may clone or pull ANWC. The subject agent should receive a newly exported directory instead. A Git worktree is also unsuitable because its `.git` file points back to readable history.
-
-URL-only access is valid for a **detection-only** experiment. It is not a repair experiment. For repair, the agent works inside its own subject folder, edits application files there, starts its own development server, and uses that folder's URL.
-
-## Build a subject folder
-
-For the current landing/dashboard corpus, use the paired preparer rather than hand-writing overlays:
-
-```sh
-npm run bench -- prepare-pair . --fixture pricing-blocked --out C:\temp\anwc-pair --source-revision SOURCE_SHA --detector-revision DETECTOR_SHA
-npm run bench -- check-pair C:\temp\anwc-pair
+```powershell
+Set-Location "PLACEHOLDER\ordinary"
+npm ci
+npm run typecheck
+npm run build
+npm run dev --workspace=@anwc/landing -- --host 127.0.0.1 --port 4301
 ```
 
-Give one fresh folder to each agent: `ordinary/` to the ordinary run, or `assisted/` to the ANWC run. The neutral `TASK.md` is the agent-facing brief. The evaluator keeps `receipt.json` outside both agents’ working folders. Before an agent starts, `check-pair` confirms the two application copies and their immutable inputs still match the receipt.
+Repeat in assisted/ on 4302. For a dashboard fixture use @anwc/dashboard as the workspace. Open the root URL; do not append the public lab query. Verify which port Vite actually reports: these generated scripts do not yet guarantee strict port ownership. The receipt records chosen ports, but does not itself start/configure servers. `check-pair` is intended before agent edits/build artifacts; it is not a returned-repair check.
 
-After the agent returns a repair, grade the returned folder independently. The command installs from the frozen lockfile, starts its own local server, runs the evaluator-only behavior checks at every required viewport, writes a result file, and then shuts down the server.
+Give each agent only its own folder and matching URL. Assisted can run its available `npm run anwc -- inspect "http://127.0.0.1:4302/" --viewport 390x844 --format text`. Both may use screenshots and ordinary DOM tools. Stop the agent's server before grading.
 
-```sh
-npm run bench -- grade --receipt C:\temp\anwc-pair\receipt.json --subject C:\temp\anwc-pair\ordinary --condition ordinary --port 4301 --output C:\temp\ordinary-result.json
+From the evaluator repository, grade a practice submission on an unused port:
+
+```powershell
+npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\ordinary" --condition ordinary --port 4311 --output "$anwcPair\ordinary-result.json"
+npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --output "$anwcPair\assisted-result.json"
 ```
 
-Use a distinct port for the assisted subject. A `failed` result means required behavior remains broken; `integrity-failed` means the agent altered a frozen task, tool, config, or application file outside `examples/<app>/src/`; `infrastructure-failed` preserves the server/browser error instead of being scored as a repair.
+The current grader installs and runs inside the submitted folder, uses the current evaluator registry, and checks some frozen config/tool inputs. It does not yet freeze source intent or verify Git/grader provenance. P03/P04 will grade a new evaluator copy with strict deadlines and process ownership.
 
-To verify the evaluator path without using a model, run the two-app rehearsal from a clean checkout. Its report remains outside the subject folders.
+Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. These are provisional check results, not complete repair certification. Current CLI returns 0 for passed and 1 for all other grade results (2 for invocation/caught errors); P04's refined exits are planned only. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
 
-```sh
-npm run bench -- rehearse . --out C:\temp\anwc-rehearsal --source-revision SOURCE_SHA --detector-revision DETECTOR_SHA
+## Existing rehearsal
+
+```powershell
+$anwcRehearsal = Join-Path (Split-Path (Get-Location).Path -Parent) ("anwc-rehearsal-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+npm run bench -- rehearse . --out "$anwcRehearsal" --source-revision "$anwcRevision" --detector-revision "$anwcRevision"
 ```
 
-It proves only the preparation and grading machinery: public seeded defects fail, evaluator-owned repairs pass, and runnable deletion patches fail. It does not establish a model, cost, or productivity result.
+Current rehearsal creates both subjects but grades only ordinary for pricing-blocked and dashboard-outside-save. It uses ports 4511–4513 and 4521–4523, changes the ordinary source through repaired and deletion variants, and leaves those modified outputs as evidence. Do not reuse them as fresh agent subjects. It does not cover shop or verify assisted source linkage. The repeated grades reuse dependencies after the initial install. P05 owns the full three-app/two-arm certified rehearsal.
 
-## Legacy manual subject packaging
+Wait for the actual process exit and report. A partial log or observation timeout does not establish completion. Retain reports outside subjects; no model calls occur.
 
-Keep the private overlay in a directory outside the repository. It contains only replacement files that materialize one fixture. At minimum it replaces `examples/shop/src/main.tsx` so there is no query-driven public scenario switch. An ordinary overlay also replaces `examples/shop/vite.config.ts` with a normal React/Vite configuration that omits ANWC.
+## Manual overlay path
 
-From the evaluator repository, create a fresh destination for each run:
+`package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` and `check-subject SUBJECT --condition ordinary|anwc-assisted` are older shop-default commands. The overlay materializes application files; the packager generates condition-specific configs afterward. Do not instruct operators to hand-author two different Vite overlays. Their leakage gate is advisory, not proof of clean installation, hidden answers, protected source intent, or OS isolation.
 
-```sh
-npm run bench -- package-subject SOURCE_ROOT SUBJECT_A --overlay PRIVATE_OVERLAY --condition ordinary
-npm run bench -- package-subject SOURCE_ROOT SUBJECT_B --overlay PRIVATE_OVERLAY --condition anwc-assisted
-```
+## Scored workflow after Phase 2
 
-The packager removes known answer-bearing paths, strips ANWC from ordinary scripts and workspaces, applies the overlay, then rejects the destination if its inventory still leaks known material. It will not overwrite an existing destination.
+P01–P05 establish reliable checks, neutral subjects, strict versioned receipts and isolated grading. P06/P07 establish adoption outside this repo. P08 freezes the pilot kit and explicit ledger import; P09 supplies real agent observations. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public.
 
-The packager does not make the surrounding computer safe by itself. Use separate agent sandboxes or access controls if the agent can browse arbitrary parent folders, shared drives, browser history, or evaluator services.
-
-## Run one fair pair
-
-1. Create subjects A and B from the same source commit and private overlay.
-2. Install dependencies and start each subject's dev server independently. Assign distinct ports, for example 4301 and 4302.
-3. Confirm both pages render the same defect and viewport/state before the agents start.
-4. Start fresh sessions. Give A normal tools and B the same normal tools plus ANWC. Do not reuse context, screenshots, patches, or browser state.
-5. Give both the same source-editing repair prompt and the same wall-time cap. The prompt must not name the hidden defect.
-6. Stop each run at completion or the cap. Save the patch and logs outside the subject folder.
-7. Apply each patch to a clean evaluator copy and run independent checks. Record the result in the benchmark ledger.
-
-Counterbalance order across pairs: run A then B for half of the fixtures and B then A for the rest. This reduces the chance that your own familiarity with a case affects one condition more than the other.
-
-## Public fixture lab versus hidden corpus
-
-`/lab?case=...` is intentionally easy to inspect. It is for manually learning the command and confirming the collector behaves as expected. The default pages `/`, `/catalog`, `/checkout`, and `/account` are clean routes.
-
-The lab is not part of a scored corpus. A hidden overlay should use the same kind of defect but integrate it naturally into one page, remove the lab selector, use a neutral URL, and omit answer-bearing attributes or file names. Keep its independent grader outside the exported subject folder.
+See [TESTING](TESTING.md) for demo steps and [BENCHMARK](BENCHMARK.md) for scoring policy.

@@ -4,7 +4,7 @@ Status: **T00–T09 are complete and published through `4c6cafe`.** These are hi
 
 ## Shared task prompt
 
-For new work, use the W01–W14 task cards and copyable model prompt in [ROADMAP](ROADMAP.md). The T00–T09 briefs below are historical. The roadmap also records acceptance gaps found during source review; their fixes do not require waiting for T10's human agent runs.
+For new work, use the Phase 2 P01–P09 task cards and copyable model prompt in [ROADMAP](ROADMAP.md). The original W cards are archived in [W_ROLLOUT](archive/W_ROLLOUT.md). The T00–T09 briefs below are historical. The roadmap also records acceptance gaps found during source review; their fixes do not require waiting for T10's human agent runs.
 
 Copy this prefix, then the selected task below:
 

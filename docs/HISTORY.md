@@ -4,11 +4,13 @@
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Historical summary:** the prototype and W01–W14 are complete; paired-agent runs remain unrun. Refer to [STATUS](STATUS.md) for current state.
+**Historical summary:** W01–W14 implementations shipped. The 2026-09-16 Phase 2 audit below corrects the earlier blanket completion claim: some W09–W14 acceptance is incomplete. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
-## Current deliverables
+## Historical deliverables
+
+The table records shipped implementations. For remaining acceptance work use the Phase 2 audit at the end of this file and ROADMAP; “done” in older rows does not certify the expanded evaluator.
 
 | Deliverable | Status | Evidence |
 | --- | --- | --- |
@@ -27,9 +29,9 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Paired-run manifest, runbook, result ledger, subject leakage gate, and packager | done | `@anwc/benchmark`; public examples at `bench/pilot.example*.json` |
-| One-command matched ordinary/assisted subject preparation | done | W12 `prepare-pair` / `check-pair`, frozen receipt hashes, standalone ordinary install/build |
-| Independent returned-repair grader | done | W13 `grade`, evaluator-only fixture checks, clean install/server lifecycle, integrity verification |
-| Two-app no-model benchmark rehearsal | done | W14 `rehearse`; frozen report records broken failure, valid repair pass, and deletion failure at both viewports |
+| One-command matched ordinary/assisted subject preparation | shipped; acceptance follow-up P02/P03 | W12 prepare-pair/check-pair; revision and intent gaps remain |
+| Independent returned-repair grader | shipped; acceptance follow-up P01/P03/P04 | W13 grade; evidence and lifecycle gaps remain |
+| Two-app no-model benchmark rehearsal | shipped; acceptance follow-up P05 | W14 ordinary-side report; both arms/shop and verified provenance remain |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
 | Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
 | Compiler/runtime/demo | done | T02–T08, verified by typecheck, unit, Chromium, build, and CLI checks |
@@ -42,7 +44,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 
 Names below are proposed roles, not assignments: **Builder A** handles toolchain/compiler/integration; **Builder B** handles capture/demo. Either person can take either role. Do not assign an absent friend work without agreement.
 
-## Task board
+## Historical prototype task board
 
 | ID | Module | Status | Suggested role | Dependencies | Branch / evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -58,7 +60,7 @@ Names below are proposed roles, not assignments: **Builder A** handles toolchain
 | T09 | Integration/freeze | done | Codex | T02–T08 | pending commit: freeze MVP integration candidate |
 | T10 | Paired experiment | in progress | evaluator | T09 | manifest/runbook helper complete; no agent runs recorded |
 
-## Tonight's gates
+## Historical prototype gates
 
 Historical prototype results are recorded below. They are not fresh certification of the expanded corpus. In particular, G4 does not yet establish a named healthy counterpart for every current defect at both widths; W04 adds that matrix. Export install/build smoke results do not prove absence of generated-file leakage or identical A/B app source; W01 and W12 close those gaps.
 
@@ -76,9 +78,9 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Use the resulting handoff command sequence for a human model comparison.
-2. Freeze one predeclared cross-app sample before spending on paired agent runs.
-3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
+1. Implement P01 from the Phase 2 ROADMAP.
+2. Complete M1 evaluation reliability and M2 external-project adoption.
+3. Use P08/P09 for a frozen small pilot. Keep T10 pending until actual agent outcomes exist.
 
 ## Collaboration workflow
 
@@ -371,3 +373,14 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Change: added a local React/Vite project dashboard with tabs, task drawer, editable note, save confirmation, an intentionally scrollable activity table, and four broken/healthy cases for clipped save, long title, blocked input, and offscreen save.
 - Evidence: `npm run test:integration` passed: 38 unit tests, 20 Chromium tests, TypeScript, and production builds for all three apps. Healthy dashboard cases retain tab, drawer, and save behavior at mobile and desktop widths.
 - Next task: W12 — one-command A/B subject preparation.
+
+## 2026-09-16 — Phase 2 planning and acceptance correction
+
+- Reviewed source: `d616943bcb07597cc6424bbb53ff0894e99143f7`, clean worktree at review start. This change edits documentation only; no tests or product features were added or rerun.
+- W12 shipped in `de11c3b`, W13 in `0b7b0aa`, W14 in `d616943`. These commit milestones describe implementation, not full acceptance certification.
+- Re-read the existing local `anwc-w14-final/rehearsal-report.json` and dashboard deletion evidence. Pricing-blocked and dashboard-outside-save recorded broken failure, valid-repair pass, and runnable deletion failure at two widths. Only ordinary was graded; shop/assisted evidence is absent. Full reports reside in the original host's temp directory and are not durable collaborator artifacts.
+- The report's `0b7b0aa` revision labels were caller supplied; preparation did not verify them or freeze the current evaluator hash. Do not treat them as verified build provenance.
+- Source review identified concurrent mutating checks, weak text/opacity/input evidence, empty-check success, insufficient fixture matrix, broad nav deletion, defect hints in TASK/source, unfrozen intent, unverified receipt metadata, and unbounded/ambiguous grader process ownership. These are concrete follow-ups P01–P05, not claims of newly reproduced browser failures.
+- Earlier “41 unit / 20 browser / three builds” counts are reported historical evidence. The visible final W14 record establishes typecheck/rehearsal, not a fresh full integration run. No new passed gate is claimed by this planning change.
+- Decision: Phase 2 M1 trustworthy evaluator, M2 locally installable external React/Vite alpha, then a six-run founder pilot. P06–P08 engineering can proceed without paid model results. Runtime-only R02–R06 and Next.js integration remain deferred.
+- Documentation: active cards now live only in ROADMAP; original W cards moved to archive/W_ROLLOUT.md. STATUS, README, TESTING, EVALUATOR_SETUP, BENCHMARK and future-plan cross-references were reconciled.

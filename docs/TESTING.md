@@ -1,119 +1,86 @@
-# Testing ANWC with coding agents
+# Testing ANWC
 
-Use this guide for two distinct activities. The public scenario workflow verifies that ANWC and an agent can work together. The paired pilot measures whether ANWC improves an agent's repair work. Do not present the public workflow as a blinded benchmark.
+Updated 2026-09-16. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for the next tasks. Manual demos are usable now. The existing automatic grader needs P01–P05 before relying on it for certified comparisons.
 
-## 1. Verify the repository
+## 1. Verify and start the shop
 
-Run these once from the repository root:
+From the evaluator repository:
 
-```sh
-git pull
+```powershell
+git pull --ff-only
 npm install
 npx playwright install chromium
 npm run test:integration
+npm run dev -- --host 127.0.0.1 --port 4175
 ```
 
-The frozen baseline passes typecheck, 24 unit tests, 10 Chromium tests, and the production build. The production bundle has no ANWC instrumentation by default.
+In another terminal:
 
-## 2. Public workflow smoke test
-
-Start the instrumented development app:
-
-```sh
-npm run dev --workspace=@anwc/shop -- --host 127.0.0.1 --port 4175
-```
-
-In a second terminal, inspect a healthy page and a defective page:
-
-```sh
+```powershell
 npm run anwc -- inspect "http://127.0.0.1:4175/" --viewport 1440x900 --format text
 npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format text
 ```
 
-The clean page must have zero findings. The blocked page must report `POINTER_BLOCKED_AT_SAMPLES` and a source location. The normal clean routes are `/`, `/catalog`, `/checkout`, and `/account`. The public fixture lab at `/lab?case=...` provides a quick full smoke matrix:
+Open the second URL in a browser and try Checkout. Compare with the same URL plus `&variant=healthy`; the healthy control should accept the action. Inspect both and follow the reported source location/blocker. A source-editing agent can fix a copy of the app; a URL-only agent can only inspect.
 
-| Scenario | Required code |
+The shop's clean routes are /, /catalog, /checkout and /account. Its public lab has ten cases:
+
+| Case | Target evidence |
 | --- | --- |
-| `horizontal-overflow` | `HORIZONTAL_OVERFLOW` |
-| `ancestor-clip` | `CLIPPED_BY_ANCESTOR` |
-| `nested-clip` | `CLIPPED_BY_ANCESTOR` |
-| `line-budget` | `TEXT_LINE_BUDGET_EXCEEDED` |
-| `text-clipped` | `TEXT_CLIPPED` |
-| `hidden-checkout` | `EXPECTED_VISIBLE_BUT_HIDDEN` |
-| `opacity-checkout` | `EXPECTED_VISIBLE_BUT_HIDDEN` |
-| `blocked-checkout` | `POINTER_BLOCKED_AT_SAMPLES` |
-| `partial-checkout` | `POINTER_PARTIALLY_BLOCKED` |
-| `outside-viewport` | `OUTSIDE_VIEWPORT` |
+| horizontal-overflow | HORIZONTAL_OVERFLOW |
+| ancestor-clip, nested-clip | CLIPPED_BY_ANCESTOR |
+| line-budget | TEXT_LINE_BUDGET_EXCEEDED |
+| text-clipped | TEXT_CLIPPED |
+| hidden-checkout, opacity-checkout | EXPECTED_VISIBLE_BUT_HIDDEN |
+| blocked-checkout | POINTER_BLOCKED_AT_SAMPLES |
+| partial-checkout | POINTER_PARTIALLY_BLOCKED |
+| outside-viewport | OUTSIDE_VIEWPORT |
 
-This stage is intentionally unblinded: the scenario URL, source switch, tests, and expected behavior are all in this repository. It proves the tool path, not a model advantage.
+These URLs/source labels disclose the defects. Use them to learn the tool, never to claim a blinded test. Existing seeded-defect tests expect the broken fixture to remain broken; they are not a returned-repair grader.
 
-## 3. Calibrate one model
+## 2. Try the other app shapes
 
-Use the same model and the same high reasoning setting for both conditions. Record the exact model label shown by the provider UI, rather than a family name alone. Set a fixed wall-time cap; 20 minutes is a good initial cap.
+Use separate terminals:
 
-Create two fresh copies of the same broken app. Do not reuse a chat, agent memory, patch, browser session, screenshot, or log between them.
-
-For condition A, give the agent normal source access, its normal browser/shell tools, and screenshots if those are normally available. Do not provide ANWC.
-
-For condition B, give the same source, prompt, browser/shell tools, viewport, and cap. Add only:
-
-> ANWC is available. When useful, run `npm run anwc -- inspect URL --viewport WIDTHxHEIGHT --format text` to obtain source-linked layout and interaction evidence. Pointer samples are not a pixel-visibility proof.
-
-Give both agents this repair prompt:
-
-> Inspect and repair the supplied React shop at [URL] and [VIEWPORT]. Preserve product content, navigation, cart behavior, accessibility, and responsive layout. You may edit application source only. Verify the result with the tools available to you. Return the defects found, files changed, verification evidence, and unresolved limitations.
-
-Use `blocked-checkout` at `390×844` for this calibration. It has an ordinary independent hit-test check and a clear ANWC report. Do not run the existing scenario tests after repairing the public fixture: they intentionally expect its seeded defect to remain. Verify the repaired page independently instead.
-
-## 4. Scale to several models without wasting runs
-
-Start with one ordinary/assisted pair per model at high reasoning. This is 14 runs for seven models. Record wall time, tool failures, screenshots used, provider-reported tokens/cost where available, and independent repair outcome.
-
-Shortlist the two most promising models. Run the six supported defect classes for each shortlisted model at their specified desktop or mobile viewport. Counterbalance order: use A then B for half the pairs and B then A for the rest. Repeat only after the first pass works.
-
-Seven models across all six defects and both conditions is 84 runs before repeats. Calibration and shortlisting make the comparison practical.
-
-## 5. Run a scoreable pilot
-
-Read [EVALUATOR_SETUP](EVALUATOR_SETUP.md) before creating a scoreable repair pilot. A scoreable pilot must use a separate subject workspace for each run. It must contain the app and only the permitted condition tools. It must not expose `docs/`, `bench/`, `tests/`, `.git/`, public scenario switching, defect labels, prior patches, evaluator truth, or grading scripts. A Git worktree or normal clone alone is not sufficient because the agent can inspect history and planning files.
-
-Materialize one neutral held-out defect into each subject copy. Keep its mutation and independent grading checks outside the subject workspace. The ordinary subject must not have ANWC. The assisted subject may have the ANWC CLI, but no evaluator truth.
-
-Use the packager to export a new folder from the source repository plus a private overlay:
-
-```sh
-npm run bench -- package-subject PATH_TO_SOURCE PATH_TO_NEW_SUBJECT --overlay PATH_TO_PRIVATE_OVERLAY --condition ordinary
-npm run bench -- package-subject PATH_TO_SOURCE PATH_TO_NEW_SUBJECT --overlay PATH_TO_PRIVATE_OVERLAY --condition anwc-assisted
+```powershell
+npm run dev --workspace=@anwc/landing -- --host 127.0.0.1 --port 4176
+npm run dev --workspace=@anwc/dashboard -- --host 127.0.0.1 --port 4177
 ```
 
-The destination must not already exist. The packager excludes planning/test/Git material, removes the public `scenarios.ts`, retains ANWC packages only for the assisted condition, sanitizes root scripts, applies the overlay, then runs the leakage gate. Keep the overlay outside both the repository and the subject workspace.
+- Pricing: `http://127.0.0.1:4176/?case=blocked-selection&variant=broken`; choose Growth, then compare `variant=healthy`.
+- Dashboard: `http://127.0.0.1:4177/?case=outside-save&variant=broken`; compare Save placement with `variant=healthy`, and try Tasks, Open task drawer, Owner and Save.
+- Landing cases: title-overflow, description-crop, blocked-selection, hidden-selection.
+- Dashboard cases: clipped-save, long-title, blocked-input, outside-save.
 
-The overlay must replace the app's public scenario setup with one materialized defect. For an ordinary subject it must also replace `examples/shop/vite.config.ts` with a normal React/Vite configuration that does not import the ANWC plugin. For an assisted subject, retain the Vite plugin while removing the scenario switch. Do not include the answer key or evaluator tests in either overlay output.
+Use 390×844 and 1440×900. Reset the page between cases and record any setup/scroll. Presence of a button alone is not proof of the intended failure; P01/P02 add stronger independent checks for these newer apps.
 
-You can also validate a prepared subject directly before giving it to an agent:
+## 3. Try an editable isolated subject
 
-```sh
-npm run bench -- check-subject PATH_TO_SUBJECT --condition ordinary
-npm run bench -- check-subject PATH_TO_SUBJECT --condition anwc-assisted
-```
+Follow [EVALUATOR_SETUP](EVALUATOR_SETUP.md), which owns the current export, startup, grading and rehearsal command sequence. Give the agent its exported folder plus URL. Do not give it an ANWC clone, enclosing evaluator directory, grader definitions, earlier answers, receipt, or other condition's patch.
 
-The checker is a leakage gate, not a security sandbox. It verifies the repository inventory and known public scenario switch. It cannot stop an agent from accessing files or services made available by the surrounding host.
+Current exports/grades are practice-only: prompts/source reveal fault hints, source intent is not frozen, provenance is not verified, and full independent acceptance is incomplete. You may learn from them now; do not spend a large comparison budget assuming those gaps are solved.
 
-## 6. Record the run plan and results
+## 4. Planned small pilot
 
-Copy `bench/pilot.example.json` and `bench/pilot.example.results.json` outside the subject workspace. Replace placeholder provider/model/reasoning/prompt data, give the plan a unique ID, change `kind` to `scored`, and create one ordinary plus one assisted row for every pair.
+After P01–P08, start with **one exact model, three cases spanning three apps, two conditions = six runs**. Keep high thinking if available, matching the founder's preference; no ultra or automatic paid execution. Record the exact provider label/settings actually used, rather than assuming a named version exists.
 
-```sh
+A: normal source, shell/build, browser DOM/Playwright and screenshots. B: identical inputs and normal tools plus ANWC. Both get the same neutral task, viewport/setup and initial 20-minute cap. Fresh sessions and storage for each run; counterbalance condition order. Keep screenshot usage, interventions, patches and transcripts.
+
+Grade independently and record verified repairs/regressions, wall time, observed input/cache/output tokens and cost. Unknown billing is null/NA. Include ANWC tool/report context cost. A shorter report alone is not a successful repair.
+
+Use the first six runs to find workflow problems. Expand models/repetitions only after the kit works and the founder chooses a budget. Public cases remain unblinded; private independently authored material is needed for holdout claims.
+
+## 5. Existing ledger commands
+
+Copy the examples outside subject access and replace placeholders before recording actual runs:
+
+```powershell
 npm run bench -- validate PATH_TO_PLAN.json
 npm run bench -- runbook PATH_TO_PLAN.json --output artifacts/benchmark/runbook.md
 npm run bench -- validate-results PATH_TO_PLAN.json PATH_TO_RESULTS.json
 npm run bench -- summarize PATH_TO_PLAN.json PATH_TO_RESULTS.json --output artifacts/benchmark/summary.md
 ```
 
-The ledger preserves planned, completed, time-capped, infrastructure-failed, and excluded runs. Record unavailable billing as `null`; the summary renders it as `NA`, never as zero. The summary describes entered data only. Use the independent evaluator checks and the scoring policy in [BENCHMARK](BENCHMARK.md) to decide true positives, verified repairs, regressions, and full success.
+The ledger is separate from the grader. P08 plans explicit grade import; until then evaluator entries are manual. It preserves planned, completed, capped, infrastructure-failed and excluded rows. Do not copy repair check outcomes into detection precision/recall.
 
-## 7. Interpret the first pilot honestly
-
-The initial decision is narrow: does ANWC help this same model repair this shop under the fixed conditions? A shorter report or fewer tokens alone is not success. A useful signal requires equal or better independently verified repair success with lower paired time/cost and no material increase in regressions.
-
-ANWC still cannot prove paint visibility. Keep masks, clip paths, transforms, complex positioned clips, and pixel-visibility claims outside scored v0 capability assertions.
+Read [BENCHMARK](BENCHMARK.md) before interpreting any result. Geometry and pointer samples do not prove paint visibility; masks, transforms, canvas and unsupported subtrees need explicit limits.
