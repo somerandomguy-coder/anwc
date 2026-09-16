@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01–W08 are complete; W09–W14 remain planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
+**Status: W01–W12 are complete; W13–W14 remain planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -79,7 +79,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W09 | Small fixture contract and independent browser checks | W04 | done |
 | W10 | Landing/pricing application with four defect pairs | W09 | done |
 | W11 | Dashboard application with four defect pairs | W09 | done |
-| W12 | One-command A/B subject preparation | W01, W02, W09–W11 | queued |
+| W12 | One-command A/B subject preparation | W01, W02, W09–W11 | done |
 | W13 | Independent repair grader and integrity checks | W09, W12 | queued |
 | W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | queued |
 
@@ -278,6 +278,8 @@ Use identical app files in A/B. Configure Vite separately; source hashes in the 
 **Acceptance:** each arm `npm ci` + clean build + boot from a standalone directory. Compare app hashes before agent work starts. Ordinary has no ANWC API; assisted returns source-linked evidence. Two separately assigned ports are supported. Replacing an app file in just one arm before the run causes pair-readiness validation to fail. Agents may subsequently edit designated app files; W13 grades those edits rather than requiring original app hashes after repair.
 
 **Done when:** the human does not have to write two overlays or decide which source files to remove.
+
+**Completed evidence:** `npm run bench -- prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA` now materializes one broken landing or dashboard case into matching `ordinary/` and `assisted/` folders. Each folder has a neutral `TASK.md`; the evaluator-only `receipt.json` records both revisions, route/setup, ports, every application-file hash, and the task hash. `check-pair` confirms the gate and catches a one-sided source or task edit before an agent begins. The exporter copies only the selected app, generates an app-specific Vite/TypeScript workspace, creates its own lockfile, removes public fixture navigation/query switching and unused fixture styles, and uses different Vite integration only where the two conditions should differ. Focused tests prove preparation and edit detection; the ordinary subject also completed standalone `npm ci` and a production build.
 
 ## W13 — Grade returned repairs independently
 

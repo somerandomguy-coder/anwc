@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { BenchmarkPlanError, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, materializeFixtureSource, packageSubjectWorkspace, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { BenchmarkPlanError, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -31,15 +32,30 @@ describe('benchmark plan', () => {
   });
   test('materializes a neutral fixture into one broken app variant and public task', () => {
     const fixture = fixtureFor('pricing-blocked');
-    const source = `const search = new URLSearchParams(location.search);\n  const caseId = (caseIds.find((value) => value === search.get('case')) ?? 'title-overflow') as CaseId;\n  const variant: Variant = search.get('variant') === 'healthy' ? 'healthy' : 'broken';\n  <nav aria-label="Pricing fixture cases">links</nav><main data-anwc-scenario="x" />`;
+    const source = `const search = new URLSearchParams(location.search);\n  const caseId = (caseIds.find((value) => value === search.get('case')) ?? 'title-overflow') as CaseId;\n  const variant: Variant = search.get('variant') === 'healthy' ? 'healthy' : 'broken';\n  const broken = variant === 'broken';\n  <nav aria-label="Pricing fixture cases">links</nav><main data-anwc-scenario="x" />`;
     const materialized = materializeFixtureSource(source, fixture);
-    expect(materialized).toContain("const caseId: CaseId = 'blocked-selection'");
-    expect(materialized).toContain("const variant: Variant = 'broken'");
+    expect(materialized).toContain('const broken = true');
     expect(materialized).not.toContain('URLSearchParams');
     expect(materialized).not.toContain('<nav');
     expect(materialized).not.toContain('data-anwc-scenario');
+    expect(materializeFixtureStyles('.title-overflow { color: red }.selection-blocker { color: blue }', fixture)).not.toContain('title-overflow');
     expect(taskMarkdown(fixture)).toContain('make Growth selectable');
-  });
+  }, 20_000);
+  test('prepares matching A/B subjects and catches a one-sided app edit before a run', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-prepared-pair-'));
+    const output = join(root, 'pair');
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', sourceRevision: 'abcdef0', detectorRevision: '1234567', ordinaryPort: 4181, assistedPort: 4182 });
+      expect(await checkPreparedPair(output)).toEqual([]);
+      expect(await readFile(join(pair.ordinary, 'TASK.md'), 'utf8')).toContain('make Growth selectable');
+      expect(await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8')).not.toContain('URLSearchParams');
+      await writeFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), '\n// changed after preparation\n', { flag: 'a' });
+      expect(await checkPreparedPair(output)).toContain('ordinary: application files differ from the frozen receipt');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 20_000);
   test('accepts a fair A/B pair and produces a non-secret runbook', () => {
     const plan = validateBenchmarkPlan(validPlan());
     const runbook = renderRunbook(plan);
@@ -99,7 +115,7 @@ describe('benchmark plan', () => {
       await writeFile(join(overlay, 'examples/shop/src/main.tsx'), 'export const app = "subject";');
 
       await packageSubjectWorkspace({ sourceRoot: source, destination, overlayRoot: overlay, condition: 'ordinary' });
-      expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8')).scripts).toEqual({ dev: 'vite', build: 'vite build' });
+      expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8')).scripts).toEqual({ dev: 'npm run dev --workspace=@anwc/shop', build: 'vite build' });
       expect(await readFile(join(destination, 'examples/shop/src/main.tsx'), 'utf8')).toContain('subject');
       expect(validateSubjectInventory({ files: ['package.json', 'examples/shop/src/main.tsx'], publicScenarioReferences: [] }, 'ordinary')).toEqual([]);
     } finally {

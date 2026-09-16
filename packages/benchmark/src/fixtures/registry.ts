@@ -21,12 +21,24 @@ export function fixtureFor(id: string): PreparedFixture {
 
 /** Freezes the selected broken variant and removes public fixture navigation. */
 export function materializeFixtureSource(source: string, fixture: PreparedFixture): string {
-  const fixedState = fixture.appId === 'landing'
-    ? `const caseId: CaseId = '${fixture.caseId}';\n  const variant: Variant = 'broken';`
-    : `const caseId: CaseId = '${fixture.caseId}';\n  const variant: Variant = 'broken';`;
-  const withoutQuery = source.replace(/\s*const (?:search|query) = new URLSearchParams\(location\.search\);\r?\n\s*const caseId = .*?;\r?\n\s*const variant: Variant = .*?;/, `  ${fixedState}`);
-  const withoutNavigation = withoutQuery.replace(/\s*<nav aria-label="[^"]+">.*?<\/nav>/, '');
-  return withoutNavigation.replace('data-anwc-scenario=', 'data-subject=');
+  const withoutFixtureTypes = source.replace(/const caseIds = \[.*?\] as const;\r?\ntype CaseId = typeof caseIds\[number\];\r?\ntype Variant = 'broken' \| 'healthy';\r?\n/, '');
+  const frozenState = withoutFixtureTypes.replace(/\s*const (?:search|query) = new URLSearchParams\(location\.search\);\r?\n\s*const caseId = .*?;\r?\n\s*const variant: Variant = .*?;\r?\n\s*const broken = variant === 'broken';/, '\n  const broken = true;');
+  const withoutNavigation = frozenState.replace(/\s*<nav aria-label="[^"]+">.*?<\/nav>/, '');
+  const withoutCaseNames = withoutNavigation
+    .replace(/caseId === '([^']+)'/g, (_match, caseId: string) => String(caseId === fixture.caseId))
+    .replace(/current === '([^']+)'/g, (_match, caseId: string) => String(caseId === fixture.caseId))
+    .replace(/\s*const current = broken && caseId;/, '');
+  return withoutCaseNames.replace(/data-anwc-scenario=(?:\{`[^`]+`\}|"[^"]*")/, 'data-subject="prepared"');
+}
+
+/** Removes inert styles for the other public fixture variants from an export. */
+export function materializeFixtureStyles(source: string, fixture: PreparedFixture): string {
+  const classByCase: Record<string, string> = fixture.appId === 'landing'
+    ? { 'title-overflow': 'title-overflow', 'description-crop': 'description-crop', 'blocked-selection': 'selection-blocker', 'hidden-selection': 'hidden-selection' }
+    : { 'clipped-save': 'save-clip', 'long-title': 'long-title', 'blocked-input': 'input-blocker', 'outside-save': 'outside-save' };
+  return Object.entries(classByCase)
+    .filter(([caseId]) => caseId !== fixture.caseId)
+    .reduce((materialized, [, className]) => materialized.replace(new RegExp(`\\.${className}\\s*\\{[^}]*\\}`, 'g'), ''), source);
 }
 
 export function taskMarkdown(fixture: PreparedFixture): string {

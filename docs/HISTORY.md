@@ -4,7 +4,7 @@
 
 Last updated: 2026-09-16, Australia/Sydney.
 
-**Historical summary:** the prototype and W01–W08 are complete; paired-agent runs remain unrun. Refer to [STATUS](STATUS.md) for current state.
+**Historical summary:** the prototype and W01–W12 are complete; paired-agent runs remain unrun. Refer to [STATUS](STATUS.md) for current state.
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 
@@ -27,6 +27,7 @@ SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the
 | Small coding task briefs | done | [TASKS](TASKS.md) |
 | Benchmark and scoring design | done | [BENCHMARK](BENCHMARK.md) |
 | Paired-run manifest, runbook, result ledger, subject leakage gate, and packager | done | `@anwc/benchmark`; public examples at `bench/pilot.example*.json` |
+| One-command matched ordinary/assisted subject preparation | done | W12 `prepare-pair` / `check-pair`, frozen receipt hashes, standalone ordinary install/build |
 | Decision record | done | [DECISIONS](DECISIONS.md) |
 | Workspace/toolchain (T00) | done | npm workspaces, Vite/React shell, TypeScript/Vitest/Playwright checks |
 | Compiler/runtime/demo | done | T02–T08, verified by typecheck, unit, Chromium, build, and CLI checks |
@@ -73,8 +74,8 @@ Historical prototype results are recorded below. They are not fresh certificatio
 
 ## Next three actions
 
-1. Implement W06: bounded pointer probes in the current viewport. R01 and W03–W05 are complete; R02–R06 remain future runtime-only work.
-2. Follow the continuation task cards in order to strengthen independent truth/healthy checks and build the automatic prepare/grade workflow.
+1. Implement W13: start the returned-repair grader from a frozen W12 receipt.
+2. Follow W14 with a full no-model rehearsal once grading exists.
 3. Run human calibration whenever convenient, labelling public cases unblinded and pinning both arms to one recorded revision. Keep T10 pending until actual runs are recorded.
 
 ## Collaboration workflow

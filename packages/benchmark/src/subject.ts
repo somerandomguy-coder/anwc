@@ -14,6 +14,7 @@ export type SubjectPackageOptions = {
   destination: string;
   overlayRoot: string;
   condition: SubjectCondition;
+  appId?: string;
 };
 
 const forbiddenSubjectRoots = ['docs', 'bench', 'tests', '.git', 'artifacts', 'coverage'];
@@ -92,7 +93,7 @@ export async function inspectSubjectWorkspace(root: string): Promise<SubjectInve
 }
 
 /** Applies deterministic leakage checks to a workspace inventory; it is not a host security boundary. */
-export function validateSubjectInventory(inventory: SubjectInventory, condition: SubjectCondition): string[] {
+export function validateSubjectInventory(inventory: SubjectInventory, condition: SubjectCondition, appId = 'shop'): string[] {
   const issues: string[] = [];
   const has = (path: string): boolean => inventory.files.includes(path);
 
@@ -133,7 +134,7 @@ export function validateSubjectInventory(inventory: SubjectInventory, condition:
     }
   }
 
-  for (const required of ['package.json', 'examples/shop/src/main.tsx']) {
+  for (const required of ['package.json', `examples/${appId}/src/main.tsx`]) {
     if (!has(required)) issues.push(`subject is missing required ${required}`);
   }
 
@@ -158,8 +159,8 @@ export function validateSubjectInventory(inventory: SubjectInventory, condition:
   return issues;
 }
 
-export async function checkSubjectWorkspace(root: string, condition: SubjectCondition): Promise<string[]> {
-  return validateSubjectInventory(await inspectSubjectWorkspace(root), condition);
+export async function checkSubjectWorkspace(root: string, condition: SubjectCondition, appId = 'shop'): Promise<string[]> {
+  return validateSubjectInventory(await inspectSubjectWorkspace(root), condition, appId);
 }
 
 async function collectFilesRecursively(dir: string, baseDir: string = dir): Promise<string[]> {
@@ -190,6 +191,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
   const sourceRoot = resolve(options.sourceRoot);
   const destination = resolve(options.destination);
   const overlayRoot = resolve(options.overlayRoot);
+  const appId = options.appId ?? 'shop';
 
   if (await exists(destination)) {
     throw new BenchmarkPlanError([`destination already exists: ${destination}`]);
@@ -239,10 +241,10 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
   await mkdir(stagingDir, { recursive: true });
 
   try {
-    // 1. Copy application files from examples/
-    const examplesDir = join(sourceRoot, 'examples');
-    if (await exists(examplesDir)) {
-      const allExampleFiles = await collectFilesRecursively(examplesDir);
+    // 1. Copy only the selected application from examples/
+    const appDir = join(sourceRoot, 'examples', appId);
+    if (await exists(appDir)) {
+      const allExampleFiles = await collectFilesRecursively(appDir);
       for (const fullPath of allExampleFiles) {
         const rel = normalizedPath(relative(sourceRoot, fullPath));
         const parts = rel.split('/');
@@ -303,10 +305,12 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
 
     const isShopOnly = options.condition === 'ordinary';
     const scripts: Record<string, string> = {};
-    for (const name of ['dev', 'build', 'typecheck']) {
+    for (const name of ['build', 'typecheck']) {
       if (sourcePackage.scripts?.[name]) scripts[name] = sourcePackage.scripts[name]!;
     }
-    if (!scripts.dev) scripts.dev = 'npm run dev --workspace=@anwc/shop';
+    // The source root happens to default to the shop example.  An exported
+    // subject must always boot the application it actually contains.
+    scripts.dev = `npm run dev --workspace=@anwc/${appId}`;
     if (!scripts.build) scripts.build = 'npm run build --workspaces --if-present';
     if (options.condition === 'ordinary' && scripts.dev) {
       scripts.dev = scripts.dev.replace(/NODE_OPTIONS='--import tsx'\s*/g, '');
@@ -317,7 +321,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
 
     const workspaces = options.condition === 'anwc-assisted'
       ? ['packages/protocol', 'packages/compiler', 'packages/runtime', 'packages/diagnostics', 'packages/vite-plugin', 'packages/cli', 'examples/*']
-      : ['examples/*'];
+      : [`examples/${appId}`];
 
     const devDependencies: Record<string, string> = {};
     if (sourcePackage.devDependencies) {
@@ -345,7 +349,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
 
     // Condition-specific tsconfig.json references
     const tsconfigReferences = isShopOnly
-      ? [{ path: './examples/shop' }]
+      ? [{ path: `./examples/${appId}` }]
       : [
           { path: './packages/protocol' },
           { path: './packages/compiler' },
@@ -353,13 +357,12 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
           { path: './packages/diagnostics' },
           { path: './packages/vite-plugin' },
           { path: './packages/cli' },
-          { path: './examples/shop' }
+          { path: `./examples/${appId}` }
         ];
     await writeFile(join(stagingDir, 'tsconfig.json'), `${JSON.stringify({ files: [], references: tsconfigReferences }, null, 2)}\n`, 'utf8');
 
-    // Condition-specific vite.config.ts for examples/shop (if examples/shop exists)
-    const shopDir = join(stagingDir, 'examples', 'shop');
-    if (await exists(shopDir)) {
+    // Condition-specific vite.config.ts for the selected application.
+    const shopDir = join(stagingDir, 'examples', appId);
       const viteConfigContent = options.condition === 'ordinary'
         ? `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()]\n});\n`
         : `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nimport { fileURLToPath } from 'node:url';\nimport { anwc } from '@anwc/vite-plugin';\n\nexport default defineConfig({\n  plugins: [anwc({ sourceRoot: fileURLToPath(new URL('../..', import.meta.url)) }), react()]\n});\n`;
@@ -369,29 +372,29 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
       if (await exists(shopPkgPath)) {
         const shopPkg = JSON.parse(await readFile(shopPkgPath, 'utf8')) as { scripts?: Record<string, string> };
         if (options.condition === 'ordinary' && shopPkg.scripts?.build) {
-          shopPkg.scripts.build = shopPkg.scripts.build.replace(/NODE_OPTIONS='--import tsx'\s*/g, '');
-          await writeFile(shopPkgPath, `${JSON.stringify(shopPkg, null, 2)}\n`, 'utf8');
+          const sanitizedBuild = shopPkg.scripts.build.replace(/NODE_OPTIONS='--import tsx'\s*/g, '');
+          if (sanitizedBuild !== shopPkg.scripts.build) {
+            shopPkg.scripts.build = sanitizedBuild;
+            await writeFile(shopPkgPath, `${JSON.stringify(shopPkg, null, 2)}\n`, 'utf8');
+          }
         }
       }
-    }
 
     // 5. Generate matching lockfile using npm tool
     try {
-      await pExecFile('npm', ['install', '--package-lock-only', '--ignore-scripts'], {
+      const npmCli = process.env.npm_execpath;
+      if (!npmCli) throw new Error('npm_execpath is unavailable');
+      await pExecFile(process.execPath, [npmCli, 'install', '--package-lock-only', '--ignore-scripts'], {
         cwd: stagingDir,
         env: { ...process.env, PATH: process.env.PATH }
       });
     } catch (npmError: unknown) {
-      // If npm cannot run or fails due to minimal synthetic test fixture without network/dependencies,
-      // fallback to source package-lock if present, or write minimal valid lockfile
-      const fallbackLockfile = join(sourceRoot, 'package-lock.json');
-      if (await exists(fallbackLockfile)) {
-        await copyFile(fallbackLockfile, join(stagingDir, 'package-lock.json'));
-      }
+      const detail = npmError instanceof Error ? npmError.message : 'unknown npm failure';
+      throw new BenchmarkPlanError([`could not generate a matching package-lock.json: ${detail}`]);
     }
 
     // 6. Validate finished staging directory with the leakage gate
-    const issues = await checkSubjectWorkspace(stagingDir, options.condition);
+    const issues = await checkSubjectWorkspace(stagingDir, options.condition, appId);
     if (issues.length > 0) {
       throw new BenchmarkPlanError(['packed subject failed leakage gate:', ...issues]);
     }

@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BenchmarkPlanError, checkSubjectWorkspace, packageSubjectWorkspace, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
+import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, packageSubjectWorkspace, preparePair, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY';
 }
 
 export type BenchmarkIo = {
@@ -13,11 +13,32 @@ export type BenchmarkIo = {
 
 export async function run(args: string[], io: BenchmarkIo = process): Promise<number> {
   const [command, planPath, ...rest] = args;
-  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject', 'package-subject'].includes(command ?? '')) {
+  if (!planPath || !['validate', 'runbook', 'validate-results', 'summarize', 'check-subject', 'package-subject', 'prepare-pair', 'check-pair'].includes(command ?? '')) {
     io.stderr.write(`${usage()}\n`);
     return 2;
   }
   try {
+    if (command === 'check-pair') {
+      if (rest.length !== 0) { io.stderr.write(`${usage()}\n`); return 2; }
+      const issues = await checkPreparedPair(planPath);
+      if (issues.length > 0) { io.stderr.write(`Prepared pair is not ready:\n${issues.map((issue) => `- ${issue}`).join('\n')}\n`); return 2; }
+      io.stdout.write('Prepared pair is ready for agent work.\n');
+      return 0;
+    }
+    if (command === 'prepare-pair') {
+      const [fixtureFlag, fixtureId, outFlag, output, sourceFlag, sourceRevision, detectorFlag, detectorRevision, ...ports] = rest;
+      let ordinaryPort = 4181;
+      let assistedPort = 4182;
+      if (fixtureFlag !== '--fixture' || !fixtureId || outFlag !== '--out' || !output || sourceFlag !== '--source-revision' || !sourceRevision || detectorFlag !== '--detector-revision' || !detectorRevision) { io.stderr.write(`${usage()}\n`); return 2; }
+      if (ports.length !== 0) {
+        if (ports.length !== 4 || ports[0] !== '--ordinary-port' || ports[2] !== '--assisted-port') { io.stderr.write(`${usage()}\n`); return 2; }
+        ordinaryPort = Number(ports[1]);
+        assistedPort = Number(ports[3]);
+      }
+      const pair = await preparePair({ sourceRoot: planPath, output, fixtureId, sourceRevision, detectorRevision, ordinaryPort, assistedPort });
+      io.stdout.write(`Prepared ordinary subject at ${pair.ordinary} and assisted subject at ${pair.assisted}. Receipt: ${pair.receipt}\n`);
+      return 0;
+    }
     if (command === 'package-subject') {
       const destination = rest.shift();
       if (!destination || rest[0] !== '--overlay' || !rest[1] || rest[2] !== '--condition' || !['ordinary', 'anwc-assisted'].includes(rest[3] ?? '') || rest.length !== 4) {
