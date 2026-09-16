@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, fixtureMatrix, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -29,6 +29,15 @@ describe('benchmark plan', () => {
     expect(evaluatorSidecarSchema.parse({ fixtureId: 'shop-action', revision: 'abcdef0', defect: 'Checkout is hidden', baselineChecks: [{ id: 'hidden', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }], repairChecks: [{ id: 'usable', required: true, kind: 'action-rendered', role: 'button', name: 'Checkout' }] }).fixtureId).toBe('shop-action');
     expect(repairVerified([{ id: 'usable', required: true, status: 'pass', evidence: {} }, { id: 'optional', required: false, status: 'unsupported', evidence: {} }])).toBe(true);
     expect(repairVerified([{ id: 'usable', required: true, status: 'unsupported', evidence: {} }])).toBe(false);
+  });
+  test('freezes static source intent semantically rather than by source formatting', () => {
+    const first = '<><button data-anwc-expect="interactive" data-anwc-max-lines={2}>Save</button><p data-anwc-max-lines="3">Copy</p></>';
+    const equivalent = '<><p data-anwc-max-lines={"3"}>Copy</p>\n<button data-anwc-max-lines={2} data-anwc-expect={"interactive"}>Save</button></>';
+    expect(extractSourceIntent(first, 'first.tsx')).toEqual([{ expect: 'interactive', maxLines: '2' }, { maxLines: '3' }]);
+    expect(hashSourceIntent(first, 'first.tsx')).toBe(hashSourceIntent(equivalent, 'equivalent.tsx'));
+    expect(hashSourceIntent(first, 'first.tsx')).not.toBe(hashSourceIntent(first.replace('max-lines={2}', 'max-lines={3}'), 'changed.tsx'));
+    expect(() => hashSourceIntent('<button data-anwc-expect={mode}>Save</button>', 'dynamic.tsx')).toThrow(/unverifiable dynamic data-anwc-expect intent/);
+    expect(() => extractSourceIntent('<button data-anwc-max-lines="2">', 'broken.tsx')).toThrow(/cannot parse source intent/);
   });
   test('materializes a neutral fixture into one broken app variant and public task', () => {
     const fixture = fixtureFor('pricing-blocked');
@@ -71,6 +80,9 @@ describe('benchmark plan', () => {
     try {
       const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', ordinaryPort: 4181, assistedPort: 4182, practice: true });
       expect(await checkPreparedPair(output)).toEqual([]);
+      const receipt = await readPreparedPairReceipt(pair.receipt);
+      expect(receipt.evaluator.grader).toMatch(/^[a-f0-9]{64}$/);
+      expect(await checkEvaluatorReceipt({ ...receipt, evaluator: { ...receipt.evaluator, grader: '0'.repeat(64) } }, sourceRoot)).toContain('evaluator grader hash differs from the frozen receipt');
       expect(await readFile(join(pair.ordinary, 'TASK.md'), 'utf8')).toContain('Editable paths: examples/landing/src/**');
       expect(await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8')).not.toContain('URLSearchParams');
       await writeFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), '\n// changed after preparation\n', { flag: 'a' });
@@ -88,12 +100,15 @@ describe('benchmark plan', () => {
       const broken = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4391 });
       expect(broken.status).toBe('failed');
       expect(broken.repairVerified).toBe(false);
+      expect(broken.submittedArtifactHash).toMatch(/^[a-f0-9]{64}$/);
       const mainPath = join(pair.ordinary, 'examples/landing/src/main.tsx');
       await writeFile(mainPath, (await readFile(mainPath, 'utf8')).replace(/\{broken && affected && true && <div className="selection-blocker">Limited offer details<\/div>\}/, ''));
       const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4392 });
       expect(repaired.integrityIssues).toEqual([]);
       expect(repaired.status).toBe('passed');
       expect(repaired.repairVerified).toBe(true);
+      expect(repaired.submittedArtifactHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(repaired.submittedArtifactHash).not.toBe(broken.submittedArtifactHash);
       await writeFile(join(pair.ordinary, 'TASK.md'), '\nchanged task\n', { flag: 'a' });
       const tampered = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4393 });
       expect(tampered.status).toBe('integrity-failed');

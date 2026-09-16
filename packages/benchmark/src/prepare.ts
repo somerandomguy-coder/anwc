@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
+import ts from 'typescript';
 import { z } from 'zod';
 import { fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type FixtureState } from './fixtures/registry.js';
 import { BenchmarkPlanError } from './index.js';
@@ -21,7 +22,7 @@ const receiptSchema = z.object({
   schemaVersion: z.literal('0.3'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), fixtureState: z.enum(['broken', 'healthy']), appId: z.enum(['shop', 'landing', 'dashboard']),
   source: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/), dirty: z.boolean() }).strict(),
   detector: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/) }).strict(),
-  evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256 }).strict(),
+  evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256, grader: sha256 }).strict(),
   route: z.string().startsWith('/'), setup: z.array(z.record(z.unknown())), viewports: z.array(z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict()).min(1),
   ports: z.object({ ordinary: port, assisted: port }).strict(), editablePaths: z.array(pathKey).min(1),
   toolchain: z.object({ node: z.string().min(1), npm: z.string().min(1), browser: z.string().min(1) }).strict(),
@@ -47,12 +48,57 @@ async function hashImmutableFiles(root: string, appId: string): Promise<Record<s
 }
 function equalHashes(left: Record<string, string>, right: Record<string, string>): boolean { return JSON.stringify(left) === JSON.stringify(right); }
 
-/** Lightweight declarative intent extraction. Dynamic expectations are rejected by the empty marker. */
+export type SourceIntentDeclaration = Readonly<{ expect?: string; maxLines?: string }>;
+
+function jsxAttributeName(attribute: ts.JsxAttribute, file: ts.SourceFile): string {
+  return ts.isIdentifier(attribute.name) ? attribute.name.text : attribute.name.getText(file);
+}
+
+function staticJsxValue(attribute: ts.JsxAttribute, file: ts.SourceFile, sourcePath: string): string {
+  const initializer = attribute.initializer;
+  if (initializer && ts.isStringLiteral(initializer)) return initializer.text;
+  if (initializer && ts.isJsxExpression(initializer) && initializer.expression) {
+    const expression = initializer.expression;
+    if (ts.isStringLiteral(expression) || ts.isNumericLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) return expression.text;
+  }
+  throw new BenchmarkPlanError([`unverifiable dynamic ${jsxAttributeName(attribute, file)} intent in ${sourcePath}:${file.getLineAndCharacterOfPosition(attribute.getStart(file)).line + 1}`]);
+}
+
+/**
+ * Extracts only the declarative ANWC contracts from TSX, independent of whitespace,
+ * JSX attribute order, and source locations. Dynamic contract values cannot be frozen
+ * safely and are rejected rather than silently omitted.
+ */
+export function extractSourceIntent(source: string, sourcePath = 'main.tsx'): SourceIntentDeclaration[] {
+  const file = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const parseError = (file as ts.SourceFile & { parseDiagnostics: readonly ts.DiagnosticWithLocation[] }).parseDiagnostics[0];
+  if (parseError) throw new BenchmarkPlanError([`cannot parse source intent in ${sourcePath}:${file.getLineAndCharacterOfPosition(parseError.start ?? 0).line + 1}: ${ts.flattenDiagnosticMessageText(parseError.messageText, ' ')}`]);
+  const declarations: SourceIntentDeclaration[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isJsxOpeningLikeElement(node)) {
+      const declaration: { expect?: string; maxLines?: string } = {};
+      for (const property of node.attributes.properties) {
+        if (!ts.isJsxAttribute(property)) continue;
+        if (jsxAttributeName(property, file) === 'data-anwc-expect') declaration.expect = staticJsxValue(property, file, sourcePath);
+        if (jsxAttributeName(property, file) === 'data-anwc-max-lines') declaration.maxLines = staticJsxValue(property, file, sourcePath);
+      }
+      if (declaration.expect !== undefined || declaration.maxLines !== undefined) declarations.push(declaration);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return declarations
+    .map(({ expect, maxLines }) => ({ ...(expect === undefined ? {} : { expect }), ...(maxLines === undefined ? {} : { maxLines }) }))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
+export function hashSourceIntent(source: string, sourcePath?: string): string {
+  return hash(JSON.stringify(extractSourceIntent(source, sourcePath)));
+}
+
 async function intentHash(root: string, appId: string): Promise<string> {
-  const source = await readFile(join(root, 'examples', appId, 'src', 'main.tsx'), 'utf8');
-  const declarations = [...source.matchAll(/data-anwc-(expect|max-lines)=(?:\{)?["']?([^\s"'}]+)/g)].map((match) => `${match[1]}:${match[2]}`).sort();
-  if (source.includes('data-anwc-') && declarations.length === 0) throw new BenchmarkPlanError([`unverifiable dynamic ANWC intent in examples/${appId}/src/main.tsx`]);
-  return hash(JSON.stringify(declarations));
+  const sourcePath = join(root, 'examples', appId, 'src', 'main.tsx');
+  return hashSourceIntent(await readFile(sourcePath, 'utf8'), normalizedPath(relative(root, sourcePath)));
 }
 async function gitState(sourceRoot: string, requested: string | undefined, practice: boolean): Promise<{ revision: string; dirty: boolean }> {
   try {
@@ -67,7 +113,7 @@ async function gitState(sourceRoot: string, requested: string | undefined, pract
 }
 async function evaluatorHashes(sourceRoot: string): Promise<PreparedPairReceipt['evaluator']> {
   const root = join(sourceRoot, 'packages', 'benchmark', 'src', 'fixtures');
-  return { checker: await hashFile(join(root, 'index.ts')), registry: await hashFile(join(root, 'registry.ts')), sidecar: await hashFile(join(root, 'evaluator.ts')) };
+  return { checker: await hashFile(join(root, 'index.ts')), registry: await hashFile(join(root, 'registry.ts')), sidecar: await hashFile(join(root, 'evaluator.ts')), grader: await hashFile(join(sourceRoot, 'packages', 'benchmark', 'src', 'grade.ts')) };
 }
 
 export async function readPreparedPairReceipt(path: string): Promise<PreparedPairReceipt> {

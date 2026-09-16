@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-16. Phase 2 evaluator-foundation batch is committed through `c2bb752`; P02 detector evidence is ready for review.
+Updated 2026-09-16. The P03 semantic-intent and artifact-provenance checkpoint is complete; remaining P03 acceptance work is listed below.
 
 ## Start here
 
@@ -8,7 +8,7 @@ ANWC is a working development-only React/Vite inspection prototype. Its compiler
 
 P01–P04 now have an implementation pass: ordered independent checks, 18 fixture registry entries, receipt/result contract `0.3`, and a fresh staged grader. P02's full public matrix, paired detector evidence, and materialized-subject evidence are ready for review. The phase is **not acceptance-certified**: stronger provenance/lifecycle coverage and P05 rehearsal evidence remain before M1 can be claimed.
 
-**Next task: P03 provenance and intent acceptance**, in [ROADMAP](ROADMAP.md): replace the declarative source-intent scanner with parser-backed semantic comparison, then cover dirty/scored receipts and evaluator-version mismatch. The public [18-pair matrix](../bench/fixture-matrix.json), target-specific broken/healthy detector evidence, representative materialized states for every app, and an alternative CSS repair now have browser-grade evidence. Phase 2 then delivers trustworthy evaluation (P01–P05), then an external-project alpha (P06–P08). The founder-run pilot is P09.
+**Next task: finish P03 provenance acceptance**, in [ROADMAP](ROADMAP.md): cover dirty/scored receipts, evaluator-version mismatch from a separate evaluator tree, and malformed path/symlink rejection. The source-intent comparison is now TypeScript-parser-backed; receipts pin the grader implementation and grade results carry a submitted-artifact hash. The public [18-pair matrix](../bench/fixture-matrix.json), target-specific broken/healthy detector evidence, representative materialized states for every app, and an alternative CSS repair have browser-grade evidence. Phase 2 then delivers trustworthy evaluation (P01–P05), then an external-project alpha (P06–P08). The founder-run pilot is P09.
 
 The W01–W14 implementation rollout shipped through `d616943`. **The previous blanket completion claim was too broad:** some original acceptance criteria remain unmet. The roadmap records concrete source-review gaps and follow-ups. The commands are useful for development practice; current generated subjects/grades are not yet certified for a blinded scored experiment.
 

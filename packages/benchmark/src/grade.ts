@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
@@ -16,15 +17,30 @@ const checkResultSchema = z.object({ id: z.string().min(1), required: z.boolean(
 export const gradeResultSchema = z.object({
   schemaVersion: z.literal('0.3'), fixtureId: z.string().min(1), condition: z.enum(['ordinary', 'anwc-assisted']), subject: z.string().min(1),
   status: z.enum(['passed', 'failed', 'integrity-failed', 'infrastructure-failed']), exitCode: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]), repairVerified: z.boolean(),
-  checks: z.array(checkResultSchema.extend({ viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict() })), integrityIssues: z.array(z.string()), stage: z.string().min(1).optional(), error: z.string().min(1).optional(), logs: z.object({ install: z.string(), server: z.string(), pageErrors: z.array(z.string()) }).strict(), cleanup: z.enum(['not-needed', 'complete', 'timed-out'])
+  checks: z.array(checkResultSchema.extend({ viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict() })), integrityIssues: z.array(z.string()), submittedArtifactHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), stage: z.string().min(1).optional(), error: z.string().min(1).optional(), logs: z.object({ install: z.string(), server: z.string(), pageErrors: z.array(z.string()) }).strict(), cleanup: z.enum(['not-needed', 'complete', 'timed-out'])
 }).strict();
 export type GradeResult = z.infer<typeof gradeResultSchema>;
 
 const ignored = new Set(['node_modules', 'dist', 'build', '.vite', '.cache', '.turbo', 'artifacts', 'coverage']);
 const maxLogChars = 16_000;
+const hash = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 function isSameOrSubpath(child: string, parent: string): boolean { const rel = relative(parent, child); return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)); }
 function appendLog(current: string, chunk: Buffer | string): string { const next = current + chunk.toString(); return next.length > maxLogChars ? next.slice(next.length - maxLogChars) : next; }
 function delay(ms: number): Promise<void> { return new Promise((resolveDelay) => setTimeout(resolveDelay, ms)); }
+
+async function submittedArtifactHash(subject: string): Promise<string> {
+  const root = resolve(subject); const files: Array<{ path: string; hash: string }> = [];
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error(`submitted subject contains unsupported symbolic link: ${relative(root, full)}`);
+      if (entry.isDirectory()) { if (!ignored.has(entry.name)) await visit(full); }
+      else if (entry.isFile() && !entry.name.endsWith('.log')) files.push({ path: relative(root, full).replaceAll('\\', '/'), hash: hash(await readFile(full)) });
+    }
+  }
+  await visit(root);
+  return hash(JSON.stringify(files.sort((left, right) => left.path.localeCompare(right.path))));
+}
 
 async function copyForEvaluation(source: string): Promise<string> {
   const root = resolve(source); const staging = await mkdtemp(join(tmpdir(), 'anwc-grade-'));
@@ -76,7 +92,8 @@ function preconditionChecks(requiredContent: string[], requiredActions: Array<{ 
 export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   const receipt = await readPreparedPairReceipt(options.receipt); const subject = resolve(options.subject); const logs = { install: '', server: '', pageErrors: [] as string[] };
   const integrityIssues = [...await checkReturnedSubject(receipt, subject, options.condition), ...await checkEvaluatorReceipt(receipt, options.evaluatorRoot)];
-  const base = { schemaVersion: '0.3' as const, fixtureId: receipt.fixtureId, condition: options.condition, subject, integrityIssues, logs };
+  const submittedHash = await submittedArtifactHash(subject).catch(() => undefined);
+  const base = { schemaVersion: '0.3' as const, fixtureId: receipt.fixtureId, condition: options.condition, subject, integrityIssues, ...(submittedHash ? { submittedArtifactHash: submittedHash } : {}), logs };
   if (integrityIssues.length > 0) { const result: GradeResult = { ...base, status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], cleanup: 'not-needed' }; await writeResult(result, options.output, subject); return result; }
   if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65_535) { const result: GradeResult = { ...base, status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], error: 'grade port must be an integer between 1 and 65535', cleanup: 'not-needed' }; await writeResult(result, options.output, subject); return result; }
   const prepared = fixtureFor(receipt.fixtureId); const evaluator = evaluatorFixtureFor(prepared); const checks: GradeResult['checks'] = []; const deadline = Date.now() + (options.overallTimeoutMs ?? 180_000); const remaining = (): number => { const milliseconds = deadline - Date.now(); if (milliseconds <= 0) throw new Error('overall grade timed out'); return milliseconds; }; let stage: string | undefined; let child: ChildProcess | undefined; let cleanup: GradeResult['cleanup'] = 'not-needed'; let activeStage = 'initialization'; let produced: GradeResult | undefined;
