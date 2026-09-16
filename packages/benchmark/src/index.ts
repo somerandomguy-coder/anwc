@@ -428,7 +428,7 @@ export function renderResultsSummary(plan: BenchmarkPlan, results: BenchmarkResu
 }
 
 export { fixtureCaseSchema, evaluatorSidecarSchema, checkSchema, setupStepSchema, applySetup, runChecks, repairVerified, isMutatingCheck, type FixtureCase, type FixtureCheck, type CheckResult } from './fixtures/index.js';
-export { allFixtures, fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture } from './fixtures/registry.js';
+export { allFixtures, fixtureMatrix, fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type PreparedFixture, type FixtureState, type FixtureMatrixEntry } from './fixtures/registry.js';
 export { preparePair, checkPreparedPair, checkReturnedSubject, checkEvaluatorReceipt, readPreparedPairReceipt, type PreparePairOptions, type PreparedPairReceipt } from './prepare.js';
 export { gradeRepair, gradeResultSchema, type GradeOptions, type GradeResult } from './grade.js';
 export { rehearseBenchmark, type RehearsalOptions, type RehearsalReport } from './rehearse.js';

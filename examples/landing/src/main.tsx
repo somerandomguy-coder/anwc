@@ -29,7 +29,7 @@ function App() {
       const hidden = broken && affected && caseId === 'hidden-selection';
       return <article className={`plan ${cropped ? 'description-crop' : ''}`} key={plan.name}>
         <h2 className={broken && affected && caseId === 'title-overflow' ? 'title-overflow' : ''}>{affected ? 'Growth plan for ambitious cross-functional delivery teams' : plan.name}</h2>
-        <p>{plan.description}</p>
+        <p className={affected ? 'growth-description' : ''}>{plan.description}</p>
         <button data-anwc-expect="interactive" className={hidden ? 'hidden-selection' : ''} onClick={() => setSelected(plan.name)}>Choose {plan.name}</button>
         {broken && affected && caseId === 'blocked-selection' && <div className="selection-blocker">Limited offer details</div>}
       </article>;

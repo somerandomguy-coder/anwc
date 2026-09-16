@@ -91,9 +91,9 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
     try {
       const allChecks = [...preconditionChecks(evaluator.fixture.requiredContent, evaluator.fixture.requiredActions), ...evaluator.repairChecks];
       for (const viewport of evaluator.fixture.viewports) {
-        const runOnFreshPage = async (requested: FixtureCheck[]): Promise<void> => { const page = await browser.newPage({ viewport }); page.on('pageerror', (error) => logs.pageErrors.push(error.message)); try { await page.goto(url, { waitUntil: 'networkidle', timeout: Math.min(10_000, remaining()) }); await applySetup(page, evaluator.fixture.setup); checks.push(...(await runChecks(page, requested)).map((result) => ({ ...result, viewport }))); remaining(); } finally { await page.close(); } };
-        await runOnFreshPage(allChecks.filter((check) => !isMutatingCheck(check)));
-        for (const check of allChecks.filter(isMutatingCheck)) await runOnFreshPage([check]);
+        const runOnFreshPage = async (requested: FixtureCheck[], applyRecordedSetup: boolean): Promise<void> => { const page = await browser.newPage({ viewport }); page.on('pageerror', (error) => logs.pageErrors.push(error.message)); try { await page.goto(url, { waitUntil: 'networkidle', timeout: Math.min(10_000, remaining()) }); if (applyRecordedSetup) await applySetup(page, evaluator.fixture.setup); checks.push(...(await runChecks(page, requested)).map((result) => ({ ...result, viewport }))); remaining(); } finally { await page.close(); } };
+        await runOnFreshPage(allChecks.filter((check) => !isMutatingCheck(check)), false);
+        for (const check of allChecks.filter(isMutatingCheck)) await runOnFreshPage([check], true);
       }
     } finally { await browser.close(); }
     const passed = repairVerified(checks); produced = { ...base, stage: activeStage, status: passed ? 'passed' : 'failed', exitCode: passed ? 0 : 1, repairVerified: passed, checks, cleanup: 'not-needed' }; return produced;

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { z } from 'zod';
-import { fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown } from './fixtures/registry.js';
+import { fixtureFor, materializeFixtureSource, materializeFixtureStyles, taskMarkdown, type FixtureState } from './fixtures/registry.js';
 import { BenchmarkPlanError } from './index.js';
 import { checkSubjectWorkspace, type SubjectCondition } from './subject.js';
 
@@ -15,10 +15,10 @@ const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const port = z.number().int().min(1).max(65_535);
 const pathKey = z.string().min(1).refine((value) => !value.split('/').includes('..') && !value.split('\\').includes('..'), 'path traversal is not allowed');
 
-export type PreparePairOptions = { sourceRoot: string; output: string; fixtureId: string; sourceRevision?: string; detectorRevision?: string; ordinaryPort: number; assistedPort: number; practice?: boolean };
+export type PreparePairOptions = { sourceRoot: string; output: string; fixtureId: string; state?: FixtureState; sourceRevision?: string; detectorRevision?: string; ordinaryPort: number; assistedPort: number; practice?: boolean };
 
 const receiptSchema = z.object({
-  schemaVersion: z.literal('0.3'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), appId: z.enum(['shop', 'landing', 'dashboard']),
+  schemaVersion: z.literal('0.3'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), fixtureState: z.enum(['broken', 'healthy']), appId: z.enum(['shop', 'landing', 'dashboard']),
   source: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/), dirty: z.boolean() }).strict(),
   detector: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/) }).strict(),
   evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256 }).strict(),
@@ -107,7 +107,7 @@ export async function checkPreparedPair(output: string): Promise<string[]> {
 
 /** Prepares matching, runnable ordinary and ANWC-assisted subjects from a pinned source tree. */
 export async function preparePair(options: PreparePairOptions): Promise<{ ordinary: string; assisted: string; receipt: string }> {
-  const sourceRoot = resolve(options.sourceRoot); const output = resolve(options.output); const fixture = fixtureFor(options.fixtureId); const practice = options.practice === true;
+  const sourceRoot = resolve(options.sourceRoot); const output = resolve(options.output); const fixture = fixtureFor(options.fixtureId); const state = options.state ?? 'broken'; const practice = options.practice === true;
   if (await exists(output)) throw new BenchmarkPlanError([`pair output already exists: ${output}`]);
   if (isSameOrSubpath(output, sourceRoot) || isSameOrSubpath(sourceRoot, output)) throw new BenchmarkPlanError([`pair output overlaps source root: ${output}`]);
   if (!Number.isInteger(options.ordinaryPort) || !Number.isInteger(options.assistedPort) || options.ordinaryPort < 1 || options.assistedPort < 1 || options.ordinaryPort > 65_535 || options.assistedPort > 65_535 || options.ordinaryPort === options.assistedPort) throw new BenchmarkPlanError(['ordinary and assisted ports must be distinct ports between 1 and 65535']);
@@ -117,12 +117,12 @@ export async function preparePair(options: PreparePairOptions): Promise<{ ordina
   const overlay = await mkdtemp(join(tmpdir(), 'anwc-fixture-overlay-')); const ordinary = join(output, 'ordinary'); const assisted = join(output, 'assisted'); let created = false;
   try {
     await mkdir(output, { recursive: false }); created = true; await mkdir(join(overlay, 'examples', fixture.appId, 'src'), { recursive: true });
-    await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'main.tsx'), materializeFixtureSource(await readFile(mainPath, 'utf8'), fixture)); await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'styles.css'), materializeFixtureStyles(await readFile(stylesPath, 'utf8'), fixture));
+    await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'main.tsx'), materializeFixtureSource(await readFile(mainPath, 'utf8'), fixture, state)); await writeFile(join(overlay, 'examples', fixture.appId, 'src', 'styles.css'), materializeFixtureStyles(await readFile(stylesPath, 'utf8'), fixture, state));
     const { packageSubjectWorkspace } = await import('./subject.js');
     await packageSubjectWorkspace({ sourceRoot, destination: ordinary, overlayRoot: overlay, condition: 'ordinary', appId: fixture.appId }); await packageSubjectWorkspace({ sourceRoot, destination: assisted, overlayRoot: overlay, condition: 'anwc-assisted', appId: fixture.appId });
     const task = taskMarkdown(fixture); await Promise.all([writeFile(join(ordinary, 'TASK.md'), task), writeFile(join(assisted, 'TASK.md'), task)]);
     const applicationFiles = await hashApplicationFiles(ordinary, fixture.appId); if (!equalHashes(applicationFiles, await hashApplicationFiles(assisted, fixture.appId))) throw new BenchmarkPlanError(['prepared application files differ between conditions']);
-    const receipt: PreparedPairReceipt = { schemaVersion: '0.3', scored: !practice, fixtureId: fixture.id, appId: fixture.appId, source: sourceState, detector: { revision: sourceState.revision }, evaluator: await evaluatorHashes(sourceRoot), route: fixture.route, setup: fixture.setup, viewports: fixture.viewports, ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, editablePaths: [`examples/${fixture.appId}/src`], toolchain: { node: process.version, npm: process.env.npm_config_user_agent ?? 'unknown', browser: 'playwright' }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, intentHashes: { ordinary: await intentHash(ordinary, fixture.appId), assisted: await intentHash(assisted, fixture.appId) }, taskHash: hash(task) };
+    const receipt: PreparedPairReceipt = { schemaVersion: '0.3', scored: !practice, fixtureId: fixture.id, fixtureState: state, appId: fixture.appId, source: sourceState, detector: { revision: sourceState.revision }, evaluator: await evaluatorHashes(sourceRoot), route: fixture.route, setup: fixture.setup, viewports: fixture.viewports, ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, editablePaths: [`examples/${fixture.appId}/src`], toolchain: { node: process.version, npm: process.env.npm_config_user_agent ?? 'unknown', browser: 'playwright' }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, intentHashes: { ordinary: await intentHash(ordinary, fixture.appId), assisted: await intentHash(assisted, fixture.appId) }, taskHash: hash(task) };
     const receiptPath = join(output, 'receipt.json'); await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`); const issues = await checkPreparedPair(output); if (issues.length > 0) throw new BenchmarkPlanError(['prepared pair did not pass readiness:', ...issues]); return { ordinary, assisted, receipt: receiptPath };
   } catch (error) { if (created) await rm(output, { recursive: true, force: true }); throw error; } finally { await rm(overlay, { recursive: true, force: true }); }
 }

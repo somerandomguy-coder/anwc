@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "public-development-fixture-matrix",
+  "states": ["broken", "healthy"],
+  "viewports": [{ "width": 390, "height": 844 }, { "width": 1440, "height": 900 }],
+  "pairs": [
+    { "fixtureId": "shop-horizontal-overflow", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-ancestor-clip", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-nested-clip", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-line-budget", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-text-clipped", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-hidden-checkout", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-opacity-checkout", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-blocked-checkout", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-partial-checkout", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "shop-outside-viewport", "appId": "shop", "route": "/", "setup": [] },
+    { "fixtureId": "pricing-title", "appId": "landing", "route": "/", "setup": [] },
+    { "fixtureId": "pricing-description", "appId": "landing", "route": "/", "setup": [] },
+    { "fixtureId": "pricing-blocked", "appId": "landing", "route": "/", "setup": [] },
+    { "fixtureId": "pricing-hidden", "appId": "landing", "route": "/", "setup": [] },
+    { "fixtureId": "dashboard-clipped-save", "appId": "dashboard", "route": "/", "setup": [] },
+    { "fixtureId": "dashboard-long-title", "appId": "dashboard", "route": "/", "setup": [] },
+    { "fixtureId": "dashboard-blocked-input", "appId": "dashboard", "route": "/", "setup": [{ "kind": "click", "role": "button", "name": "Open task drawer" }] },
+    { "fixtureId": "dashboard-outside-save", "appId": "dashboard", "route": "/", "setup": [] }
+  ]
+}

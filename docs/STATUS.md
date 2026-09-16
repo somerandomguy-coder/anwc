@@ -8,7 +8,7 @@ ANWC is a working development-only React/Vite inspection prototype. Its compiler
 
 P01–P04 now have an implementation pass: ordered independent checks, 18 fixture registry entries, receipt/result contract `0.3`, and a fresh staged grader. The batch is **not acceptance-certified**. It needs the full 18-pair behavior matrix, stronger provenance/lifecycle coverage, and P05 rehearsal evidence before M1 can be claimed.
 
-**Next task: finish P02 acceptance evidence**, in [ROADMAP](ROADMAP.md): measure every broken/healthy app pair at both viewports and browser-check materialized shop, landing, and dashboard subjects. Phase 2 then delivers trustworthy evaluation (P01–P05), then an external-project alpha (P06–P08). The founder-run pilot is P09.
+**Next task: finish P02 detector evidence**, in [ROADMAP](ROADMAP.md): add target-stable detector assertions for landing and dashboard, matching the already separate shop checks. The public [18-pair matrix](../bench/fixture-matrix.json), representative materialized broken/healthy states for every app, and an alternative CSS repair now have browser-grade evidence. Phase 2 then delivers trustworthy evaluation (P01–P05), then an external-project alpha (P06–P08). The founder-run pilot is P09.
 
 The W01–W14 implementation rollout shipped through `d616943`. **The previous blanket completion claim was too broad:** some original acceptance criteria remain unmet. The roadmap records concrete source-review gaps and follow-ups. The commands are useful for development practice; current generated subjects/grades are not yet certified for a blinded scored experiment.
 
@@ -17,14 +17,14 @@ The W01–W14 implementation rollout shipped through `d616943`. **The previous b
 | Area | What exists | What remains |
 | --- | --- | --- |
 | Installed Vite/runtime | JSX/source linkage, on-demand inspect, HMR and production stripping tests | Independently installable packages/external-consumer acceptance: P06 |
-| Public fixture corpus | 10 shop, 4 landing, 4 dashboard broken/healthy pairs | Full independent matrix for the newer apps: P01–P02 |
+| Public fixture corpus | 10 shop, 4 landing, 4 dashboard broken/healthy pairs with independent two-viewport browser truth; [public matrix](../bench/fixture-matrix.json); representative materialized states pass/fail correctly | Separate expected detector evidence for landing/dashboard: P02 |
 | prepare-pair / check-pair | 18 registered app states; neutral TASK.md; contract `0.3` practice/scored receipts | Full broken/healthy matrix and semantic-parser intent freeze: P02–P03 |
 | grade | Ordered exact checks; evaluator-hash gate; fresh staged install; strict loopback port | Cross-platform lifecycle and failure-mode acceptance coverage: P01/P03/P04 |
 | rehearse | Ordinary-side runs for pricing and dashboard at two widths | Both arms and shop, source-link/build evidence, durable report: P05 |
 | Agent benefit | No real paired results recorded | Pilot P08–P09; no cost/speed claim yet |
 | Arbitrary URLs | Experimental `--runtime-only` injection exists | Supported default still requires installed runtime; R02–R06 deferred |
 
-This batch passed `npm run typecheck`, 22 focused benchmark unit tests, and all 22 Chromium browser tests on Windows. It did not run the full integration command after the batch. These checks demonstrate the new checker paths and staged grader, not the complete M1 acceptance matrix.
+The evaluator-foundation batch passed `npm run typecheck`, 22 focused benchmark unit tests, and 22 Chromium browser tests on Windows. The P02 matrix slice passed `npm run typecheck`, 24 Chromium browser tests, and a focused browser-grade test that materialized one broken subject from each app. It did not run the full integration command after these batches. These checks demonstrate the new checker paths, fixture truth, and staged grader, not the complete M1 acceptance matrix.
 
 The existing local W14 report was read during this review: pricing-blocked and dashboard-outside-save each record broken failure, repair pass and deletion failure at 390×844 and 1440×900. It uses caller-supplied revision labels and lives in a temp directory; it is limited historical evidence. See [HISTORY](HISTORY.md).
 

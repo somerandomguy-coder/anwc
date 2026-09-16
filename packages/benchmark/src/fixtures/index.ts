@@ -25,10 +25,10 @@ export const checkSchema = z.discriminatedUnion('kind', [
   z.object({ ...checkBase, kind: z.literal('width-within'), target: nonEmpty, container: nonEmpty, tolerancePx: z.number().nonnegative().default(1) }).strict(),
   z.object({ ...checkBase, kind: z.literal('line-count'), selector: nonEmpty, maxLines: z.number().int().positive() }).strict(),
   z.object({ ...checkBase, kind: z.literal('text-within'), selector: nonEmpty, container: nonEmpty, tolerancePx: z.number().nonnegative().default(1) }).strict(),
-  z.object({ ...checkBase, kind: z.literal('action-rendered'), role: nonEmpty, name: nonEmpty }).strict(),
-  z.object({ ...checkBase, kind: z.literal('action-in-viewport'), role: nonEmpty, name: nonEmpty }).strict(),
-  z.object({ ...checkBase, kind: z.literal('input-accepts'), role: nonEmpty, name: nonEmpty, value: z.string().max(500), point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).strict().optional() }).strict(),
-  z.object({ ...checkBase, kind: z.literal('action-changes-ui'), role: nonEmpty, name: nonEmpty, statusSelector: nonEmpty, expectedText: nonEmpty, point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).strict().optional() }).strict()
+  z.object({ ...checkBase, kind: z.literal('action-rendered'), role: nonEmpty, name: nonEmpty, scope: nonEmpty.optional() }).strict(),
+  z.object({ ...checkBase, kind: z.literal('action-in-viewport'), role: nonEmpty, name: nonEmpty, scope: nonEmpty.optional() }).strict(),
+  z.object({ ...checkBase, kind: z.literal('input-accepts'), role: nonEmpty, name: nonEmpty, scope: nonEmpty.optional(), value: z.string().max(500), point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).strict().optional() }).strict(),
+  z.object({ ...checkBase, kind: z.literal('action-changes-ui'), role: nonEmpty, name: nonEmpty, scope: nonEmpty.optional(), statusSelector: nonEmpty, expectedText: nonEmpty, point: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).strict().optional() }).strict()
 ]);
 
 export const evaluatorSidecarSchema = z.object({
@@ -52,7 +52,9 @@ export function repairVerified(results: CheckResult[]): boolean { return results
 export function isMutatingCheck(check: FixtureCheck): boolean { return check.kind === 'input-accepts' || check.kind === 'action-changes-ui'; }
 
 async function exactAction(page: Page, check: ActionCheck): Promise<{ locator: ReturnType<Page['getByRole']>; error?: string }> {
-  const locator = page.getByRole(check.role as never, { name: check.name, exact: true });
+  const scope = check.scope ? await exactlyOne(page, check.scope) : undefined;
+  if (scope?.error) return { locator: page.getByRole(check.role as never, { name: check.name, exact: true }), error: `action scope ${scope.error}` };
+  const locator = (scope?.locator ?? page).getByRole(check.role as never, { name: check.name, exact: true });
   const count = await locator.count();
   return count === 1 ? { locator } : { locator, error: `expected exactly one ${check.role} named ${JSON.stringify(check.name)}, found ${count}` };
 }

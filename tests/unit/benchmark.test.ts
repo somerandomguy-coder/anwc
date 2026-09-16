@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, fixtureMatrix, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -45,11 +45,24 @@ describe('benchmark plan', () => {
   }, 20_000);
   test('registry freezes all planned app states without copying the shop laboratory switchboard', () => {
     expect(allFixtures()).toHaveLength(18);
+    expect(fixtureMatrix()).toHaveLength(72);
     const shop = materializeFixtureSource('', fixtureFor('shop-blocked-checkout'));
     expect(shop).toContain('data-subject="prepared"');
     expect(shop).toContain('Store navigation');
     expect(shop).not.toContain('scenarioFromSearch');
     expect(shop).not.toContain('blocked-checkout');
+    const healthyShop = materializeFixtureSource('', fixtureFor('shop-blocked-checkout'), 'healthy');
+    expect(healthyShop).toContain('Checkout now');
+    expect(materializeFixtureStyles('', fixtureFor('shop-blocked-checkout'), 'healthy')).not.toContain('position:absolute');
+  });
+  test('committed public matrix stays aligned with the fixture registry', async () => {
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    const matrix = JSON.parse(await readFile(join(sourceRoot, 'bench/fixture-matrix.json'), 'utf8')) as { states: string[]; viewports: unknown[]; pairs: Array<{ fixtureId: string; appId: string; route: string; setup: unknown[] }> };
+    expect(matrix.states).toEqual(['broken', 'healthy']);
+    expect(matrix.viewports).toHaveLength(2);
+    expect(matrix.pairs).toHaveLength(18);
+    expect(matrix.pairs.map((pair) => pair.fixtureId).sort()).toEqual(allFixtures().map((fixture) => fixture.id).sort());
+    expect(matrix.pairs.map((pair) => `${pair.fixtureId}:${pair.appId}:${pair.route}`).sort()).toEqual(allFixtures().map((fixture) => `${fixture.id}:${fixture.appId}:${fixture.route}`).sort());
   });
   test('prepares matching A/B subjects and catches a one-sided app edit before a run', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-prepared-pair-'));
@@ -85,6 +98,56 @@ describe('benchmark plan', () => {
       const tampered = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4393 });
       expect(tampered.status).toBe('integrity-failed');
       expect(tampered.integrityIssues.join('\n')).toContain('immutable tool, config, or task files differ');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 60_000);
+  async function gradeMaterializedStates(samples: ReadonlyArray<{ fixtureId: string; state: 'broken' | 'healthy'; expected: 'failed' | 'passed'; port: number; appId: 'shop' | 'landing' | 'dashboard' }>): Promise<void> {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-materialized-apps-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      for (const sample of samples) {
+        const pair = await preparePair({ sourceRoot, output: join(root, `${sample.fixtureId}-${sample.state}`), fixtureId: sample.fixtureId, state: sample.state, ordinaryPort: sample.port, assistedPort: sample.port + 1, practice: true });
+        const exported = await readFile(join(pair.ordinary, `examples/${sample.appId}/src/main.tsx`), 'utf8');
+        expect(exported).not.toContain('URLSearchParams');
+        expect(exported).not.toContain('data-fixture-navigation');
+        const result = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: sample.port });
+        expect(result.status, JSON.stringify(result.checks)).toBe(sample.expected);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+  test('browser-grades materialized shop states without public switching', async () => {
+    await gradeMaterializedStates([
+      { fixtureId: 'shop-blocked-checkout', state: 'broken', expected: 'failed', port: 4401, appId: 'shop' },
+      { fixtureId: 'shop-blocked-checkout', state: 'healthy', expected: 'passed', port: 4403, appId: 'shop' }
+    ]);
+  }, 60_000);
+  test('browser-grades materialized landing states without public switching', async () => {
+    await gradeMaterializedStates([
+      { fixtureId: 'pricing-blocked', state: 'broken', expected: 'failed', port: 4409, appId: 'landing' },
+      { fixtureId: 'pricing-blocked', state: 'healthy', expected: 'passed', port: 4411, appId: 'landing' }
+    ]);
+  }, 60_000);
+  test('browser-grades materialized dashboard states without public switching', async () => {
+    await gradeMaterializedStates([
+      { fixtureId: 'dashboard-blocked-input', state: 'broken', expected: 'failed', port: 4405, appId: 'dashboard' },
+      { fixtureId: 'dashboard-blocked-input', state: 'healthy', expected: 'passed', port: 4407, appId: 'dashboard' }
+    ]);
+  }, 90_000);
+  test('accepts an alternative CSS-only repair while preserving pricing content and behavior', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-css-repair-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-title', ordinaryPort: 4413, assistedPort: 4414, practice: true });
+      expect((await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4413 })).status).toBe('failed');
+      const stylesPath = join(pair.ordinary, 'examples/landing/src/styles.css');
+      await writeFile(stylesPath, (await readFile(stylesPath, 'utf8')).replace('.title-overflow { display: block; width: 34rem; white-space: nowrap; }', '.title-overflow { display: block; width: 100%; white-space: normal; }'));
+      const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4414 });
+      expect(repaired.integrityIssues).toEqual([]);
+      expect(repaired.status).toBe('passed');
+      expect(repaired.checks.filter((check) => check.id === 'content-2').every((check) => check.status === 'pass')).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

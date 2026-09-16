@@ -43,7 +43,7 @@ const fixtures: Record<string, EvaluatorFixture> = {
     { id: 'growth-selects', required: true, kind: 'action-changes-ui', role: 'button', name: 'Choose Growth', statusSelector: '#selection-status', expectedText: 'Growth plan selected' }
   ] },
   'pricing-description': { fixture: landingBase('pricing-description', ['Keep the complete Growth description readable at both viewports.']), repairChecks: [
-    { id: 'growth-description-contained', required: true, kind: 'text-within', selector: '.plan:nth-child(2) p', container: '.plan:nth-child(2)', tolerancePx: 1 },
+    { id: 'growth-description-contained', required: true, kind: 'text-within', selector: '.growth-description', container: '.growth-description', tolerancePx: 1 },
     { id: 'growth-selects', required: true, kind: 'action-changes-ui', role: 'button', name: 'Choose Growth', statusSelector: '#selection-status', expectedText: 'Growth plan selected' }
   ] },
   'pricing-blocked': { fixture: landingBase('pricing-blocked', ['Keep the Growth plan action usable at both viewports.']), repairChecks: [
@@ -62,7 +62,8 @@ const fixtures: Record<string, EvaluatorFixture> = {
     { id: 'save-updates-status', required: true, kind: 'action-changes-ui', role: 'button', name: 'Save changes', statusSelector: '[role=status]', expectedText: 'Changes saved' }
   ] },
   'dashboard-blocked-input': { fixture: dashboardBase('dashboard-blocked-input', ['Keep the drawer owner input usable at both viewports.'], [{ kind: 'click', role: 'button', name: 'Open task drawer', timeoutMs: 2_000 }]), repairChecks: [
-    { id: 'owner-accepts-input', required: true, kind: 'input-accepts', role: 'textbox', name: 'Owner', value: 'Avery' }
+    { id: 'owner-accepts-input', required: true, kind: 'input-accepts', role: 'textbox', name: 'Owner', value: 'Avery' },
+    { id: 'drawer-save-updates-status', required: true, kind: 'action-changes-ui', scope: '[role="dialog"]', role: 'button', name: 'Save changes', statusSelector: '[role=status]', expectedText: 'Changes saved' }
   ] },
   'dashboard-outside-save': { fixture: dashboardBase('dashboard-outside-save', ['Keep Save changes inside the initial viewport at both viewports.']), repairChecks: [
     { id: 'save-in-viewport', required: true, kind: 'action-in-viewport', role: 'button', name: 'Save changes' },
