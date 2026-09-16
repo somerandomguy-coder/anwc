@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,6 +117,107 @@ describe('benchmark plan', () => {
       await rm(root, { recursive: true, force: true });
     }
   }, 60_000);
+  test('enforces dirty vs scored receipt boundaries and rejects path traversal in receipt file keys', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-receipt-schema-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-title', ordinaryPort: 4191, assistedPort: 4192, practice: true });
+      const receipt = await readPreparedPairReceipt(pair.receipt);
+      expect(receipt.scored).toBe(false);
+
+      // Traversal rejection in applicationFiles and immutableFiles
+      const badReceiptPath = join(root, 'bad-receipt.json');
+      await writeFile(badReceiptPath, JSON.stringify({ ...receipt, applicationFiles: { '../escape.ts': '0'.repeat(64) } }));
+      await expect(readPreparedPairReceipt(badReceiptPath)).rejects.toThrow(/path traversal is not allowed/);
+
+      // Scored receipt with dirty: true rejection
+      const dirtyScoredPath = join(root, 'dirty-scored-receipt.json');
+      await writeFile(dirtyScoredPath, JSON.stringify({ ...receipt, scored: true, source: { ...receipt.source, dirty: true } }));
+      await expect(readPreparedPairReceipt(dirtyScoredPath)).rejects.toThrow(/scored receipt cannot have dirty source state/);
+
+      // Scored preparation rejected on dirty git worktree
+      await expect(preparePair({ sourceRoot, output: join(root, 'dirty-scored-pair'), fixtureId: 'pricing-title', ordinaryPort: 4193, assistedPort: 4194 }))
+        .rejects.toThrow(/scored preparation requires a clean Git checkout/);
+
+      // Preparation rejected on mismatched revision
+      await expect(preparePair({ sourceRoot, output: join(root, 'mismatched-pair'), fixtureId: 'pricing-title', ordinaryPort: 4193, assistedPort: 4194, practice: true, sourceRevision: '0'.repeat(40) }))
+        .rejects.toThrow(/does not match HEAD/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
+  test('refuses certified grading on evaluator version mismatch from a separate evaluator tree', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-evaluator-tree-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    const separateEvaluator = join(root, 'separate-evaluator');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: 4395, assistedPort: 4396, practice: true });
+
+      // Create a separate evaluator tree with altered grader
+      await mkdir(join(separateEvaluator, 'packages/benchmark/src/fixtures'), { recursive: true });
+      await cp(join(sourceRoot, 'packages/benchmark/src/fixtures'), join(separateEvaluator, 'packages/benchmark/src/fixtures'), { recursive: true });
+      await mkdir(join(separateEvaluator, 'packages/benchmark/src'), { recursive: true });
+      await cp(join(sourceRoot, 'packages/benchmark/src/grade.ts'), join(separateEvaluator, 'packages/benchmark/src/grade.ts'));
+      await writeFile(join(separateEvaluator, 'packages/benchmark/src/grade.ts'), '\n// altered grader\n', { flag: 'a' });
+
+      const result = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4395, evaluatorRoot: separateEvaluator });
+      expect(result.status).toBe('integrity-failed');
+      expect(result.exitCode).toBe(2);
+      expect(result.integrityIssues.join('\n')).toContain('evaluator grader hash differs from the frozen receipt');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
+  test('rejects symlinked receipts, symlinked subjects, internal symlinks, and overlapping output before staging', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-symlink-checks-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: 4397, assistedPort: 4398, practice: true });
+
+      // 1. Output inside subject rejection
+      const insideResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4397, output: join(pair.ordinary, 'result.json') });
+      expect(insideResult.status).toBe('integrity-failed');
+      expect(insideResult.exitCode).toBe(2);
+      expect(insideResult.integrityIssues.join('\n')).toContain('grade result output must be outside the submitted subject');
+
+      // 2. Symlinked receipt rejection
+      const symlinkedReceipt = join(root, 'symlink-receipt.json');
+      await symlink(pair.receipt, symlinkedReceipt);
+      const symlinkReceiptResult = await gradeRepair({ receipt: symlinkedReceipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
+      expect(symlinkReceiptResult.status).toBe('integrity-failed');
+      expect(symlinkReceiptResult.exitCode).toBe(2);
+      expect(symlinkReceiptResult.integrityIssues.join('\n')).toContain('receipt path cannot be a symbolic link');
+
+      // 3. Symlinked subject root rejection
+      const symlinkedSubject = join(root, 'symlink-subject');
+      await symlink(pair.ordinary, symlinkedSubject);
+      const symlinkSubjectResult = await gradeRepair({ receipt: pair.receipt, subject: symlinkedSubject, condition: 'ordinary', port: 4397 });
+      expect(symlinkSubjectResult.status).toBe('integrity-failed');
+      expect(symlinkSubjectResult.exitCode).toBe(2);
+      expect(symlinkSubjectResult.integrityIssues.join('\n')).toContain('subject directory is an unsupported symbolic link');
+
+      // 4. Internal symlink rejection within subject
+      const internalSymlink = join(pair.ordinary, 'examples/landing/src/symlink.tsx');
+      await symlink(join(pair.ordinary, 'examples/landing/src/main.tsx'), internalSymlink);
+      const internalSymlinkResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
+      expect(internalSymlinkResult.status).toBe('integrity-failed');
+      expect(internalSymlinkResult.exitCode).toBe(2);
+      expect(internalSymlinkResult.integrityIssues.join('\n')).toContain('unsupported symbolic link');
+      await rm(internalSymlink);
+
+      // 5. Existing output and symlinked output in preparePair
+      const existingOutput = join(root, 'pair');
+      await expect(preparePair({ sourceRoot, output: existingOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
+        .rejects.toThrow(/pair output already exists or is a symbolic link/);
+
+      const symlinkedOutput = join(root, 'symlink-out');
+      await symlink(pair.ordinary, symlinkedOutput);
+      await expect(preparePair({ sourceRoot, output: symlinkedOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
+        .rejects.toThrow(/pair output already exists or is a symbolic link/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
   async function gradeMaterializedStates(samples: ReadonlyArray<{ fixtureId: string; state: 'broken' | 'healthy'; expected: 'failed' | 'passed'; port: number; appId: 'shop' | 'landing' | 'dashboard' }>): Promise<void> {
     const root = await mkdtemp(join(tmpdir(), 'anwc-materialized-apps-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -598,6 +699,10 @@ describe('W02 result accounting and endpoint fairness', () => {
 
       io = ioCapture();
       expect(await runBenchmarkCli(['grade', '--receipt', planFile], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['grade', '--receipt', planFile, '--subject', root, '--condition', 'ordinary', '--port', '4399', '--output', outFile, '--evaluator-root'], io)).toBe(2);
+      expect(io.getStderr()).toContain('Usage:');
     } finally {
       await rm(root, { recursive: true, force: true });
     }

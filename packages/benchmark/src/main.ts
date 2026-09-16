@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json | anwc-bench rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY --source-revision SHA --detector-revision SHA';
 }
 
 export type BenchmarkIo = {
@@ -26,9 +26,17 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
       return 0;
     }
     if (command === 'grade') {
-      const [receiptFlag, receipt, subjectFlag, subject, conditionFlag, condition, portFlag, port, outputFlag, output] = [planPath, ...rest];
-      if (receiptFlag !== '--receipt' || !receipt || subjectFlag !== '--subject' || !subject || conditionFlag !== '--condition' || !['ordinary', 'anwc-assisted'].includes(condition ?? '') || portFlag !== '--port' || !port || outputFlag !== '--output' || !output || rest.length !== 9) { io.stderr.write(`${usage()}\n`); return 2; }
-      const result = await gradeRepair({ receipt, subject, condition: condition as SubjectCondition, port: Number(port), output });
+      const argsList = [planPath, ...rest];
+      let evaluatorRoot: string | undefined;
+      const evalIndex = argsList.indexOf('--evaluator-root');
+      if (evalIndex !== -1) {
+        evaluatorRoot = argsList[evalIndex + 1];
+        if (!evaluatorRoot) { io.stderr.write(`${usage()}\n`); return 2; }
+        argsList.splice(evalIndex, 2);
+      }
+      const [receiptFlag, receipt, subjectFlag, subject, conditionFlag, condition, portFlag, port, outputFlag, output] = argsList;
+      if (receiptFlag !== '--receipt' || !receipt || subjectFlag !== '--subject' || !subject || conditionFlag !== '--condition' || !['ordinary', 'anwc-assisted'].includes(condition ?? '') || portFlag !== '--port' || !port || outputFlag !== '--output' || !output || argsList.length !== 10) { io.stderr.write(`${usage()}\n`); return 2; }
+      const result = await gradeRepair({ receipt, subject, condition: condition as SubjectCondition, port: Number(port), output, evaluatorRoot });
       io.stdout.write(`Repair grade: ${result.status}. ${result.checks.length} checks recorded.\n`);
       return result.exitCode;
     }

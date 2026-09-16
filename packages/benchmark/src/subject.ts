@@ -385,11 +385,14 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
 
     // 5. Generate matching lockfile using npm tool
     try {
-      const npmCli = process.env.npm_execpath;
-      if (!npmCli) throw new Error('npm_execpath is unavailable');
+      const rawNpmCli = process.env.npm_execpath;
+      if (!rawNpmCli) throw new Error('npm_execpath is unavailable');
+      const npmCli = rawNpmCli.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm');
+      const npmEnv: NodeJS.ProcessEnv = { ...process.env, PATH: process.env.PATH };
+      delete npmEnv.NODE_OPTIONS;
       await pExecFile(process.execPath, [npmCli, 'install', '--package-lock-only', '--ignore-scripts'], {
         cwd: stagingDir,
-        env: { ...process.env, PATH: process.env.PATH }
+        env: npmEnv
       });
     } catch (npmError: unknown) {
       const detail = npmError instanceof Error ? npmError.message : 'unknown npm failure';

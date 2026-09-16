@@ -413,3 +413,21 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Replaced the regex scanner for source intent with TypeScript's TSX parser. It freezes static `data-anwc-expect` and `data-anwc-max-lines` declarations independent of whitespace, source location, JSX order, or attribute order. Dynamic declarations and invalid TSX now fail explicitly rather than being silently skipped.
 - Receipts now pin a hash of `grade.ts` alongside the checker, registry, and sidecar. A grade result records a deterministic hash of the submitted tree, excluding generated dependencies, builds, caches, and logs. This identifies the repair that was actually evaluated without treating approved source edits as immutable.
 - Evidence on Windows: `npm run test:integration` passed with 48 unit tests, 26 Chromium tests, TypeScript, and production builds for dashboard, landing, and shop. The suite includes parser formatting/dynamic/malformed-source checks, rejection of a deliberately altered grader hash, and staged broken/repair grades with distinct submitted artifact hashes. Remaining P03 acceptance includes scored dirty-revision boundaries, a separately changed evaluator tree, and filesystem failure cases.
+
+## 2026-09-16 — P03 provenance acceptance and cross-platform integrity
+
+- Completed P03 acceptance criteria:
+  - Scored vs practice receipt boundaries: scored preparation rejects dirty Git worktree before writing; `receiptSchema` and `checkReturnedSubject` enforce that scored receipts cannot claim dirty source state; preparation rejects mismatched source revision against `HEAD`.
+  - Malformed path traversal rejection: `pathKey` validation in `receiptSchema` rejects any keys in `applicationFiles` or `immutableFiles` containing `..` path traversal components before reading or staging files.
+  - Separate evaluator tree validation: added `--evaluator-root PATH` CLI option and `evaluatorRoot` option to `gradeRepair`. When evaluating against a separate evaluator tree with altered grader/fixtures, it refuses certified grading with status `'integrity-failed'` and exit code `2`.
+  - Symlink & overlapping output preflight: preflight rejects symlinked receipts, symlinked subject roots, internal symlinks within submitted subjects, existing pair outputs, and grade output paths overlapping or placed inside submitted subjects before any staging I/O occurs.
+- Fixed Linux cross-platform test runner and build portability:
+  - Configured tsx ESM loader import in Vitest worker environment, Playwright webServer environment, and workspace production build runner (`scripts/build.js`) to resolve `ERR_UNKNOWN_FILE_EXTENSION` when externalizing workspace package `@anwc/vite-plugin`.
+  - Normalized `npm_execpath` (`npx-cli.js` -> `npm-cli.js`) and sanitized `NODE_OPTIONS` for npm subprocess invocations in temporary staging directories.
+- Evidence on Linux: `npm run test:integration` passed cleanly:
+  - `npm run typecheck`: 0 errors.
+  - `npm run test:unit`: 7 test files, 51/51 tests passed.
+  - `npm run test:browser`: 26/26 Chromium tests passed across shop, landing, and dashboard.
+  - `npm run build`: Production builds succeeded for `@anwc/shop`, `@anwc/landing`, and `@anwc/dashboard`.
+- Next task: P04 — own the evaluator process from start to finish (lifecycle, process cleanup, and failure modes).
+

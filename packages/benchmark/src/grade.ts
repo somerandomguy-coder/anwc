@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { z } from 'zod';
-import { checkEvaluatorReceipt, checkReturnedSubject, readPreparedPairReceipt } from './prepare.js';
+import { checkEvaluatorReceipt, checkReturnedSubject, readPreparedPairReceipt, type PreparedPairReceipt } from './prepare.js';
+import { BenchmarkPlanError } from './index.js';
 import { applySetup, isMutatingCheck, repairVerified, runChecks, type CheckResult, type FixtureCheck } from './fixtures/index.js';
 import { evaluatorFixtureFor } from './fixtures/evaluator.js';
 import { fixtureFor } from './fixtures/registry.js';
@@ -65,7 +66,9 @@ async function assertPortAvailable(port: number): Promise<void> {
 async function runCommand(file: string, args: string[], cwd: string, timeoutMs: number): Promise<string> {
   return new Promise<string>((resolveRun, rejectRun) => {
     let output = ''; let settled = false;
-    const child = spawn(file, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    delete env.NODE_OPTIONS;
+    const child = spawn(file, args, { cwd, windowsHide: true, env, stdio: ['ignore', 'pipe', 'pipe'] });
     const finish = (error?: Error): void => { if (settled) return; settled = true; clearTimeout(timer); error ? rejectRun(Object.assign(error, { log: output })) : resolveRun(output); };
     child.stdout?.on('data', (data) => { output = appendLog(output, data); }); child.stderr?.on('data', (data) => { output = appendLog(output, data); });
     child.once('error', (error) => finish(error)); child.once('exit', (code) => code === 0 ? finish() : finish(new Error(`${file} ${args.join(' ')} exited ${code ?? 'without a code'}`)));
@@ -90,7 +93,19 @@ function preconditionChecks(requiredContent: string[], requiredActions: Array<{ 
 
 /** Grades a returned repair in a fresh evaluator-owned workspace. */
 export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
-  const receipt = await readPreparedPairReceipt(options.receipt); const subject = resolve(options.subject); const logs = { install: '', server: '', pageErrors: [] as string[] };
+  const subject = resolve(options.subject); const logs = { install: '', server: '', pageErrors: [] as string[] };
+  if (options.output && isSameOrSubpath(resolve(options.output), subject)) {
+    return { schemaVersion: '0.3', fixtureId: 'unknown', condition: options.condition, subject, integrityIssues: ['grade result output must be outside the submitted subject'], status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], logs, cleanup: 'not-needed' };
+  }
+  let receipt: PreparedPairReceipt;
+  try {
+    receipt = await readPreparedPairReceipt(options.receipt);
+  } catch (error) {
+    const message = error instanceof BenchmarkPlanError ? error.issues.join('; ') : (error instanceof Error ? error.message : String(error));
+    const result: GradeResult = { schemaVersion: '0.3', fixtureId: 'unknown', condition: options.condition, subject, integrityIssues: [`invalid evaluator receipt: ${message}`], status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], logs, cleanup: 'not-needed' };
+    await writeResult(result, options.output, subject);
+    return result;
+  }
   const integrityIssues = [...await checkReturnedSubject(receipt, subject, options.condition), ...await checkEvaluatorReceipt(receipt, options.evaluatorRoot)];
   const submittedHash = await submittedArtifactHash(subject).catch(() => undefined);
   const base = { schemaVersion: '0.3' as const, fixtureId: receipt.fixtureId, condition: options.condition, subject, integrityIssues, ...(submittedHash ? { submittedArtifactHash: submittedHash } : {}), logs };
@@ -100,7 +115,8 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   try {
     if (evaluator.fixture.appId !== receipt.appId || evaluator.fixture.route !== receipt.route) throw new Error('receipt fixture does not match evaluator definition');
     await assertPortAvailable(options.port); remaining(); activeStage = 'staging'; stage = await copyForEvaluation(subject);
-    const npmCli = process.env.npm_execpath; if (!npmCli) throw new Error('npm_execpath is unavailable');
+    const rawNpmCli = process.env.npm_execpath; if (!rawNpmCli) throw new Error('npm_execpath is unavailable');
+    const npmCli = rawNpmCli.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm');
     activeStage = 'install'; logs.install = await runCommand(process.execPath, [npmCli, 'ci', '--ignore-scripts'], stage, Math.min(options.installTimeoutMs ?? 120_000, remaining()));
     activeStage = 'server'; const serverPath = join(stage, 'node_modules', 'vite', 'bin', 'vite.js'); child = spawn(process.execPath, [serverPath, '--host', '127.0.0.1', '--port', String(options.port), '--strictPort'], { cwd: join(stage, 'examples', receipt.appId), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }); child.stdout?.on('data', (data) => { logs.server = appendLog(logs.server, data); }); child.stderr?.on('data', (data) => { logs.server = appendLog(logs.server, data); });
     const url = `http://127.0.0.1:${options.port}${receipt.route}`; await waitForServer(url, child, Math.min(options.startupTimeoutMs ?? 15_000, remaining()));

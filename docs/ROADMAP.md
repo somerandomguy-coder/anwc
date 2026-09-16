@@ -49,7 +49,7 @@ These are source-review findings, not new browser reproduction results:
 | --- | --- | --- | --- |
 | P01 | Deterministic independent checks that reject false repairs | shipped W09/W13 | implemented; acceptance evidence in progress |
 | P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | implementation and Windows browser evidence complete; ready for review |
-| P03 | Verified provenance and frozen intent/grade contracts | P02 | parser-backed intent and grader/artifact hashes implemented; provenance acceptance in progress |
+| P03 | Verified provenance and frozen intent/grade contracts | P02 | done; provenance acceptance and Linux cross-platform verified |
 | P04 | Bounded grading in a clean evaluator copy | P03 | implemented lifecycle; failure-mode coverage in progress |
 | P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | queued |
 | P06 | Installable local alpha packages and external consumer | existing Vite/CLI; independent of pilot | ready after M1 by default |

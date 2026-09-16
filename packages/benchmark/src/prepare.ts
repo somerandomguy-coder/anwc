@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -26,9 +26,9 @@ const receiptSchema = z.object({
   route: z.string().startsWith('/'), setup: z.array(z.record(z.unknown())), viewports: z.array(z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict()).min(1),
   ports: z.object({ ordinary: port, assisted: port }).strict(), editablePaths: z.array(pathKey).min(1),
   toolchain: z.object({ node: z.string().min(1), npm: z.string().min(1), browser: z.string().min(1) }).strict(),
-  applicationFiles: z.record(sha256), immutableFiles: z.object({ ordinary: z.record(sha256), assisted: z.record(sha256) }).strict(),
+  applicationFiles: z.record(pathKey, sha256), immutableFiles: z.object({ ordinary: z.record(pathKey, sha256), assisted: z.record(pathKey, sha256) }).strict(),
   intentHashes: z.object({ ordinary: sha256, assisted: sha256 }).strict(), taskHash: sha256
-}).strict();
+}).strict().refine((data) => !data.scored || !data.source.dirty, 'scored receipt cannot have dirty source state');
 export type PreparedPairReceipt = z.infer<typeof receiptSchema>;
 
 function normalizedPath(path: string): string { return path.split(sep).join('/'); }
@@ -118,6 +118,8 @@ async function evaluatorHashes(sourceRoot: string): Promise<PreparedPairReceipt[
 
 export async function readPreparedPairReceipt(path: string): Promise<PreparedPairReceipt> {
   const receiptPath = resolve(path);
+  const receiptStat = await lstat(receiptPath).catch(() => undefined);
+  if (receiptStat?.isSymbolicLink()) throw new BenchmarkPlanError([`receipt path cannot be a symbolic link: ${receiptPath}`]);
   try {
     const raw: unknown = JSON.parse(await readFile(receiptPath, 'utf8'));
     if (typeof raw === 'object' && raw !== null && (raw as { schemaVersion?: string }).schemaVersion === '0.2') throw new Error('receipt schema 0.2 is historical and uncertified; regenerate from the original pinned source with schema 0.3');
@@ -134,10 +136,27 @@ export async function checkEvaluatorReceipt(receipt: PreparedPairReceipt, source
 
 /** Ensures a returned agent subject retained frozen inputs while allowing application source edits. */
 export async function checkReturnedSubject(receipt: PreparedPairReceipt, subject: string, condition: SubjectCondition): Promise<string[]> {
-  const root = resolve(subject); if (!(await exists(root))) return [`missing ${condition} subject: ${root}`];
-  const issues = (await checkSubjectWorkspace(root, condition, receipt.appId, true)).map((issue) => `${condition}: ${issue}`);
-  const arm = condition === 'ordinary' ? 'ordinary' : 'assisted'; const actual = await hashImmutableFiles(root, receipt.appId);
-  if (!equalHashes(actual, receipt.immutableFiles[arm])) { const changed = [...new Set([...Object.keys(receipt.immutableFiles[arm]), ...Object.keys(actual)])].filter((key) => receipt.immutableFiles[arm][key] !== actual[key]); issues.push(`${condition}: immutable tool, config, or task files differ from the frozen receipt: ${changed.join(', ')}`); }
+  const root = resolve(subject);
+  const rootStat = await lstat(root).catch(() => undefined);
+  if (!rootStat) return [`missing ${condition} subject: ${root}`];
+  if (rootStat.isSymbolicLink()) return [`${condition}: subject directory is an unsupported symbolic link: ${root}`];
+  let issues: string[] = [];
+  try {
+    issues = (await checkSubjectWorkspace(root, condition, receipt.appId, true)).map((issue) => `${condition}: ${issue}`);
+  } catch (error) {
+    if (error instanceof BenchmarkPlanError) return error.issues.map((issue) => `${condition}: ${issue}`);
+    return [`${condition}: ${error instanceof Error ? error.message : String(error)}`];
+  }
+  if (receipt.scored && receipt.source.dirty) {
+    issues.push(`${condition}: scored receipt cannot claim dirty source revision`);
+  }
+  const arm = condition === 'ordinary' ? 'ordinary' : 'assisted';
+  const actual = await hashImmutableFiles(root, receipt.appId).catch((error) => ({ error: error instanceof Error ? error.message : String(error) }));
+  if ('error' in actual) return [...issues, `${condition}: cannot verify immutable files: ${actual.error}`];
+  if (!equalHashes(actual, receipt.immutableFiles[arm])) {
+    const changed = [...new Set([...Object.keys(receipt.immutableFiles[arm]), ...Object.keys(actual)])].filter((key) => receipt.immutableFiles[arm][key] !== actual[key]);
+    issues.push(`${condition}: immutable tool, config, or task files differ from the frozen receipt: ${changed.join(', ')}`);
+  }
   const submittedIntent = await intentHash(root, receipt.appId).catch((error) => `ERROR:${error instanceof Error ? error.message : String(error)}`);
   if (submittedIntent !== receipt.intentHashes[arm]) issues.push(`${condition}: declared source intent differs from the frozen receipt`);
   return issues;
@@ -154,7 +173,10 @@ export async function checkPreparedPair(output: string): Promise<string[]> {
 /** Prepares matching, runnable ordinary and ANWC-assisted subjects from a pinned source tree. */
 export async function preparePair(options: PreparePairOptions): Promise<{ ordinary: string; assisted: string; receipt: string }> {
   const sourceRoot = resolve(options.sourceRoot); const output = resolve(options.output); const fixture = fixtureFor(options.fixtureId); const state = options.state ?? 'broken'; const practice = options.practice === true;
-  if (await exists(output)) throw new BenchmarkPlanError([`pair output already exists: ${output}`]);
+  const sourceStat = await lstat(sourceRoot).catch(() => undefined);
+  if (!sourceStat || !sourceStat.isDirectory() || sourceStat.isSymbolicLink()) throw new BenchmarkPlanError([`source root must be a non-symlink directory: ${sourceRoot}`]);
+  const outputStat = await lstat(output).catch(() => undefined);
+  if (outputStat) throw new BenchmarkPlanError([`pair output already exists or is a symbolic link: ${output}`]);
   if (isSameOrSubpath(output, sourceRoot) || isSameOrSubpath(sourceRoot, output)) throw new BenchmarkPlanError([`pair output overlaps source root: ${output}`]);
   if (!Number.isInteger(options.ordinaryPort) || !Number.isInteger(options.assistedPort) || options.ordinaryPort < 1 || options.assistedPort < 1 || options.ordinaryPort > 65_535 || options.assistedPort > 65_535 || options.ordinaryPort === options.assistedPort) throw new BenchmarkPlanError(['ordinary and assisted ports must be distinct ports between 1 and 65535']);
   const sourceState = await gitState(sourceRoot, options.sourceRevision, practice); if (options.detectorRevision && options.detectorRevision !== sourceState.revision) throw new BenchmarkPlanError(['detector revision must match the pinned source revision for this evaluator']);
