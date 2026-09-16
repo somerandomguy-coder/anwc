@@ -22,7 +22,10 @@ export const checkSchema = z.discriminatedUnion('kind', [
   z.object({ id, required: z.boolean(), kind: z.literal('content'), selector: nonEmpty, text: nonEmpty }).strict(),
   z.object({ id, required: z.boolean(), kind: z.literal('width-within'), target: nonEmpty, container: nonEmpty, tolerancePx: z.number().nonnegative().default(1) }).strict(),
   z.object({ id, required: z.boolean(), kind: z.literal('line-count'), selector: nonEmpty, maxLines: z.number().int().positive() }).strict(),
+  z.object({ id, required: z.boolean(), kind: z.literal('text-within'), selector: nonEmpty, container: nonEmpty, tolerancePx: z.number().nonnegative().default(1) }).strict(),
   z.object({ id, required: z.boolean(), kind: z.literal('action-rendered'), role: nonEmpty, name: nonEmpty }).strict(),
+  z.object({ id, required: z.boolean(), kind: z.literal('action-in-viewport'), role: nonEmpty, name: nonEmpty }).strict(),
+  z.object({ id, required: z.boolean(), kind: z.literal('input-accepts'), role: nonEmpty, name: nonEmpty, value: z.string().max(500) }).strict(),
   z.object({ id, required: z.boolean(), kind: z.literal('action-changes-ui'), role: nonEmpty, name: nonEmpty, statusSelector: nonEmpty, expectedText: nonEmpty }).strict()
 ]);
 
@@ -66,14 +69,41 @@ export async function runChecks(page: Page, checks: FixtureCheck[]): Promise<Che
         });
         return { id: check.id, required: check.required, status: lines <= check.maxLines ? 'pass' : 'fail', evidence: { lines, maxLines: check.maxLines } };
       }
+      if (check.kind === 'text-within') {
+        const result = await page.locator(check.selector).evaluate((element, input) => {
+          const container = document.querySelector(input.container);
+          if (!container) return { supported: false };
+          const bounds = container.getBoundingClientRect();
+          const range = document.createRange(); range.selectNodeContents(element);
+          const rectangles = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+          return { supported: rectangles.length > 0, contained: rectangles.every((rect) => rect.left >= bounds.left - input.tolerance && rect.right <= bounds.right + input.tolerance && rect.top >= bounds.top - input.tolerance && rect.bottom <= bounds.bottom + input.tolerance), rectangles: rectangles.length, bounds: { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom } };
+        }, { container: check.container, tolerance: check.tolerancePx });
+        if (!result.supported) return { id: check.id, required: check.required, status: 'unsupported', evidence: result };
+        return { id: check.id, required: check.required, status: result.contained ? 'pass' : 'fail', evidence: result };
+      }
       const action = page.getByRole(check.role as never, { name: check.name });
       if (check.kind === 'action-rendered') {
         const visible = await action.isVisible({ timeout: 500 });
         return { id: check.id, required: check.required, status: visible ? 'pass' : 'fail', evidence: { visible } };
       }
-      await action.click({ timeout: 500 });
+      if (check.kind === 'action-in-viewport') {
+        const box = await action.boundingBox();
+        const viewport = page.viewportSize();
+        const inViewport = Boolean(box && viewport && box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width && box.y + box.height <= viewport.height);
+        return { id: check.id, required: check.required, status: inViewport ? 'pass' : 'fail', evidence: { box, viewport } };
+      }
+      if (check.kind === 'input-accepts') {
+        await action.fill(check.value, { timeout: 500 });
+        const value = await action.inputValue({ timeout: 500 });
+        return { id: check.id, required: check.required, status: value === check.value ? 'pass' : 'fail', evidence: { value } };
+      }
+      // A locator click may target the element directly. Use its centre through
+      // the normal mouse path so a real overlay can intercept the interaction.
+      const box = await action.boundingBox();
+      if (!box) return { id: check.id, required: check.required, status: 'fail', evidence: { error: 'action has no bounding box' } };
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
       const text = await page.locator(check.statusSelector).textContent({ timeout: 500 });
-      return { id: check.id, required: check.required, status: text?.includes(check.expectedText) ? 'pass' : 'fail', evidence: { text } };
+      return { id: check.id, required: check.required, status: text?.includes(check.expectedText) ? 'pass' : 'fail', evidence: { text, point: { x: box.x + box.width / 2, y: box.y + box.height / 2 } } };
     } catch (error) { return { id: check.id, required: check.required, status: 'fail', evidence: { error: error instanceof Error ? error.message : String(error) } }; }
   }));
 }

@@ -43,6 +43,25 @@ URL-only access is valid for a **detection-only** experiment. It is not a repair
 
 ## Build a subject folder
 
+For the current landing/dashboard corpus, use the paired preparer rather than hand-writing overlays:
+
+```sh
+npm run bench -- prepare-pair . --fixture pricing-blocked --out C:\temp\anwc-pair --source-revision SOURCE_SHA --detector-revision DETECTOR_SHA
+npm run bench -- check-pair C:\temp\anwc-pair
+```
+
+Give one fresh folder to each agent: `ordinary/` to the ordinary run, or `assisted/` to the ANWC run. The neutral `TASK.md` is the agent-facing brief. The evaluator keeps `receipt.json` outside both agents’ working folders. Before an agent starts, `check-pair` confirms the two application copies and their immutable inputs still match the receipt.
+
+After the agent returns a repair, grade the returned folder independently. The command installs from the frozen lockfile, starts its own local server, runs the evaluator-only behavior checks at every required viewport, writes a result file, and then shuts down the server.
+
+```sh
+npm run bench -- grade --receipt C:\temp\anwc-pair\receipt.json --subject C:\temp\anwc-pair\ordinary --condition ordinary --port 4301 --output C:\temp\ordinary-result.json
+```
+
+Use a distinct port for the assisted subject. A `failed` result means required behavior remains broken; `integrity-failed` means the agent altered a frozen task, tool, config, or application file outside `examples/<app>/src/`; `infrastructure-failed` preserves the server/browser error instead of being scored as a repair.
+
+## Legacy manual subject packaging
+
 Keep the private overlay in a directory outside the repository. It contains only replacement files that materialize one fixture. At minimum it replaces `examples/shop/src/main.tsx` so there is no query-driven public scenario switch. An ordinary overlay also replaces `examples/shop/vite.config.ts` with a normal React/Vite configuration that omits ANWC.
 
 From the evaluator repository, create a fresh destination for each run:

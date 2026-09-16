@@ -26,6 +26,7 @@ export type PreparedPairReceipt = {
   setup: [];
   ports: { ordinary: number; assisted: number };
   applicationFiles: Record<string, string>;
+  immutableFiles: { ordinary: Record<string, string>; assisted: Record<string, string> };
   taskHash: string;
 };
 
@@ -56,8 +57,52 @@ async function hashApplicationFiles(root: string, appId: string): Promise<Record
   return Object.fromEntries(Object.entries(hashes).sort(([left], [right]) => left.localeCompare(right)));
 }
 
+/** Inputs an agent may not change: tool/config files, task, and application files outside src/. */
+async function hashImmutableFiles(root: string, appId: string): Promise<Record<string, string>> {
+  const hashes: Record<string, string> = {};
+  const ignoredDirectories = new Set(['node_modules', 'dist', 'build', '.vite', '.cache']);
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = join(directory, entry.name);
+      const path = normalizedPath(relative(root, full));
+      if (entry.isDirectory()) {
+        if (!ignoredDirectories.has(entry.name) && path !== `examples/${appId}/src`) await visit(full);
+      } else if (entry.isFile()) {
+        hashes[path] = await hashFile(full);
+      }
+    }
+  }
+  await visit(root);
+  return Object.fromEntries(Object.entries(hashes).sort(([left], [right]) => left.localeCompare(right)));
+}
+
 function equalHashes(left: Record<string, string>, right: Record<string, string>): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+export async function readPreparedPairReceipt(path: string): Promise<PreparedPairReceipt> {
+  const receiptPath = resolve(path);
+  try {
+    const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as PreparedPairReceipt;
+    if (receipt.schemaVersion !== '0.2' || !receipt.appId || !receipt.applicationFiles || !receipt.immutableFiles) throw new Error('unsupported schema or missing frozen hashes');
+    return receipt;
+  } catch (error) {
+    throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]);
+  }
+}
+
+/** Ensures a returned agent subject retained its frozen non-application inputs. */
+export async function checkReturnedSubject(receipt: PreparedPairReceipt, subject: string, condition: SubjectCondition): Promise<string[]> {
+  const root = resolve(subject);
+  if (!(await exists(root))) return [`missing ${condition} subject: ${root}`];
+  const issues = (await checkSubjectWorkspace(root, condition, receipt.appId, true)).map((issue) => `${condition}: ${issue}`);
+  const expected = receipt.immutableFiles[condition === 'ordinary' ? 'ordinary' : 'assisted'];
+  const actual = await hashImmutableFiles(root, receipt.appId);
+  if (!equalHashes(actual, expected)) {
+    const changed = [...new Set([...Object.keys(expected), ...Object.keys(actual)])].filter((path) => expected[path] !== actual[path]);
+    issues.push(`${condition}: immutable tool, config, or task files differ from the frozen receipt: ${changed.join(', ')}`);
+  }
+  return issues;
 }
 
 /** Checks a pair before an agent starts work. W13 permits designated app edits after a repair. */
@@ -66,14 +111,13 @@ export async function checkPreparedPair(output: string): Promise<string[]> {
   const receiptPath = join(root, 'receipt.json');
   if (!(await exists(receiptPath))) return [`missing evaluator receipt: ${receiptPath}`];
   let receipt: PreparedPairReceipt;
-  try { receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as PreparedPairReceipt; } catch { return [`invalid evaluator receipt: ${receiptPath}`]; }
-  if (receipt.schemaVersion !== '0.2' || !receipt.appId || !receipt.applicationFiles) return ['evaluator receipt has an unsupported schema or missing application hashes'];
+  try { receipt = await readPreparedPairReceipt(receiptPath); } catch (error) { return [error instanceof Error ? error.message : `invalid evaluator receipt: ${receiptPath}`]; }
 
   const issues: string[] = [];
   for (const condition of ['ordinary', 'anwc-assisted'] as const) {
     const subject = join(root, condition === 'ordinary' ? 'ordinary' : 'assisted');
     if (!(await exists(subject))) { issues.push(`missing ${condition} subject`); continue; }
-    issues.push(...(await checkSubjectWorkspace(subject, condition, receipt.appId)).map((issue) => `${condition}: ${issue}`));
+    issues.push(...await checkReturnedSubject(receipt, subject, condition));
     if (!equalHashes(await hashApplicationFiles(subject, receipt.appId), receipt.applicationFiles)) issues.push(`${condition}: application files differ from the frozen receipt`);
     const taskHash = await hashFile(join(subject, 'TASK.md')).catch(() => 'missing');
     if (taskHash !== receipt.taskHash) issues.push(`${condition}: TASK.md differs from the frozen receipt`);
@@ -116,7 +160,7 @@ export async function preparePair(options: PreparePairOptions): Promise<{ ordina
     }
 
     const receiptPath = join(output, 'receipt.json');
-    const receipt: PreparedPairReceipt = { schemaVersion: '0.2', fixtureId: fixture.id, appId: fixture.appId, sourceRevision: options.sourceRevision, detectorRevision: options.detectorRevision, route: '/', setup: [], ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, applicationFiles, taskHash: createHash('sha256').update(task).digest('hex') };
+    const receipt: PreparedPairReceipt = { schemaVersion: '0.2', fixtureId: fixture.id, appId: fixture.appId, sourceRevision: options.sourceRevision, detectorRevision: options.detectorRevision, route: '/', setup: [], ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, taskHash: createHash('sha256').update(task).digest('hex') };
     await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
     const issues = await checkPreparedPair(output);
     if (issues.length > 0) throw new BenchmarkPlanError(['prepared pair did not pass readiness:', ...issues]);

@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -56,6 +56,29 @@ describe('benchmark plan', () => {
       await rm(root, { recursive: true, force: true });
     }
   }, 20_000);
+  test('grades a broken repair independently and accepts a source-only valid repair', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-grade-repair-'));
+    const output = join(root, 'pair');
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output, fixtureId: 'pricing-blocked', sourceRevision: 'abcdef0', detectorRevision: '1234567', ordinaryPort: 4391, assistedPort: 4392 });
+      const broken = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4391 });
+      expect(broken.status).toBe('failed');
+      expect(broken.repairVerified).toBe(false);
+      const mainPath = join(pair.ordinary, 'examples/landing/src/main.tsx');
+      await writeFile(mainPath, (await readFile(mainPath, 'utf8')).replace(/\{broken && affected && true && <div className="selection-blocker">Limited offer details<\/div>\}/, ''));
+      const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4392 });
+      expect(repaired.integrityIssues).toEqual([]);
+      expect(repaired.status).toBe('passed');
+      expect(repaired.repairVerified).toBe(true);
+      await writeFile(join(pair.ordinary, 'TASK.md'), '\nchanged task\n', { flag: 'a' });
+      const tampered = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4393 });
+      expect(tampered.status).toBe('integrity-failed');
+      expect(tampered.integrityIssues.join('\n')).toContain('immutable tool, config, or task files differ');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 60_000);
   test('accepts a fair A/B pair and produces a non-secret runbook', () => {
     const plan = validateBenchmarkPlan(validPlan());
     const runbook = renderRunbook(plan);
@@ -483,6 +506,9 @@ describe('W02 result accounting and endpoint fairness', () => {
 
       io = ioCapture();
       expect(await runBenchmarkCli(['not-a-command', planFile], io)).toBe(2);
+
+      io = ioCapture();
+      expect(await runBenchmarkCli(['grade', '--receipt', planFile], io)).toBe(2);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

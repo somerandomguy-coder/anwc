@@ -159,8 +159,11 @@ export function validateSubjectInventory(inventory: SubjectInventory, condition:
   return issues;
 }
 
-export async function checkSubjectWorkspace(root: string, condition: SubjectCondition, appId = 'shop'): Promise<string[]> {
-  return validateSubjectInventory(await inspectSubjectWorkspace(root), condition, appId);
+export async function checkSubjectWorkspace(root: string, condition: SubjectCondition, appId = 'shop', allowInstalledDependencies = false): Promise<string[]> {
+  const inventory = await inspectSubjectWorkspace(root);
+  return validateSubjectInventory(allowInstalledDependencies
+    ? { ...inventory, files: inventory.files.filter((path) => path !== 'node_modules/package.json' && !path.includes('/node_modules/package.json')) }
+    : inventory, condition, appId);
 }
 
 async function collectFilesRecursively(dir: string, baseDir: string = dir): Promise<string[]> {

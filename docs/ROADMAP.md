@@ -2,7 +2,7 @@
 
 Date: 2026-09-15. Reviewed source: `7db32b135cc72e3ad6cb44e2a4630f264b1dfb79`.
 
-**Status: W01–W12 are complete; W13–W14 remain planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
+**Status: W01–W13 are complete; W14 remains planned.** See [STATUS](STATUS.md) for the current verification baseline and [HISTORY](HISTORY.md) for commit-level evidence. T00–T09 describe the original prototype; T10 remains the actual agent comparison.
 
 **Future product track:** [ARBITRARY_URL_PLAN](ARBITRARY_URL_PLAN.md) defines R02–R06 for inspecting websites without preinstalled ANWC: automatic attachment, CSP-tested execution, custom targets, honest coverage, and neutral-page verification. The current product requires developers to install the ANWC Vite/runtime integration. R01 portable commands are complete; W03 is next for the shop. Root-URL inspection does not depend on W12; W12 prepares fair repair benchmark subjects. R02 owns attachment/error classification and W07 owns layout readiness. Implement one card at a time when these touch shared files.
 
@@ -80,7 +80,7 @@ Statuses here describe dependency readiness, not assigned ownership.
 | W10 | Landing/pricing application with four defect pairs | W09 | done |
 | W11 | Dashboard application with four defect pairs | W09 | done |
 | W12 | One-command A/B subject preparation | W01, W02, W09–W11 | done |
-| W13 | Independent repair grader and integrity checks | W09, W12 | queued |
+| W13 | Independent repair grader and integrity checks | W09, W12 | done |
 | W14 | Full preparation/repair rehearsal and handoff | W05–W08, W13 | queued |
 
 Run sequentially for the initial rollout. The table is not an instruction to launch multiple agents.
@@ -298,6 +298,8 @@ Produce independent check results and artifact hashes. Import the grade into the
 **Acceptance:** broken input fails; healthy source passes; deleted checkout fails; removed content fails; disabled button fails; edited expectation/tool code fails integrity; valid alternative CSS fix passes; runtime crash is a failure with evidence; capped partial repair reports remaining failed checks. Do not use the old defect-presence tests as repair graders.
 
 **Done when:** the evaluator can check a returned patch without relying on the agent's own success claim.
+
+**Completed evidence:** `npm run bench -- grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json` now verifies frozen non-source inputs, runs `npm ci`, boots the selected app through Vite, applies recorded UI setup, and independently evaluates public content/actions plus evaluator-only repair checks at each required viewport. It writes structured per-check evidence and distinguishes `passed`, `failed`, `integrity-failed`, and `infrastructure-failed`. The evaluator truth stays in `packages/benchmark` and is excluded from subjects. Checks use ordinary browser text, geometry, Range, mouse, and input operations; they do not call ANWC. Focused coverage proves the materialized broken pricing action fails, a source-only repair passes, and a changed `TASK.md` is rejected before execution.
 
 ## W14 — Rehearsal, explicit limitations, and handoff
 
