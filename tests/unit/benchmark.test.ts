@@ -111,6 +111,7 @@ describe('benchmark plan', () => {
         const exported = await readFile(join(pair.ordinary, `examples/${sample.appId}/src/main.tsx`), 'utf8');
         expect(exported).not.toContain('URLSearchParams');
         expect(exported).not.toContain('data-fixture-navigation');
+        expect(exported).not.toContain('data-anwc-key');
         const result = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: sample.port });
         expect(result.status, JSON.stringify(result.checks)).toBe(sample.expected);
       }

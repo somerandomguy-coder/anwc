@@ -30,7 +30,7 @@ function materializePublicApp(source: string, fixture: PreparedFixture, state: F
   const withoutTypes = source.replace(/const caseIds = \[.*?\] as const;\r?\ntype CaseId = typeof caseIds\[number\];\r?\ntype Variant = 'broken' \| 'healthy';\r?\n/, '');
   const frozenState = withoutTypes.replace(/\s*const (?:search|query) = new URLSearchParams\(location\.search\);\r?\n\s*const caseId = .*?;\r?\n\s*const variant: Variant = .*?;\r?\n\s*const broken = variant === 'broken';/, `\n  const broken = ${state === 'broken'};`);
   const selected = (caseId: string): string => String(state === 'broken' && caseId === fixture.caseId);
-  return frozenState.replace(/\s*<span data-fixture-navigation>.*?<\/span>/, '').replace(/caseId === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/current === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/\s*const current = broken && caseId;/, '').replace(/data-anwc-scenario=(?:\{`[^`]+`\}|"[^"]*")/, 'data-subject="prepared"');
+  return frozenState.replace(/\s*<span data-fixture-navigation>.*?<\/span>/, '').replace(/caseId === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/current === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/\s*const current = broken && caseId;/, '').replace(/\sdata-anwc-key=(?:\{[^}]+\}|"[^"]*")/g, '').replace(/data-anwc-scenario=(?:\{`[^`]+`\}|"[^"]*")/, 'data-subject="prepared"');
 }
 
 function shopDefect(caseId: string, state: FixtureState): { markup: string; styles: string } {

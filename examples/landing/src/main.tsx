@@ -28,9 +28,9 @@ function App() {
       const cropped = broken && affected && caseId === 'description-crop';
       const hidden = broken && affected && caseId === 'hidden-selection';
       return <article className={`plan ${cropped ? 'description-crop' : ''}`} key={plan.name}>
-        <h2 className={broken && affected && caseId === 'title-overflow' ? 'title-overflow' : ''}>{affected ? 'Growth plan for ambitious cross-functional delivery teams' : plan.name}</h2>
-        <p className={affected ? 'growth-description' : ''}>{plan.description}</p>
-        <button data-anwc-expect="interactive" className={hidden ? 'hidden-selection' : ''} onClick={() => setSelected(plan.name)}>Choose {plan.name}</button>
+        <h2 data-anwc-key={affected ? 'pricing-growth-title' : undefined} className={broken && affected && caseId === 'title-overflow' ? 'title-overflow' : ''}>{affected ? 'Growth plan for ambitious cross-functional delivery teams' : plan.name}</h2>
+        <p data-anwc-key={affected ? 'pricing-growth-description' : undefined} className={affected ? 'growth-description' : ''}>{plan.description}</p>
+        <button data-anwc-key={affected ? 'pricing-growth-action' : undefined} data-anwc-expect="interactive" className={hidden ? 'hidden-selection' : ''} onClick={() => setSelected(plan.name)}>Choose {plan.name}</button>
         {broken && affected && caseId === 'blocked-selection' && <div className="selection-blocker">Limited offer details</div>}
       </article>;
     })}</section>

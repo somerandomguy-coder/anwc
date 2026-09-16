@@ -48,7 +48,7 @@ These are source-review findings, not new browser reproduction results:
 | Task | Concrete result | Depends on | Status |
 | --- | --- | --- | --- |
 | P01 | Deterministic independent checks that reject false repairs | shipped W09/W13 | implemented; acceptance evidence in progress |
-| P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | public matrix and export parity complete; detector evidence in progress |
+| P02 | Faithful, neutral subjects and a proven 18-pair matrix | P01 | implementation and Windows browser evidence complete; ready for review |
 | P03 | Verified provenance and frozen intent/grade contracts | P02 | implemented contract; provenance acceptance in progress |
 | P04 | Bounded grading in a clean evaluator copy | P03 | implemented lifecycle; failure-mode coverage in progress |
 | P05 | Both arms, all three apps, durable reproducible evidence | P01–P04 | queued |
