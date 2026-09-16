@@ -72,7 +72,14 @@ async function runCommand(file: string, args: string[], cwd: string, timeoutMs: 
     const finish = (error?: Error): void => { if (settled) return; settled = true; clearTimeout(timer); error ? rejectRun(Object.assign(error, { log: output })) : resolveRun(output); };
     child.stdout?.on('data', (data) => { output = appendLog(output, data); }); child.stderr?.on('data', (data) => { output = appendLog(output, data); });
     child.once('error', (error) => finish(error)); child.once('exit', (code) => code === 0 ? finish() : finish(new Error(`${file} ${args.join(' ')} exited ${code ?? 'without a code'}`)));
-    const timer = setTimeout(() => { child.kill(); finish(new Error(`${file} ${args.join(' ')} timed out after ${timeoutMs}ms`)); }, timeoutMs);
+    const timer = setTimeout(() => {
+      if (process.platform === 'win32') {
+        if (child.pid) spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+      } else {
+        child.kill('SIGKILL');
+      }
+      finish(new Error(`${file} ${args.join(' ')} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
   });
 }
 async function waitForServer(url: string, child: ChildProcess, timeoutMs: number): Promise<void> {
@@ -82,8 +89,23 @@ async function waitForServer(url: string, child: ChildProcess, timeoutMs: number
 }
 async function stopOwnedProcess(child: ChildProcess | undefined): Promise<'not-needed' | 'complete' | 'timed-out'> {
   if (!child || child.exitCode !== null || !child.pid) return 'not-needed';
+  const pid = child.pid;
   const exited = new Promise<void>((resolveExit) => child.once('exit', () => resolveExit()));
-  if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); else child.kill('SIGTERM');
+  if (process.platform === 'win32') {
+    spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+  } else {
+    try {
+      process.kill(-pid, 'SIGTERM');
+    } catch {
+      try { child.kill('SIGTERM'); } catch { /* ignore */ }
+    }
+    const killFallback = setTimeout(() => {
+      if (child.exitCode === null) {
+        try { process.kill(-pid, 'SIGKILL'); } catch { try { child.kill('SIGKILL'); } catch { /* ignore */ } }
+      }
+    }, 2_000);
+    killFallback.unref();
+  }
   return Promise.race([exited.then(() => 'complete' as const), delay(5_000).then(() => 'timed-out' as const)]);
 }
 async function writeResult(result: GradeResult, output: string | undefined, subject: string): Promise<void> {
@@ -118,7 +140,7 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
     const rawNpmCli = process.env.npm_execpath; if (!rawNpmCli) throw new Error('npm_execpath is unavailable');
     const npmCli = rawNpmCli.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm');
     activeStage = 'install'; logs.install = await runCommand(process.execPath, [npmCli, 'ci', '--ignore-scripts'], stage, Math.min(options.installTimeoutMs ?? 120_000, remaining()));
-    activeStage = 'server'; const serverPath = join(stage, 'node_modules', 'vite', 'bin', 'vite.js'); child = spawn(process.execPath, [serverPath, '--host', '127.0.0.1', '--port', String(options.port), '--strictPort'], { cwd: join(stage, 'examples', receipt.appId), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }); child.stdout?.on('data', (data) => { logs.server = appendLog(logs.server, data); }); child.stderr?.on('data', (data) => { logs.server = appendLog(logs.server, data); });
+    activeStage = 'server'; const serverPath = join(stage, 'node_modules', 'vite', 'bin', 'vite.js'); child = spawn(process.execPath, [serverPath, '--host', '127.0.0.1', '--port', String(options.port), '--strictPort'], { cwd: join(stage, 'examples', receipt.appId), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' }); child.stdout?.on('data', (data) => { logs.server = appendLog(logs.server, data); }); child.stderr?.on('data', (data) => { logs.server = appendLog(logs.server, data); });
     const url = `http://127.0.0.1:${options.port}${receipt.route}`; await waitForServer(url, child, Math.min(options.startupTimeoutMs ?? 15_000, remaining()));
     activeStage = 'browser'; const browser = await chromium.launch({ headless: true });
     try {

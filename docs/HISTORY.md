@@ -431,3 +431,23 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
   - `npm run build`: Production builds succeeded for `@anwc/shop`, `@anwc/landing`, and `@anwc/dashboard`.
 - Next task: P04 — own the evaluator process from start to finish (lifecycle, process cleanup, and failure modes).
 
+## 2026-09-16 — P04 bounded grading lifecycle and failure-mode coverage
+
+- Hardened evaluator process lifecycle and process group management:
+  - Vite dev server child process spawned with detached process group on POSIX (`detached: process.platform !== 'win32'`).
+  - `stopOwnedProcess` terminates process trees cleanly: sends SIGTERM to the process group (`process.kill(-pid, 'SIGTERM')`), escalates to SIGKILL if the process group has not terminated within 2 seconds, and uses `taskkill /pid <pid> /T /F` on Windows.
+  - `runCommand` terminates timed-out child processes with process tree cleanup (`taskkill` on Windows, `SIGKILL` on Linux).
+- Added comprehensive lifecycle and failure-mode acceptance tests:
+  - Occupied port with healthy decoy rejection: `gradeRepair` immediately fails at `stage: 'initialization'` with `status: 'infrastructure-failed'`, `exitCode: 3`, and `repairVerified: false`, preventing any false passes from pre-existing decoy servers.
+  - Bounded install & startup timeouts: tested `installTimeoutMs` and `startupTimeoutMs` bounds, ensuring failures return `exitCode: 3`, labelled stage ('install' or 'server'), timeout errors, and bounded logs.
+  - Syntax crash & destructive deletion failure modes: verified that syntax-invalid source fails with non-zero exit codes (1 or 3), destructive deletions fail behavioral checks (`status: 'failed'`, `exitCode: 1`), and runtime exceptions on the page are collected in `logs.pageErrors`.
+  - Port rebinding & file immutability: verified `cleanup: 'complete'`, immediate port release, repeated grading without collision, and bit-for-bit file immutability of submitted subjects.
+- Evidence on Linux: `npm run test:integration` passed cleanly:
+  - `npm run typecheck`: 0 errors.
+  - `npm run test:unit`: 7 test files, 55/55 tests passed.
+  - `npm run test:browser`: 26/26 Chromium tests passed across shop, landing, and dashboard.
+  - `npm run build`: Production builds succeeded for `@anwc/shop`, `@anwc/landing`, and `@anwc/dashboard`.
+  - Untested platforms: macOS.
+- Next task: P05 — finish the cross-app rehearsal evidence (18 grade runs across shop, landing, and dashboard with durable reports).
+
+

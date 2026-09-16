@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { createServer } from 'node:http';
 import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -218,6 +219,124 @@ describe('benchmark plan', () => {
       await rm(root, { recursive: true, force: true });
     }
   }, 30_000);
+  test('rejects occupied port with healthy decoy and never claims repair pass', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-port-collision-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    const decoyPort = 4441;
+    const decoy = createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end('<!DOCTYPE html><html><body><h1>Healthy Decoy</h1></body></html>');
+    });
+    await new Promise<void>((resolveListen) => decoy.listen({ host: '127.0.0.1', port: decoyPort, exclusive: true }, () => resolveListen()));
+
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: decoyPort, assistedPort: decoyPort + 1, practice: true });
+      const result = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: decoyPort });
+      expect(result.status).toBe('infrastructure-failed');
+      expect(result.exitCode).toBe(3);
+      expect(result.stage).toBe('initialization');
+      expect(result.repairVerified).toBe(false);
+      expect(result.error).toContain(`port ${decoyPort} is unavailable`);
+    } finally {
+      await new Promise<void>((resolveClose) => decoy.close(() => resolveClose()));
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30_000);
+  test('stalled install and startup timeouts give bounded labelled infrastructure results', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-lifecycle-timeouts-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-title', ordinaryPort: 4451, assistedPort: 4452, practice: true });
+
+      // 1. Stalled install timeout
+      const installTimeoutResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4451, installTimeoutMs: 1 });
+      expect(installTimeoutResult.status).toBe('infrastructure-failed');
+      expect(installTimeoutResult.exitCode).toBe(3);
+      expect(installTimeoutResult.stage).toBe('install');
+      expect(installTimeoutResult.error).toContain('timed out');
+      expect(installTimeoutResult.repairVerified).toBe(false);
+
+      // 2. Stalled startup timeout
+      const startupTimeoutResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4451, startupTimeoutMs: 1 });
+      expect(startupTimeoutResult.status).toBe('infrastructure-failed');
+      expect(startupTimeoutResult.exitCode).toBe(3);
+      expect(startupTimeoutResult.stage).toBe('server');
+      expect(startupTimeoutResult.error).toContain('development server did not become ready');
+      expect(startupTimeoutResult.repairVerified).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 45_000);
+  test('syntax crash and destructive deletions fail with bounded logs and never verify repair', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-lifecycle-failures-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: 4461, assistedPort: 4462, practice: true });
+
+      // 1. Destructive deletion: remove required content while preserving declared intent
+      const mainPath = join(pair.ordinary, 'examples/landing/src/main.tsx');
+      const originalContent = await readFile(mainPath, 'utf8');
+      const deletedContent = originalContent.replace('<p className="eyebrow">Northstar plans</p>', '');
+      await writeFile(mainPath, deletedContent);
+
+      const deletedResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4461 });
+      expect(deletedResult.status).toBe('failed');
+      expect(deletedResult.exitCode).toBe(1);
+      expect(deletedResult.repairVerified).toBe(false);
+      expect(deletedResult.checks.some((check) => check.status === 'fail')).toBe(true);
+
+      // 2. Syntax crash / invalid source fails with non-zero exit code and never verifies repair
+      await writeFile(mainPath, 'export default function App() { return <div><invalid tag unclosed;');
+      const syntaxResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4462 });
+      expect(syntaxResult.repairVerified).toBe(false);
+      expect(['failed', 'integrity-failed', 'infrastructure-failed']).toContain(syntaxResult.status);
+      expect([1, 2, 3]).toContain(syntaxResult.exitCode);
+      expect(typeof syntaxResult.logs.server).toBe('string');
+      expect(typeof syntaxResult.logs.install).toBe('string');
+
+      // 3. Runtime page crash records error into logs.pageErrors
+      const crashContent = originalContent.replace('const broken =', 'if (typeof window !== "undefined") setTimeout(() => { throw new Error("runtime-page-crash"); }, 0);\n  const broken =');
+      await writeFile(mainPath, crashContent);
+      const crashResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4463 });
+      expect(crashResult.repairVerified).toBe(false);
+      expect(crashResult.logs.pageErrors.some((msg) => msg.includes('runtime-page-crash'))).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 60_000);
+  test('repeated grades leave original files unchanged and release owned processes and ports', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-port-release-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    const testPort = 4471;
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: testPort, assistedPort: testPort + 1, practice: true });
+
+      const fileBefore = await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8');
+      const taskBefore = await readFile(join(pair.ordinary, 'TASK.md'), 'utf8');
+
+      // Grade 1
+      const grade1 = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: testPort });
+      expect(grade1.status).toBe('failed');
+      expect(grade1.cleanup).toBe('complete');
+
+      // Assert original files remain strictly untouched
+      const fileAfter1 = await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8');
+      const taskAfter1 = await readFile(join(pair.ordinary, 'TASK.md'), 'utf8');
+      expect(fileAfter1).toBe(fileBefore);
+      expect(taskAfter1).toBe(taskBefore);
+
+      // Verify port was released and can immediately be reused without collision
+      const grade2 = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: testPort });
+      expect(grade2.status).toBe('failed');
+      expect(grade2.cleanup).toBe('complete');
+
+      // Assert original files still remain untouched
+      const fileAfter2 = await readFile(join(pair.ordinary, 'examples/landing/src/main.tsx'), 'utf8');
+      expect(fileAfter2).toBe(fileBefore);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 60_000);
   async function gradeMaterializedStates(samples: ReadonlyArray<{ fixtureId: string; state: 'broken' | 'healthy'; expected: 'failed' | 'passed'; port: number; appId: 'shop' | 'landing' | 'dashboard' }>): Promise<void> {
     const root = await mkdtemp(join(tmpdir(), 'anwc-materialized-apps-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
