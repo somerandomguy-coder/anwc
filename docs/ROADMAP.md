@@ -1,6 +1,8 @@
 # Phase 3: a dependable UI repair workflow
 
-Planning baseline: `4093fcb`, reviewed 2026-09-17. **All Q tasks below are planned, not implemented.** This is the sole active backlog. Read [STATUS](STATUS.md) for current evidence; Phase 2 task cards are preserved in [the archive](archive/PHASE_2.md). This planning change does not implement product features.
+Planning baseline: `4093fcb`; implementation reviewed through `947931b` on 2026-09-17. This remains the engineering backlog. **During the launch window, use [LAUNCH](LAUNCH.md) for priorities and bounded handoffs, and [STATUS](STATUS.md) for evidence.** Q01–Q07 implementations exist; Q05–Q07 acceptance is incomplete. Q08–Q11 remain pending. Phase 2 cards are preserved in [the archive](archive/PHASE_2.md).
+
+Launch review corrections: Q05 has 29 cases, not 29 matched pairs, and its boundary fallback needs stronger assertions. Q06's dedicated browser suite is skipped. Q07 now keeps disappearing findings inconclusive without passing behavior evidence; the CLI does not yet bind that evidence. Do not describe Batch B/C or the full phase as accepted. LAUNCH L0–L3 are bounded slices of Q10/Q06/Q07/Q05, not an additional feature backlog.
 
 ## Product direction
 
@@ -10,7 +12,7 @@ The phase-end demo is an unrelated React/Vite app: open a drawer at mobile width
 
 The differentiator is the combination of source identity, explicit UI contracts, reproducible states, conservative comparison, and an independently tested browser evidence corpus. These are cumulative engineering assets. A pretty report alone is easy to copy; reliability across unfamiliar layouts and honest repair evidence take sustained work. This is a product hypothesis, not a claim of competitive exclusivity or measured agent savings.
 
-## Where we actually are
+## Historical planning baseline
 
 The compiler/runtime, three fixture apps, local alpha packaging, readable text CLI, and committed 18-grade rehearsal are real implementations. No human model comparison has been recorded. Previous claims that P08 was fully finished and only P09 remained were too strong.
 
@@ -93,7 +95,7 @@ Build:
 
 **Own:** report renderers/templates, CLI `report` command, report browser tests/docs. **Depends:** Q03. **Status:** complete 2026-09-17; Batch B continues with Q05.
 
-Proposed interface (not available yet): `anwc report capture.json --format html --output report.html`; Markdown is a second format; terminal text uses Q03. Accept saved captures without starting a browser or contacting the original site.
+Implemented interface: `anwc report capture.json --format html --output report.html`; Markdown is a second format; terminal text uses Q03. Accept saved captures without starting a browser or contacting the original site.
 
 Build an offline, single-file HTML report with a summary, named state/viewport, issue list, severity/rule filters, target and blocker source references, measured/expected values, unknown coverage, and expandable raw evidence. Include a simple viewport diagram showing rectangles and tested hit points, explicitly labelled geometry rather than a screenshot. Support keyboard navigation, legible narrow layouts, print output and a persistent incomplete-capture notice. Copyable file:line references are sufficient; no shell execution or automatic external editor launch.
 
@@ -118,7 +120,7 @@ Start with at least 24 named paired cases across the six families below. Every f
 
 No full combinatorial explosion: fixed pairwise viewport/DPR/state selection in the matrix; measure clean controls independently of ANWC diagnostic code. Stable seeds for randomized geometry are for regression reproducibility, not holdout claims. Classify each cell supported, detected defect, healthy, or explicitly unsupported. Commit minimal repros for newly discovered failures.
 
-**Acceptance:** run all matrix cells, report denominators per rule and healthy false positives, and prove an unsupported input cannot silently become known-good. Record timings/sample counts/inspected nodes for normal and capped large DOM. Q05 is complete when the harness and independent oracles work and all outcomes are recorded; newly exposed engine failures remain explicit open failures assigned to Q08, not silently skipped or relabelled healthy. Report a failing engine gate as failing even when the harness is complete. Every supported healthy false positive blocks that rule's release. Intended unsupported cases are expected outcomes, not skipped tests. **Status:** complete 2026-09-17; 29 paired cases across all 6 families (text, clips-scroll, pointer-layers, state-semantics, identity-change, unsupported-performance), independent Playwright oracles, zero healthy false positives, zero defective false negatives, bounded execution, and machine-readable capability matrix output in `tests/conformance/conformance-matrix.json`. Verified in `tests/browser/conformance.spec.ts` and `tests/unit/conformance.test.ts`. Batch B continues with Q06.
+**Acceptance:** run every matrix cell, report rule denominators and healthy false positives, and prove unsupported inputs cannot silently become known-good. Record timings and coverage for normal/capped DOMs. Keep engine failures explicit and assign them to Q08; do not skip or relabel them. **Status:** implemented, acceptance incomplete. The current 29 cases across six families comprise 10 defective, 10 healthy and 9 boundary cases, not 29 pairs. The runner and unit tests pass, with zero actionable false positives in the tested healthy controls. However, the generic paint-unknown fallback does not prove feature-specific unsupported detection. Strengthen that oracle through LAUNCH L3 before accepting Q05. Current artifact: `tests/conformance/conformance-matrix.json`.
 
 ## Q06 — Reproduce the UI state you are inspecting
 
@@ -128,7 +130,7 @@ Proposed interface: `anwc check anwc.checks.json --output artifacts/ui`; this is
 
 Fresh browser context per independent scenario; ordered checkpoints may share state only when declared. Record performed steps, timeouts and final URL/scroll; associate captures with manifest hash and checkpoint. Default 2-second step timeout, explicit cap 10 seconds, overall scenario cap 60 seconds; classify failures without substituting another state. No arbitrary evaluate step, implicit form submission, third-party checkout or automatic credential collection. Explicit external deployments need separately defined scope; first release is local development.
 
-**Acceptance:** initial, open-drawer, modal and scrolled sticky-header states reproduce twice; ambiguous target/missing readiness fails promptly; intentionally hidden closed menu is not a broken open state; storage does not leak across scenarios; capture itself causes no click/scroll. Include one actual behavior assertion alongside measurements. Explain clearly why a captured finding is not itself functional proof. **Status:** complete 2026-09-17; `StateManifest 0.1` schema in `packages/cli/src/manifest.ts`, state scenario runner in `packages/cli/src/runner.ts`, and `anwc check` CLI command. Verified in unit tests `tests/unit/cli.test.ts`. Dedicated multi-scenario browser harness in `tests/browser/check.spec.ts` scaffolded and delegated for dedicated runner environment. Batch B continues with Q07.
+**Acceptance:** initial, open-drawer, modal and scrolled sticky-header states reproduce twice; ambiguous target/missing readiness fails promptly; intentionally hidden closed menu is not a broken open state; storage does not leak across scenarios; capture itself causes no click/scroll. Include an actual behavior assertion alongside measurements. **Status:** implemented, acceptance incomplete. `StateManifest 0.1`, runner and `anwc check` exist; a simple CLI execution test passes. The dedicated multi-scenario suite is explicitly skipped. Complete LAUNCH L1 before accepting Q06 or Batch B.
 
 ## Q07 — Compare repairs without inventing identity
 
@@ -138,7 +140,7 @@ Proposed interface: `anwc diff before.json after.json --format html --output dif
 
 Match by unique author key and state first; otherwise use source/semantic/structural evidence as a labelled heuristic. Do not use session node IDs across reloads or line numbers as a permanent identifier. Reordered identical list instances remain ambiguous unless keys disambiguate. Report new, persistent, no-longer-observed, unmatched and non-comparable findings. “Verified fixed” additionally requires retained target/intent, adequate coverage and passing declared behavior checks. Deletion, unmounting, truncation, unsupported capture and changed setup cannot masquerade as a fix.
 
-**Acceptance:** CSS fix, source line shift and keyed list reorder match correctly; removed checkout, duplicate keys, swapped same-label nodes and changed viewport cannot produce false repair success; partial capture remains inconclusive. Human report explains the decision and agent JSON carries the same evidence. **Status:** complete 2026-09-17; `DiffReport 0.1` schema in `packages/report/src/diff-schema.ts`, pure `compareRepairs` diff engine in `packages/report/src/diff.ts`, offline HTML/Markdown/Text renderers, and `anwc diff` CLI command. Retained-target and complete-coverage invariants verified in `tests/unit/diff.test.ts`. Batch C continues with Q08.
+**Acceptance:** CSS fix, source line shift and keyed list reorder match correctly; removed checkout, duplicate keys, swapped same-label nodes and changed viewport cannot produce false repair success; partial capture remains inconclusive. Human and agent output agree. **Status:** implemented, acceptance incomplete. `DiffReport 0.1`, pure comparison, offline renderers and CLI exist. Launch guards reject incompatible contexts and keep absent findings inconclusive without passing behavior evidence; 18 focused diff tests pass. CLI behavior-proof binding and deeper rule-specific measurement checks remain. LAUNCH L2 is a bounded validation follow-up, not full Q07 completion.
 
 ## Q08 — Fix the highest-value browser edge cases
 

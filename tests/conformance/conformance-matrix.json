@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.1",
-  "generatedAt": "2026-09-17T04:52:16.859Z",
+  "generatedAt": "2026-09-17T13:03:44.339Z",
   "totalCases": 29,
   "defectiveCount": 10,
   "healthyCount": 10,
@@ -64,7 +64,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 25,
       "notes": "Correctly detected expected rule: HORIZONTAL_OVERFLOW"
     },
     {
@@ -86,7 +86,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 41,
+      "durationMs": 38,
       "notes": "Zero actionable false positives (2 acknowledged/info ignored)"
     },
     {
@@ -105,7 +105,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 38,
+      "durationMs": 39,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -124,7 +124,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 20,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -146,7 +146,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 26,
+      "durationMs": 27,
       "notes": "Correctly detected expected rule: TEXT_LINE_BUDGET_EXCEEDED"
     },
     {
@@ -165,7 +165,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 24,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -189,7 +189,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 28,
       "notes": "Correctly detected expected rule: CLIPPED_BY_ANCESTOR"
     },
     {
@@ -212,7 +212,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 41,
       "notes": "Correctly detected expected rule: CLIPPED_BY_ANCESTOR"
     },
     {
@@ -231,7 +231,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 27,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -252,7 +252,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 27,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -273,7 +273,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 29,
       "notes": "Correctly detected expected rule: POINTER_BLOCKED_AT_SAMPLES"
     },
     {
@@ -294,7 +294,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 24,
       "notes": "Correctly detected expected rule: POINTER_PARTIALLY_BLOCKED"
     },
     {
@@ -313,7 +313,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 27,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -332,7 +332,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 27,
+      "durationMs": 25,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -351,7 +351,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 27,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -395,7 +395,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 27,
       "notes": "Correctly detected expected rule: EXPECTED_VISIBLE_BUT_HIDDEN"
     },
     {
@@ -455,7 +455,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 23,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -474,7 +474,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 28,
       "notes": "Duplicate key detected in captured inventory"
     },
     {
@@ -497,7 +497,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 9,
       "skippedNodes": 0,
-      "durationMs": 30,
+      "durationMs": 43,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -516,7 +516,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 38,
+      "durationMs": 39,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -539,7 +539,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 24,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -558,7 +558,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 27,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -577,7 +577,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 26,
+      "durationMs": 24,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -596,7 +596,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 100,
       "skippedNodes": 803,
-      "durationMs": 105,
+      "durationMs": 110,
       "notes": "Correctly reported boundary/unsupported scope (complete: false, paintUnknown: true)"
     },
     {
@@ -617,7 +617,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 306,
+      "durationMs": 308,
       "notes": "Readiness unsettled detected: fonts ready; geometry remained unstable before timeout"
     },
     {
@@ -636,7 +636,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 33,
       "notes": "Zero false positives on clean control"
     }
   ]

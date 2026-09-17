@@ -4,7 +4,15 @@
 
 Last updated: 2026-09-17, Australia/Sydney.
 
-**Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. The 2026-09-17 audit records remaining integrity and validation gaps; Phase 3 is now planned. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
+**Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. Phase 3 Q01–Q07 implementations exist with acceptance gaps. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
+
+## 2026-09-17 launch triage
+
+Pulled main from `27b4da4` to `947931b`. Corrected the CLI/report dependency lockfile (`467d612`). Added conservative comparison guards and eight regression cases (`6bd4cc4`): require matching URL/scenario/runtime/scale and settled, complete evidence; no repair success from empty baselines, heuristic identity or absent behavior checks. CLI comparison remains experimental and inconclusive without behavior binding.
+
+Windows validation: TypeScript passed; 42 focused report/diff/CLI/conformance/consumer tests passed; four shop/conformance browser tests passed. The 29-case corpus report was refreshed. Actual mobile blocked-checkout capture and offline HTML worked; severity filters passed with no HTTP requests or browser errors. Local artifacts are under ignored `artifacts/launch/`. Full integration and other platforms were not rerun.
+
+Corrected README startup to build workspace packages before use, documented JSON format explicitly, and added [LAUNCH](LAUNCH.md) with a founder checklist and bounded Q10/Q06/Q07/Q05 follow-ups. Downgraded Q05–Q07 acceptance claims: broad boundary fallback, skipped multi-state tests and unbound behavior evidence remain. No external publication or measured agent-benefit claim was made.
 
 SSH access to `git@github.com:somerandomguy-coder/anwc.git` was verified and the supplied sample snippets were reviewed as design inputs. The repository now contains a source-linked Vite/React MVP with a browser collector, CLI, and deterministic defect shop. T10 is the remaining paired-agent experiment.
 

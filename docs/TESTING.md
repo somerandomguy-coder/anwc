@@ -1,6 +1,6 @@
 # Testing ANWC
 
-Updated 2026-09-17. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for Phase 3 tasks. Existing demos and grading commands are usable for practice. Q01/Q02 address result/intent integrity gaps; Q11 completes operator handoff. Planned HTML reports, state replay and comparisons are not implemented yet.
+Updated 2026-09-17. For tonight's short demonstration and launch checks, start with [LAUNCH](LAUNCH.md). [STATUS](STATUS.md) records current evidence and [ROADMAP](ROADMAP.md) owns Phase 3 tasks. HTML/Markdown reports are implemented. State replay and comparison commands exist but have acceptance gaps; CLI diff cannot certify repairs without behavior-evidence binding. This longer guide covers practice and eventual agent evaluation, not proof of measured agent benefit.
 
 ## 1. Verify and start the shop
 
@@ -9,6 +9,7 @@ From the evaluator repository:
 ```powershell
 git pull --ff-only
 npm install
+npm run build
 npx playwright install chromium
 npm run test:integration
 npm run dev -- --host 127.0.0.1 --port 4175

@@ -85,6 +85,6 @@ Wait for the actual process exit and report. A partial log or observation timeou
 
 ## Remaining scored-workflow acceptance
 
-Phase 2 implemented the foundation, packaging and pilot helpers. Q01/Q02 close the remaining trust gaps; Q11 dry-runs the complete procedure with explicitly synthetic submissions before real model sessions. The roadmap proposes benchmark contract `0.4`; it is not implemented yet. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public. Human results are still pending.
+Phase 2 implemented the foundation, packaging and pilot helpers. Q01/Q02 added benchmark receipt/grade contract `0.4` and target-bound source intent; their presence alone does not certify the full scored workflow. Q11 still requires a complete dry run with explicitly synthetic submissions before real model sessions. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public. Human results are still pending. See STATUS for current evidence and LAUNCH for the narrower launch demonstration.
 
 See [TESTING](TESTING.md) for demo steps and [BENCHMARK](BENCHMARK.md) for scoring policy.
