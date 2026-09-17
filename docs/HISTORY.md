@@ -582,7 +582,13 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 
 - Created `packages/report` private pure transformation package defining `Report 0.1` Zod schema, SHA-256 capture hashing, deterministic grouping by directly measured shared blocker/clip ancestors, deterministic sorting (unacknowledged errors, warnings, informational/acknowledged results), and structural character budgeting with reserved footers.
 - Updated `@anwc/cli` `formatText` to delegate to `@anwc/report`, bundling it into the distribution entry so standalone consumers do not require unreleased external workspace packages.
-- Staged benchmark assisted subjects now include `packages/report` in workspace and tsconfig references.
 - Evidence on Windows: all 8 invariant report unit tests, all 8 CLI tests, 2 external consumer tests, and all 39 benchmark unit tests passed. Batch A integration gate passed cleanly. Next: Batch B (Q04 offline HTML/Markdown reports).
+
+## 2026-09-17 — Q04 offline HTML/Markdown reports and CLI command
+
+- Implemented `renderReportHtml` and `renderReportMarkdown` in `packages/report`. The HTML renderer produces a self-contained single-file report with no external CDN or network dependencies, safely escaping untrusted strings, providing responsive dark/light modes, keyboard-accessible `<details>` elements, interactive severity filtering via vanilla JS, an inline SVG viewport geometry diagram plotting target/blocker rectangles and sampled hit points, and clean print styles.
+- Implemented `anwc report <capture.json>` command in `@anwc/cli` supporting `--format html|markdown|text|json`, `--output <path>`, and `--redact`. Redaction mode strips query parameters from URLs, redacts home directory prefixes from source locations, and clearly labels the export with `[REDACTED EXPORT]`.
+- Updated `scripts/build.js` to ensure the bundled CLI output is always refreshed when building.
+- Evidence on Windows: 10 report unit tests, 9 CLI tests, 2 external consumer tests, and typecheck/build all pass. Next: Q05 (browser conformance corpus).
 
 

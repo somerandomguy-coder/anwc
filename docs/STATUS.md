@@ -1,10 +1,10 @@
 # ANWC status
 
-Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, and Q03 introduces the unified report model for humans and agents. Batch A exit gates have passed. **Next task: Q04, readable local reports and evidence navigation (offline HTML/Markdown renderers).**
+Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, Q03 introduces the unified report model, and Q04 implements offline HTML and Markdown reports. **Next task: Q05, browser conformance corpus (24+ paired cases across 6 families).**
 
 ## What works today
 
-ANWC is a development-only React/Vite inspection prototype. Its compiler adds source identity; its browser collector measures layout, clipping, text and sampled pointer access. The CLI provides JSON and readable text. Local alpha packages and an external consumer test exist. Chromium still performs layout; pointer access does not prove paint visibility.
+ANWC is a development-only React/Vite inspection prototype. Its compiler adds source identity; its browser collector measures layout, clipping, text and sampled pointer access. The CLI provides JSON, readable text, single-file offline HTML reports with interactive filters and SVG viewport geometry, and compact Markdown summaries. Local alpha packages and an external consumer test exist. Chromium still performs layout; pointer access does not prove paint visibility.
 
 The evaluator has 18 public broken/healthy pairs across shop, pricing and dashboard apps, isolated subject preparation, versioned receipts, staged grading, a committed cross-app rehearsal, practice plan/ledger templates, and grade import. These are useful engineering foundations. They do not yet establish a trustworthy end-to-end scored pilot or measured agent benefit.
 
@@ -15,7 +15,7 @@ The evaluator has 18 public broken/healthy pairs across shop, pricing and dashbo
 | Installed React/Vite path | ESM/declaration packages, local `0.1.0-alpha.0` tarballs, source linkage, production stripping, external consumer tests | Q10 validates the actual installed executable on Windows/Linux and the new complete workflow; macOS untested |
 | Public fixture corpus | 10 shop, 4 pricing, 4 dashboard pairs; independent browser checks and target-specific detector tests | Public practice, not holdout; Q05 adds a separate paired conformance corpus |
 | Preparation and grade | Receipt contract `0.4`; grade result `0.4` provenance, target-bound intent across every app `src` module, immutable/evaluator hashes, fresh staging and bounded server/check execution | Batch A complete; verified on Windows |
-| Shared report model | `packages/report` pure transformation module, Report 0.1 schema, SHA-256 capture hashing, structural character budgets, deterministic unack error->warning->info ordering | Q04 offline HTML/Markdown reports |
+| Shared report model & offline renderers | `packages/report` pure transformation module, Report 0.1 schema, SHA-256 capture hashing, structural character budgets, single-file offline HTML renderer with SVG viewport diagram, compact Markdown renderer, and `anwc report` CLI command | Q05 conformance corpus; Q06 state reproduction |
 | Rehearsal | Committed report: 18 grades, three apps, two conditions, broken/repaired/deletion states, two viewports each | Historical evidence at its recorded revisions, not a fresh gate for current HEAD |
 | Pilot ledger | Practice templates, receipt-hash command and provenance-bound `import-grade` | Q01 rejects substitution, incomplete evidence and unsafe output paths; Q11 finishes operator handoff and human results remain pending |
 | Everyday repair | Single-state JSON/text inspection and source-linked findings; Report 0.1 | Q04–Q09 add HTML/Markdown, explicit state replay, conservative comparisons, conformance-driven fixes and compact drill-down |

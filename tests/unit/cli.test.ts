@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
-import { formatText, inspect, parseArguments, run } from '../../packages/cli/src/index.js';
+import { formatText, inspect, parseArguments, parseReportArguments, run } from '../../packages/cli/src/index.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
 let server: ViteDevServer;
@@ -122,4 +124,72 @@ describe('ANWC CLI', () => {
     expect(cleanFormatted).toContain('0 actionable findings for inspected rules');
     expect(cleanFormatted).toContain('paint visibility unknown');
   }, 30_000);
+
+  test('parses report arguments and renders offline HTML, Markdown, text, and JSON reports', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-cli-report-'));
+    try {
+      const capturePath = join(tmp, 'capture.json');
+      const htmlOutPath = join(tmp, 'report.html');
+      const mdOutPath = join(tmp, 'report.md');
+
+      await writeFile(capturePath, JSON.stringify(validSnapshotFixture), 'utf8');
+
+      // Test argument parser
+      expect(parseReportArguments(['report', capturePath, '--format', 'html', '--output', htmlOutPath, '--redact'])).toEqual({
+        captureFile: capturePath,
+        format: 'html',
+        output: htmlOutPath,
+        redact: true
+      });
+      expect(() => parseReportArguments(['report'])).toThrow('Usage: anwc report');
+      expect(() => parseReportArguments(['report', capturePath, '--format', 'invalid'])).toThrow('Invalid --format');
+
+      // 1. Render HTML report to file
+      const htmlIo = { stdout: () => {}, stderr: () => {} };
+      const htmlExit = await run(['report', capturePath, '--format', 'html', '--output', htmlOutPath], htmlIo);
+      expect(htmlExit).toBe(0);
+      const htmlContent = await readFile(htmlOutPath, 'utf8');
+      expect(htmlContent).toContain('<!DOCTYPE html>');
+      expect(htmlContent).toContain('ANWC UI Repair Report');
+      expect(htmlContent).toContain('POINTER_BLOCKED_AT_SAMPLES');
+
+      // 2. Render Markdown report to file
+      const mdIo = { stdout: () => {}, stderr: () => {} };
+      const mdExit = await run(['report', capturePath, '--format', 'markdown', '--output', mdOutPath, '--redact'], mdIo);
+      expect(mdExit).toBe(0);
+      const mdContent = await readFile(mdOutPath, 'utf8');
+      expect(mdContent).toContain('# ANWC UI Repair Report');
+      expect(mdContent).toContain('[REDACTED EXPORT]');
+      expect(mdContent).toContain('| Unacknowledged Errors | 1 |');
+
+      // 3. Render Markdown report to stdout
+      const stdoutBuf: string[] = [];
+      const stdoutIo = { stdout: (m: string) => stdoutBuf.push(m), stderr: () => {} };
+      const stdoutExit = await run(['report', capturePath, '--format', 'markdown'], stdoutIo);
+      expect(stdoutExit).toBe(0);
+      expect(stdoutBuf.join('')).toContain('## Summary');
+
+      // 4. Render JSON report to stdout
+      const jsonBuf: string[] = [];
+      const jsonIo = { stdout: (m: string) => jsonBuf.push(m), stderr: () => {} };
+      const jsonExit = await run(['report', capturePath, '--format', 'json'], jsonIo);
+      expect(jsonExit).toBe(0);
+      const parsedReport = JSON.parse(jsonBuf.join(''));
+      expect(parsedReport.schemaVersion).toBe('0.1');
+      expect(parsedReport.summary.totalFindings).toBe(1);
+
+      // 5. Error on nonexistent file
+      const errIo = { stdout: () => {}, stderr: (m: string) => stdoutBuf.push(m) };
+      const missingExit = await run(['report', join(tmp, 'nonexistent.json')], errIo);
+      expect(missingExit).toBe(2);
+
+      // 6. Error on invalid JSON
+      const invalidPath = join(tmp, 'invalid.json');
+      await writeFile(invalidPath, '{ not valid json', 'utf8');
+      const invalidExit = await run(['report', invalidPath], errIo);
+      expect(invalidExit).toBe(2);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
 });

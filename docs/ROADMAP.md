@@ -91,7 +91,7 @@ Build:
 
 ## Q04 — Readable local reports and evidence navigation
 
-**Own:** report renderers/templates, CLI `report` command, report browser tests/docs. **Depends:** Q03.
+**Own:** report renderers/templates, CLI `report` command, report browser tests/docs. **Depends:** Q03. **Status:** complete 2026-09-17; Batch B continues with Q05.
 
 Proposed interface (not available yet): `anwc report capture.json --format html --output report.html`; Markdown is a second format; terminal text uses Q03. Accept saved captures without starting a browser or contacting the original site.
 
@@ -99,7 +99,7 @@ Build an offline, single-file HTML report with a summary, named state/viewport, 
 
 Render untrusted strings as text. Do not embed executable page HTML, fetch remote resources, or make arbitrary captured URLs automatically active. Escape embedded JSON against script termination. A share export redacts sensitive URL components/source prefixes explicitly and labels the export; no silent alteration of the original evidence. Include compact Markdown suitable for a PR without full DOM dumps.
 
-**Acceptance:** open the report with network blocked and original app stopped; filtering never changes total coverage or hides unknowns; malicious labels/URLs remain inert; long labels/missing sources/empty/partial captures readable; HTML/Markdown/terminal agree on finding counts and measurements. Include a manual five-minute co-founder walkthrough after this milestone. Screenshots may be used to QA the report UI; the inspection engine still needs none.
+**Acceptance:** open the report with network blocked and original app stopped; filtering never changes total coverage or hides unknowns; malicious labels/URLs remain inert; long labels/missing sources/empty/partial captures readable; HTML/Markdown/terminal agree on finding counts and measurements. Include a manual five-minute co-founder walkthrough after this milestone. Screenshots may be used to QA the report UI; the inspection engine still needs none. **Evidence:** `renderReportHtml` and `renderReportMarkdown` implemented in `packages/report`. `anwc report` command implemented in `packages/cli` supporting `--format html|markdown|text|json`, `--output`, and `--redact`. Comprehensive unit tests in `report.test.ts` and `cli.test.ts` pass on Windows. Bundled in `packages/cli/dist/index.js` and verified by external consumer tests.
 
 ## Q05 — A browser conformance corpus, not more decorative sites
 

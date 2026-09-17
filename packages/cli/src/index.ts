@@ -1,11 +1,11 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
 import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSchema } from '@anwc/protocol';
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
-import { createReport, formatReportText, type Report } from '@anwc/report';
+import { createReport, formatReportText, renderReportHtml, renderReportMarkdown, type Report } from '@anwc/report';
 import { chromium, type Page } from 'playwright';
 
 type RuntimeApi = { capture(options?: { textLimit?: number; timeoutMs?: number }): Promise<RawCapture> };
@@ -117,6 +117,51 @@ export function parseArguments(arguments_: string[]): InspectOptions {
   } catch (error) {
     throw new CliError('INVALID_USAGE', error instanceof Error ? error.message : 'Invalid options.');
   }
+}
+
+export interface ReportCommandOptions {
+  captureFile: string;
+  format: 'html' | 'markdown' | 'text' | 'json';
+  output?: string;
+  redact: boolean;
+}
+
+export function parseReportArguments(arguments_: string[]): ReportCommandOptions {
+  if (arguments_[0] !== 'report' || !arguments_[1] || arguments_[1].startsWith('-')) {
+    throw new CliError(
+      'INVALID_USAGE',
+      'Usage: anwc report CAPTURE_FILE [options]',
+      { recovery: "Run 'anwc report capture.json [--format html|markdown|text|json] [--output path] [--redact]'." }
+    );
+  }
+  const captureFile = arguments_[1];
+  let format: 'html' | 'markdown' | 'text' | 'json' = 'html';
+  let output: string | undefined;
+  let redact = false;
+
+  for (let index = 2; index < arguments_.length; index += 1) {
+    const option = arguments_[index]!;
+    if (option === '--redact') {
+      redact = true;
+      continue;
+    }
+    const value = arguments_[index + 1];
+    if (!value || value.startsWith('--')) throw new CliError('INVALID_USAGE', `${option} requires a value.`);
+    index += 1;
+    if (option === '--format') {
+      if (value === 'html' || value === 'markdown' || value === 'text' || value === 'json') {
+        format = value;
+      } else {
+        throw new CliError('INVALID_USAGE', `Invalid --format '${value}'. Supported formats: html, markdown, text, json.`);
+      }
+    } else if (option === '--output') {
+      output = value;
+    } else {
+      throw new CliError('INVALID_USAGE', `Unknown or invalid option: ${option}.`);
+    }
+  }
+
+  return { captureFile, format, output, redact };
 }
 
 async function capturePage(page: Page, options: InspectOptions): Promise<RawCapture> {
@@ -247,20 +292,63 @@ function envelope(error: CliError): ErrorEnvelope {
 }
 
 export async function run(arguments_: string[], io: CliIo = { stdout: (message) => process.stdout.write(message), stderr: (message) => process.stderr.write(message) }): Promise<number> {
-  let options: InspectOptions | undefined;
+  let inspectOptions: InspectOptions | undefined;
+  let reportOptions: ReportCommandOptions | undefined;
   try {
-    options = parseArguments(arguments_);
-    const snapshot = await inspect(options);
-    const output = options.format === 'json' ? `${JSON.stringify(snapshot)}\n` : `${formatText(snapshot, options.limit, options.maxChars)}\n`;
-    if (options.output) {
-      await mkdir(dirname(options.output), { recursive: true });
-      await writeFile(options.output, output, 'utf8');
+    if (arguments_[0] === 'report') {
+      reportOptions = parseReportArguments(arguments_);
+      let content: string;
+      try {
+        content = await readFile(reportOptions.captureFile, 'utf8');
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Cannot read capture file '${reportOptions.captureFile}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(content);
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Capture file '${reportOptions.captureFile}' is not valid JSON.`);
+      }
+      let snapshot: Snapshot;
+      try {
+        snapshot = snapshotSchema.parse(parsedJson);
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Capture file '${reportOptions.captureFile}' does not match Snapshot 0.1 schema.`);
+      }
+
+      const report = createReport(snapshot);
+      let output: string;
+      if (reportOptions.format === 'html') {
+        output = renderReportHtml(report, { redact: reportOptions.redact });
+      } else if (reportOptions.format === 'markdown') {
+        output = renderReportMarkdown(report, { redact: reportOptions.redact });
+      } else if (reportOptions.format === 'text') {
+        output = formatReportText(report);
+      } else {
+        output = JSON.stringify(report, null, 2);
+      }
+
+      if (reportOptions.output) {
+        await mkdir(dirname(reportOptions.output), { recursive: true });
+        await writeFile(reportOptions.output, output, 'utf8');
+      } else {
+        io.stdout(`${output}\n`);
+      }
+      return 0;
+    }
+
+    inspectOptions = parseArguments(arguments_);
+    const snapshot = await inspect(inspectOptions);
+    const output = inspectOptions.format === 'json' ? `${JSON.stringify(snapshot)}\n` : `${formatText(snapshot, inspectOptions.limit, inspectOptions.maxChars)}\n`;
+    if (inspectOptions.output) {
+      await mkdir(dirname(inspectOptions.output), { recursive: true });
+      await writeFile(inspectOptions.output, output, 'utf8');
     } else io.stdout(output);
-    return exitCode(snapshot, options.failOn);
+    return exitCode(snapshot, inspectOptions.failOn);
   } catch (error) {
     const cliError = error instanceof CliError ? error : new CliError('INTERNAL', error instanceof Error ? error.message : 'Unexpected CLI failure.');
     const report = envelope(cliError);
-    const wantsJson = options?.format === 'json' || (arguments_.includes('--format') && arguments_[arguments_.indexOf('--format') + 1] === 'json');
+    const wantsJson = inspectOptions?.format === 'json' || reportOptions?.format === 'json' || (arguments_.includes('--format') && arguments_[arguments_.indexOf('--format') + 1] === 'json');
     if (wantsJson) {
       io.stdout(`${JSON.stringify(report)}\n`);
     } else {
