@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, hashReceipt, importGradeFiles, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench receipt-hash RECEIPT.json | anwc-bench import-grade PLAN.json RESULTS.json --run RUN_ID --receipt RECEIPT.json --grade GRADE.json --output RESULTS.json | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA]';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench receipt-hash RECEIPT.json | anwc-bench import-grade PLAN.json RESULTS.json --run RUN_ID --receipt RECEIPT.json --grade GRADE.json --output NEW_RESULTS.json | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--run RUN_ID] [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA]';
 }
 
 export type BenchmarkIo = {
@@ -29,8 +29,11 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
       if (!resultsPath || runFlag !== '--run' || !runId || receiptFlag !== '--receipt' || !receiptPath || gradeFlag !== '--grade' || !gradePath || outputFlag !== '--output' || !output || rest.length !== 8) { io.stderr.write(`${usage()}\n`); return 2; }
       const plan = validateBenchmarkPlan(JSON.parse(await readFile(planPath, 'utf8')));
       const results = validateBenchmarkResults(plan, JSON.parse(await readFile(resultsPath, 'utf8')));
+      const outputPath = resolve(output);
+      const protectedInputs = [planPath, resultsPath, receiptPath, gradePath].map((path) => resolve(path));
+      if (protectedInputs.includes(outputPath)) throw new BenchmarkPlanError(['pilot grade import: output must be a new path distinct from the plan, ledger, receipt, and grade inputs']);
       const updated = await importGradeFiles({ plan, results, runId, receiptPath, gradePath });
-      await mkdir(dirname(output), { recursive: true }); await writeFile(output, `${JSON.stringify(updated, null, 2)}\n`);
+      await mkdir(dirname(outputPath), { recursive: true }); await writeFile(outputPath, `${JSON.stringify(updated, null, 2)}\n`, { flag: 'wx' });
       io.stdout.write(`Imported grade for ${runId} into ${output}\n`);
       return 0;
     }
@@ -55,15 +58,22 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
     if (command === 'grade') {
       const argsList = [planPath, ...rest];
       let evaluatorRoot: string | undefined;
+      let runId: string | undefined;
       const evalIndex = argsList.indexOf('--evaluator-root');
       if (evalIndex !== -1) {
         evaluatorRoot = argsList[evalIndex + 1];
         if (!evaluatorRoot) { io.stderr.write(`${usage()}\n`); return 2; }
         argsList.splice(evalIndex, 2);
       }
+      const runIndex = argsList.indexOf('--run');
+      if (runIndex !== -1) {
+        runId = argsList[runIndex + 1];
+        if (!runId) { io.stderr.write(`${usage()}\n`); return 2; }
+        argsList.splice(runIndex, 2);
+      }
       const [receiptFlag, receipt, subjectFlag, subject, conditionFlag, condition, portFlag, port, outputFlag, output] = argsList;
       if (receiptFlag !== '--receipt' || !receipt || subjectFlag !== '--subject' || !subject || conditionFlag !== '--condition' || !['ordinary', 'anwc-assisted'].includes(condition ?? '') || portFlag !== '--port' || !port || outputFlag !== '--output' || !output || argsList.length !== 10) { io.stderr.write(`${usage()}\n`); return 2; }
-      const result = await gradeRepair({ receipt, subject, condition: condition as SubjectCondition, port: Number(port), output, evaluatorRoot });
+      const result = await gradeRepair({ receipt, subject, condition: condition as SubjectCondition, port: Number(port), output, evaluatorRoot, runId });
       io.stdout.write(`Repair grade: ${result.status}. ${result.checks.length} checks recorded.\n`);
       return result.exitCode;
     }

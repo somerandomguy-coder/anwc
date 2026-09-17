@@ -1,6 +1,6 @@
 # Evaluator setup
 
-Updated 2026-09-17. The evaluator uses receipt/result contract `0.3`, materialized subjects and fresh staging for grading. Use it as a **development practice workflow** while Q01/Q02 close grade identity, result validation and target-bound intent gaps. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
+Updated 2026-09-17. The evaluator uses receipt `0.3`, grade result `0.4`, materialized subjects and fresh staging for grading. Q01 closes grade identity/result validation; use it as a **development practice workflow** while Q02 closes target-bound intent gaps. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
 
 ## Separate evaluator and agents
 
@@ -42,17 +42,17 @@ Give each agent only its own folder and matching URL. Assisted can run its avail
 From the evaluator repository, grade a practice submission on an unused port:
 
 ```powershell
-npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\ordinary" --condition ordinary --port 4311 --output "$anwcPair\ordinary-result.json"
-npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --output "$anwcPair\assisted-result.json"
+npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\ordinary" --condition ordinary --port 4311 --run pricing-ordinary --output "$anwcPair\ordinary-result.json"
+npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --run pricing-assisted --output "$anwcPair\assisted-result.json"
 ```
 
-The grader first checks immutable inputs, its current intent-value digest, and evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Result output must stay outside the submitted subject. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
+The grader first checks immutable inputs, its current intent-value digest, and evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, verifies the staged artifact hash, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Use a fresh output path outside the submitted subject and distinct from the receipt; the CLI will not overwrite an existing result. For a ledger import, pass the exact ledger run ID with `--run`. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
 
 Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. CLI exits are 0 verified, 1 behavioral failure, 2 integrity/invalid invocation, and 3 infrastructure/incomplete. These are still provisional development-case checks, not complete repair certification. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
 
 ## Pilot grade import
 
-Scored-plan validation requires each prepared receipt hash in that run's `receiptHash` field. The command is available now; dependable scored use remains gated on Q01/Q02:
+Scored-plan validation requires each prepared receipt hash in that run's `receiptHash` field. Q01 makes a `0.4` grade bind the same receipt bytes, named run, staged submission, evaluator identity and expected check inventory; dependable scored use still awaits Q02:
 
 ```powershell
 npm run bench -- receipt-hash C:\evaluator\pairs\run-01\receipt.json
@@ -64,7 +64,7 @@ After recording the agent's completed or time-capped row in the ledger, import i
 npm run bench -- import-grade C:\pilot\plan.json C:\pilot\results.json --run run-01 --receipt C:\evaluator\pairs\run-01\receipt.json --grade C:\evaluator\results\run-01.json --output C:\pilot\results.with-grade.json
 ```
 
-Current import rejects unknown runs, supplied-receipt/plan mismatches, fixture/condition mismatches, incomplete infrastructure results, existing manual scoring, and duplicate imports. However, the grade itself has no receipt identity, and its schema permits incomplete/contradictory check evidence. It also derives full success from repair status while regressions remain unadjudicated. Q01 fixes these gaps; do not interpret the current imported full-success field as certification. Detection precision, recall and regression counts require separate evaluator adjudication.
+Import rejects unknown runs, supplied-receipt/plan mismatches, fixture/condition mismatches, practice/dirty receipts, historical grade `0.3` files, receipt/run substitution, incomplete/contradictory check evidence, existing manual scoring and duplicate imports. It records a grade hash and keeps full success `null` while regressions remain unadjudicated. Detection precision, recall and regression counts require separate evaluator adjudication.
 
 Use a new output path every time and preserve the inputs: current import can overwrite an existing output, including the input ledger if pointed there. Q01 will enforce safe file/version handling. The example's separate output path is intentional.
 

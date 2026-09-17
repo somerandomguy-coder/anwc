@@ -53,7 +53,7 @@ Q01 → Q02 → Q03 → Q04 is the first route to user value. Q05 and Q06 then e
 
 ## Q01 — Close pilot provenance and result-accounting gaps
 
-**Own:** `packages/benchmark/src/{prepare,grade,pilot,index,main}.ts`, focused benchmark tests, EVALUATOR_SETUP. **Depends:** existing P08. **Status:** ready; first task.
+**Own:** `packages/benchmark/src/{prepare,grade,pilot,index,main}.ts`, focused benchmark tests, EVALUATOR_SETUP. **Depends:** existing P08. **Status:** complete 2026-09-17; Batch A continues with Q02.
 
 Build:
 1. Define a versioned grade provenance envelope with exact receipt-byte SHA-256, run/submission identity supplied by the evaluator, submitted artifact hash, evaluator hashes, expected checks and viewport inventory. Read receipt bytes once, validate those same bytes, and retain them evaluator-side. A pair receipt may legitimately bind both conditions; condition/run identities distinguish them. Do not demand two different receipt hashes for a single pair.
@@ -63,7 +63,7 @@ Build:
 5. Store imported grade hash/provenance. Duplicate import fails explicitly. Default CLI writes to a new output with exclusive creation; reject overlap with plan, receipt, grade, source ledger or subject. No silent overwrite from two stale ledger reads. A later replacement mode requires explicit semantics, not an implicit retry.
 6. Repair test fixtures broken by mandatory receipt hashes. Add a real CLI import regression, not only an in-memory test with a cast fake receipt.
 
-**Acceptance:** two preparations with identical fixture names cannot exchange grades; wrong arm/run/state/revision/viewports rejected; malformed passed/empty grade rejected; input files and previous outputs survive rejected/concurrent imports; valid import preserves detection/usage/unrelated rows; duplicate fails; historical artifacts have a migration message. Run the existing failing ledger test and a complete, exit-recorded batch gate. **Handoff:** exact new schema/migration and available commands; no “immutable” claim beyond what is tested.
+**Acceptance:** two preparations with identical fixture names cannot exchange grades; wrong arm/run/state/revision/viewports rejected; malformed passed/empty grade rejected; input files and previous outputs survive rejected/concurrent imports; valid import preserves detection/usage/unrelated rows; duplicate fails; historical artifacts have a migration message. **Evidence:** TypeScript plus focused ledger/CLI import and real staged browser-grade tests pass on Windows. The Batch A full integration gate remains due after Q02/Q03. **Handoff:** grade result `0.4` contains provenance; old `0.3` grades remain readable but cannot be imported into a scored ledger. `grade --run RUN_ID` makes an importable result. `import-grade` and grade output both require a fresh output path. No “immutable” claim beyond what is tested.
 
 ## Q02 — Bind source expectations to the intended UI
 

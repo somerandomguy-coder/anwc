@@ -116,15 +116,18 @@ async function evaluatorHashes(sourceRoot: string): Promise<PreparedPairReceipt[
   return { checker: await hashFile(join(root, 'index.ts')), registry: await hashFile(join(root, 'registry.ts')), sidecar: await hashFile(join(root, 'evaluator.ts')), grader: await hashFile(join(sourceRoot, 'packages', 'benchmark', 'src', 'grade.ts')) };
 }
 
+export function parsePreparedPairReceipt(raw: unknown, receiptPath = 'receipt'): PreparedPairReceipt {
+  try {
+    if (typeof raw === 'object' && raw !== null && (raw as { schemaVersion?: string }).schemaVersion === '0.2') throw new Error('receipt schema 0.2 is historical and uncertified; regenerate from the original pinned source with schema 0.3');
+    return receiptSchema.parse(raw);
+  } catch (error) { throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]); }
+}
+
 export async function readPreparedPairReceipt(path: string): Promise<PreparedPairReceipt> {
   const receiptPath = resolve(path);
   const receiptStat = await lstat(receiptPath).catch(() => undefined);
   if (receiptStat?.isSymbolicLink()) throw new BenchmarkPlanError([`receipt path cannot be a symbolic link: ${receiptPath}`]);
-  try {
-    const raw: unknown = JSON.parse(await readFile(receiptPath, 'utf8'));
-    if (typeof raw === 'object' && raw !== null && (raw as { schemaVersion?: string }).schemaVersion === '0.2') throw new Error('receipt schema 0.2 is historical and uncertified; regenerate from the original pinned source with schema 0.3');
-    return receiptSchema.parse(raw);
-  } catch (error) { throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]); }
+  return parsePreparedPairReceipt(JSON.parse(await readFile(receiptPath, 'utf8')), receiptPath);
 }
 
 /** Ensures evaluator code still matches the sidecar/checker captured at preparation. */

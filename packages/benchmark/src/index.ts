@@ -58,7 +58,7 @@ const resultRunSchema = z.object({
     regressions: z.number().int().nonnegative().nullable(),
     fullSuccess: z.boolean().nullable()
   }).strict(),
-  grade: z.object({ receiptHash: sha256, status: z.enum(['passed', 'failed']), submittedArtifactHash: sha256.optional() }).strict().optional(),
+  grade: z.object({ receiptHash: sha256, gradeHash: sha256, runId: z.string().regex(/^[a-z0-9-]+$/), status: z.enum(['passed', 'failed']), submittedArtifactHash: sha256, expectedChecks: z.number().int().positive() }).strict().optional(),
   notes: z.string()
 }).strict();
 

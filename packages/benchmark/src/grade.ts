@@ -6,19 +6,25 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { z } from 'zod';
-import { checkEvaluatorReceipt, checkReturnedSubject, readPreparedPairReceipt, type PreparedPairReceipt } from './prepare.js';
+import { checkEvaluatorReceipt, checkReturnedSubject, parsePreparedPairReceipt, type PreparedPairReceipt } from './prepare.js';
 import { BenchmarkPlanError } from './index.js';
 import { applySetup, isMutatingCheck, repairVerified, runChecks, type CheckResult, type FixtureCheck } from './fixtures/index.js';
 import { evaluatorFixtureFor } from './fixtures/evaluator.js';
 import { fixtureFor } from './fixtures/registry.js';
 import type { SubjectCondition } from './subject.js';
 
-export type GradeOptions = { receipt: string; subject: string; condition: SubjectCondition; port: number; output?: string; evaluatorRoot?: string; installTimeoutMs?: number; startupTimeoutMs?: number; overallTimeoutMs?: number };
+export type GradeOptions = { receipt: string; subject: string; condition: SubjectCondition; port: number; output?: string; evaluatorRoot?: string; runId?: string; installTimeoutMs?: number; startupTimeoutMs?: number; overallTimeoutMs?: number };
 const checkResultSchema = z.object({ id: z.string().min(1), required: z.boolean(), status: z.enum(['pass', 'fail', 'unsupported']), evidence: z.record(z.unknown()) }).strict();
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/i);
+const gradeProvenanceSchema = z.object({
+  receiptHash: sha256, runId: z.string().regex(/^[a-z0-9-]+$/).optional(), submissionId: sha256,
+  receipt: z.object({ fixtureId: z.string().min(1), fixtureState: z.enum(['broken', 'healthy']), scored: z.boolean(), sourceRevision: z.string().regex(/^[a-f0-9]{40}$/), detectorRevision: z.string().regex(/^[a-f0-9]{40}$/), evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256, grader: sha256 }).strict() }).strict(),
+  expectedChecks: z.array(z.object({ id: z.string().min(1), required: z.boolean(), viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict() }).strict()).min(1)
+}).strict();
 export const gradeResultSchema = z.object({
-  schemaVersion: z.literal('0.3'), fixtureId: z.string().min(1), condition: z.enum(['ordinary', 'anwc-assisted']), subject: z.string().min(1),
+  schemaVersion: z.union([z.literal('0.3'), z.literal('0.4')]), fixtureId: z.string().min(1), condition: z.enum(['ordinary', 'anwc-assisted']), subject: z.string().min(1),
   status: z.enum(['passed', 'failed', 'integrity-failed', 'infrastructure-failed']), exitCode: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]), repairVerified: z.boolean(),
-  checks: z.array(checkResultSchema.extend({ viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict() })), integrityIssues: z.array(z.string()), submittedArtifactHash: z.string().regex(/^[a-f0-9]{64}$/).optional(), stage: z.string().min(1).optional(), error: z.string().min(1).optional(), logs: z.object({ install: z.string(), server: z.string(), pageErrors: z.array(z.string()) }).strict(), cleanup: z.enum(['not-needed', 'complete', 'timed-out'])
+  checks: z.array(checkResultSchema.extend({ viewport: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).strict() })), integrityIssues: z.array(z.string()), submittedArtifactHash: sha256.optional(), provenance: gradeProvenanceSchema.optional(), stage: z.string().min(1).optional(), error: z.string().min(1).optional(), logs: z.object({ install: z.string(), server: z.string(), pageErrors: z.array(z.string()) }).strict(), cleanup: z.enum(['not-needed', 'complete', 'timed-out'])
 }).strict();
 export type GradeResult = z.infer<typeof gradeResultSchema>;
 
@@ -109,19 +115,25 @@ async function stopOwnedProcess(child: ChildProcess | undefined): Promise<'not-n
   return Promise.race([exited.then(() => 'complete' as const), delay(5_000).then(() => 'timed-out' as const)]);
 }
 async function writeResult(result: GradeResult, output: string | undefined, subject: string): Promise<void> {
-  if (!output) return; const destination = resolve(output); if (isSameOrSubpath(destination, resolve(subject))) throw new Error('grade result output must be outside the submitted subject'); await mkdir(dirname(destination), { recursive: true }); await writeFile(destination, `${JSON.stringify(gradeResultSchema.parse(result), null, 2)}\n`);
+  if (!output) return; const destination = resolve(output); if (isSameOrSubpath(destination, resolve(subject))) throw new Error('grade result output must be outside the submitted subject'); await mkdir(dirname(destination), { recursive: true }); await writeFile(destination, `${JSON.stringify(gradeResultSchema.parse(result), null, 2)}\n`, { flag: 'wx' });
 }
 function preconditionChecks(requiredContent: string[], requiredActions: Array<{ role: string; name: string }>): FixtureCheck[] { return [...requiredContent.map((text, index) => ({ id: `content-${index + 1}`, required: true, kind: 'content' as const, selector: 'body', text })), ...requiredActions.map((action, index) => ({ id: `action-${index + 1}`, required: true, kind: 'action-rendered' as const, ...action }))]; }
+function expectedCheckInventory(checks: FixtureCheck[], viewports: Array<{ width: number; height: number }>): NonNullable<GradeResult['provenance']>['expectedChecks'] {
+  return viewports.flatMap((viewport) => checks.map((check) => ({ id: check.id, required: check.required, viewport })));
+}
 
 /** Grades a returned repair in a fresh evaluator-owned workspace. */
 export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   const subject = resolve(options.subject); const logs = { install: '', server: '', pageErrors: [] as string[] };
-  if (options.output && isSameOrSubpath(resolve(options.output), subject)) {
-    return { schemaVersion: '0.3', fixtureId: 'unknown', condition: options.condition, subject, integrityIssues: ['grade result output must be outside the submitted subject'], status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], logs, cleanup: 'not-needed' };
+  if (options.output && (isSameOrSubpath(resolve(options.output), subject) || resolve(options.output) === resolve(options.receipt))) {
+    return { schemaVersion: '0.4', fixtureId: 'unknown', condition: options.condition, subject, integrityIssues: ['grade result output must be a new path outside the submitted subject and distinct from the receipt'], status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], logs, cleanup: 'not-needed' };
   }
   let receipt: PreparedPairReceipt;
+  let receiptHash: string | undefined;
   try {
-    receipt = await readPreparedPairReceipt(options.receipt);
+    const receiptBytes = await readFile(options.receipt);
+    receiptHash = hash(receiptBytes);
+    receipt = parsePreparedPairReceipt(JSON.parse(receiptBytes.toString('utf8')), resolve(options.receipt));
   } catch (error) {
     const message = error instanceof BenchmarkPlanError ? error.issues.join('; ') : (error instanceof Error ? error.message : String(error));
     const result: GradeResult = { schemaVersion: '0.3', fixtureId: 'unknown', condition: options.condition, subject, integrityIssues: [`invalid evaluator receipt: ${message}`], status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], logs, cleanup: 'not-needed' };
@@ -130,13 +142,15 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   }
   const integrityIssues = [...await checkReturnedSubject(receipt, subject, options.condition), ...await checkEvaluatorReceipt(receipt, options.evaluatorRoot)];
   const submittedHash = await submittedArtifactHash(subject).catch(() => undefined);
-  const base = { schemaVersion: '0.3' as const, fixtureId: receipt.fixtureId, condition: options.condition, subject, integrityIssues, ...(submittedHash ? { submittedArtifactHash: submittedHash } : {}), logs };
+  const base = { schemaVersion: '0.4' as const, fixtureId: receipt.fixtureId, condition: options.condition, subject, integrityIssues, ...(submittedHash ? { submittedArtifactHash: submittedHash } : {}), logs };
   if (integrityIssues.length > 0) { const result: GradeResult = { ...base, status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], cleanup: 'not-needed' }; await writeResult(result, options.output, subject); return result; }
   if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65_535) { const result: GradeResult = { ...base, status: 'integrity-failed', exitCode: 2, repairVerified: false, checks: [], error: 'grade port must be an integer between 1 and 65535', cleanup: 'not-needed' }; await writeResult(result, options.output, subject); return result; }
-  const prepared = fixtureFor(receipt.fixtureId); const evaluator = evaluatorFixtureFor(prepared); const checks: GradeResult['checks'] = []; const deadline = Date.now() + (options.overallTimeoutMs ?? 180_000); const remaining = (): number => { const milliseconds = deadline - Date.now(); if (milliseconds <= 0) throw new Error('overall grade timed out'); return milliseconds; }; let stage: string | undefined; let child: ChildProcess | undefined; let cleanup: GradeResult['cleanup'] = 'not-needed'; let activeStage = 'initialization'; let produced: GradeResult | undefined;
+  const prepared = fixtureFor(receipt.fixtureId); const evaluator = evaluatorFixtureFor(prepared); const allChecks = [...preconditionChecks(evaluator.fixture.requiredContent, evaluator.fixture.requiredActions), ...evaluator.repairChecks]; const checks: GradeResult['checks'] = []; const deadline = Date.now() + (options.overallTimeoutMs ?? 180_000); const remaining = (): number => { const milliseconds = deadline - Date.now(); if (milliseconds <= 0) throw new Error('overall grade timed out'); return milliseconds; }; let stage: string | undefined; let child: ChildProcess | undefined; let cleanup: GradeResult['cleanup'] = 'not-needed'; let activeStage = 'initialization'; let produced: GradeResult | undefined;
   try {
     if (evaluator.fixture.appId !== receipt.appId || evaluator.fixture.route !== receipt.route) throw new Error('receipt fixture does not match evaluator definition');
     await assertPortAvailable(options.port); remaining(); activeStage = 'staging'; stage = await copyForEvaluation(subject);
+    const stagedHash = await submittedArtifactHash(stage);
+    if (!submittedHash || stagedHash !== submittedHash) throw new Error('submitted subject changed while evaluator staged it');
     const rawNpmCli = process.env.npm_execpath; if (!rawNpmCli) throw new Error('npm_execpath is unavailable');
     const npmCli = rawNpmCli.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm');
     activeStage = 'install'; logs.install = await runCommand(process.execPath, [npmCli, 'ci', '--ignore-scripts'], stage, Math.min(options.installTimeoutMs ?? 120_000, remaining()));
@@ -155,14 +169,19 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
     const url = `http://127.0.0.1:${options.port}${receipt.route}`; await waitForServer(url, child, Math.min(options.startupTimeoutMs ?? 15_000, remaining()));
     activeStage = 'browser'; const browser = await chromium.launch({ headless: true });
     try {
-      const allChecks = [...preconditionChecks(evaluator.fixture.requiredContent, evaluator.fixture.requiredActions), ...evaluator.repairChecks];
       for (const viewport of evaluator.fixture.viewports) {
         const runOnFreshPage = async (requested: FixtureCheck[], applyRecordedSetup: boolean): Promise<void> => { const page = await browser.newPage({ viewport }); page.on('pageerror', (error) => logs.pageErrors.push(error.message)); try { await page.goto(url, { waitUntil: 'networkidle', timeout: Math.min(10_000, remaining()) }); if (applyRecordedSetup) await applySetup(page, evaluator.fixture.setup); checks.push(...(await runChecks(page, requested)).map((result) => ({ ...result, viewport }))); remaining(); } finally { await page.close(); } };
         await runOnFreshPage(allChecks.filter((check) => !isMutatingCheck(check)), false);
         for (const check of allChecks.filter(isMutatingCheck)) await runOnFreshPage([check], true);
       }
     } finally { await browser.close(); }
-    const passed = repairVerified(checks); produced = { ...base, stage: activeStage, status: passed ? 'passed' : 'failed', exitCode: passed ? 0 : 1, repairVerified: passed, checks, cleanup: 'not-needed' }; return produced;
+    const passed = repairVerified(checks);
+    const provenance = {
+      receiptHash: receiptHash!, ...(options.runId ? { runId: options.runId } : {}), submissionId: stagedHash,
+      receipt: { fixtureId: receipt.fixtureId, fixtureState: receipt.fixtureState, scored: receipt.scored, sourceRevision: receipt.source.revision, detectorRevision: receipt.detector.revision, evaluator: receipt.evaluator },
+      expectedChecks: expectedCheckInventory(allChecks, evaluator.fixture.viewports)
+    };
+    produced = { ...base, stage: activeStage, status: passed ? 'passed' : 'failed', exitCode: passed ? 0 : 1, repairVerified: passed, checks, provenance, cleanup: 'not-needed' }; return produced;
   } catch (error) { produced = { ...base, stage: activeStage, status: 'infrastructure-failed', exitCode: 3, repairVerified: false, checks, error: error instanceof Error ? error.message : String(error), cleanup: 'not-needed' }; return produced;
   } finally { cleanup = await stopOwnedProcess(child); if (stage) await rm(stage, { recursive: true, force: true }); if (produced) { produced.cleanup = cleanup; await writeResult(produced, options.output, subject); } }
 }

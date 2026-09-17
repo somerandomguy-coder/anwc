@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashReceipt, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -20,6 +20,16 @@ const validPlan = () => ({
     { id: 'pair-a', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: 'a'.repeat(64) },
     { id: 'pair-b', pairId: 'pair', fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted' as const, viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: 'b'.repeat(64) }
   ]
+});
+
+const importReceipt = () => ({
+  schemaVersion: '0.3', scored: true, fixtureId: 'heldout-a', fixtureState: 'broken', appId: 'shop',
+  source: { revision: `${'4c6cafe'}${'0'.repeat(33)}`, dirty: false }, detector: { revision: `${'4c6cafe'}${'0'.repeat(33)}` },
+  evaluator: { checker: 'd'.repeat(64), registry: 'e'.repeat(64), sidecar: 'f'.repeat(64), grader: '1'.repeat(64) }, route: '/', setup: [], viewports: [{ width: 390, height: 844 }], ports: { ordinary: 4301, assisted: 4302 }, editablePaths: ['examples/shop/src'], toolchain: { node: 'v24', npm: 'npm', browser: 'playwright' }, applicationFiles: {}, immutableFiles: { ordinary: {}, assisted: {} }, intentHashes: { ordinary: '2'.repeat(64), assisted: '3'.repeat(64) }, taskHash: '4'.repeat(64)
+});
+
+const importGrade = (receiptHash = 'a'.repeat(64)) => ({
+  schemaVersion: '0.4', fixtureId: 'heldout-a', condition: 'ordinary', subject: 'C:/subject', status: 'passed', exitCode: 0, repairVerified: true, checks: [{ id: 'required-check', required: true, status: 'pass', evidence: {}, viewport: { width: 390, height: 844 } }], integrityIssues: [], submittedArtifactHash: 'c'.repeat(64), provenance: { receiptHash, runId: 'pair-a', submissionId: 'c'.repeat(64), receipt: { fixtureId: 'heldout-a', fixtureState: 'broken', scored: true, sourceRevision: `${'4c6cafe'}${'0'.repeat(33)}`, detectorRevision: `${'4c6cafe'}${'0'.repeat(33)}`, evaluator: { checker: 'd'.repeat(64), registry: 'e'.repeat(64), sidecar: 'f'.repeat(64), grader: '1'.repeat(64) } }, expectedChecks: [{ id: 'required-check', required: true, viewport: { width: 390, height: 844 } }] }, logs: { install: '', server: '', pageErrors: [] }, cleanup: 'complete'
 });
 
 describe('benchmark plan', () => {
@@ -104,12 +114,15 @@ describe('benchmark plan', () => {
       expect(broken.submittedArtifactHash).toMatch(/^[a-f0-9]{64}$/);
       const mainPath = join(pair.ordinary, 'examples/landing/src/main.tsx');
       await writeFile(mainPath, (await readFile(mainPath, 'utf8')).replace(/\{broken && affected && true && <div className="selection-blocker">Limited offer details<\/div>\}/, ''));
-      const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4392 });
+      const repaired = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4392, runId: 'pricing-ordinary' });
       expect(repaired.integrityIssues).toEqual([]);
       expect(repaired.status).toBe('passed');
       expect(repaired.repairVerified).toBe(true);
       expect(repaired.submittedArtifactHash).toMatch(/^[a-f0-9]{64}$/);
       expect(repaired.submittedArtifactHash).not.toBe(broken.submittedArtifactHash);
+      expect(repaired.schemaVersion).toBe('0.4');
+      expect(repaired.provenance).toMatchObject({ runId: 'pricing-ordinary', submissionId: repaired.submittedArtifactHash, receipt: { fixtureId: 'pricing-blocked', scored: false } });
+      expect(repaired.provenance?.expectedChecks).toHaveLength(repaired.checks.length);
       await writeFile(join(pair.ordinary, 'TASK.md'), '\nchanged task\n', { flag: 'a' });
       const tampered = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4393 });
       expect(tampered.status).toBe('integrity-failed');
@@ -179,7 +192,7 @@ describe('benchmark plan', () => {
       const insideResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4397, output: join(pair.ordinary, 'result.json') });
       expect(insideResult.status).toBe('integrity-failed');
       expect(insideResult.exitCode).toBe(2);
-      expect(insideResult.integrityIssues.join('\n')).toContain('grade result output must be outside the submitted subject');
+      expect(insideResult.integrityIssues.join('\n')).toContain('grade result output must be a new path outside the submitted subject');
 
       // 2. Symlinked receipt rejection
       const symlinkedReceipt = join(root, 'symlink-receipt.json');
@@ -426,13 +439,38 @@ describe('benchmark plan', () => {
       { runId: 'pair-a', status: 'completed', wallSeconds: 30, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
       { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
     ] });
-    const receipt = { fixtureId: 'heldout-a', fixtureState: 'initial' } as unknown as Awaited<ReturnType<typeof readPreparedPairReceipt>>;
-    const grade = { schemaVersion: '0.3', fixtureId: 'heldout-a', condition: 'ordinary', subject: 'C:/subject', status: 'passed', exitCode: 0, repairVerified: true, checks: [], integrityIssues: [], submittedArtifactHash: 'c'.repeat(64), logs: { install: '', server: '', pageErrors: [] }, cleanup: 'complete' };
+    plan.runs[0]!.state = 'broken';
+    const receipt = importReceipt() as unknown as Awaited<ReturnType<typeof readPreparedPairReceipt>>;
+    const grade = importGrade();
     const imported = importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, grade);
     expect(imported.runs[0]!.grade).toMatchObject({ receiptHash: 'a'.repeat(64), status: 'passed' });
-    expect(imported.runs[0]!.scoring).toMatchObject({ verifiedRepairs: 1, fullSuccess: true });
+    expect(imported.runs[0]!.scoring).toMatchObject({ verifiedRepairs: 1, fullSuccess: null });
     expect(() => importGradeIntoResults(plan, imported, 'pair-a', 'a'.repeat(64), receipt, grade)).toThrow('already has an imported grade');
     expect(() => importGradeIntoResults(plan, results, 'pair-a', 'b'.repeat(64), receipt, grade)).toThrow('receipt hash does not match');
+    expect(() => importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, { ...grade, schemaVersion: '0.3', provenance: undefined })).toThrow('lacks required provenance');
+    expect(() => importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, { ...grade, provenance: { ...grade.provenance, runId: 'pair-b' } })).toThrow('does not bind receipt and run');
+    expect(() => importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, { ...grade, checks: [] })).toThrow('missing or has extra required check evidence');
+    expect(() => importGradeIntoResults(plan, results, 'pair-a', 'a'.repeat(64), receipt, { ...grade, checks: [{ ...grade.checks[0], status: 'unsupported' }], repairVerified: false, status: 'failed', exitCode: 1 })).toThrow('required check required-check is unsupported');
+  });
+
+  test('imports a provenance-bound grade through the CLI without overwriting inputs', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-import-cli-'));
+    const planPath = join(root, 'plan.json'); const resultsPath = join(root, 'results.json'); const receiptPath = join(root, 'receipt.json'); const gradePath = join(root, 'grade.json'); const outputPath = join(root, 'updated.json');
+    try {
+      const receipt = importReceipt(); const receiptBytes = JSON.stringify(receipt);
+      const plan = validPlan(); plan.runs[0]!.state = 'broken'; plan.runs[1]!.state = 'broken'; plan.runs[0]!.receiptHash = hashReceipt(receiptBytes);
+      const results = { schemaVersion: '0.1', planId: 'pilot', runs: [
+        { runId: 'pair-a', status: 'completed', wallSeconds: 30, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' },
+        { runId: 'pair-b', status: 'planned', wallSeconds: null, usage: { inputTokens: null, cachedInputTokens: null, outputTokens: null, costUsd: null }, scoring: { truePositives: null, falsePositives: null, falseNegatives: null, verifiedRepairs: null, regressions: null, fullSuccess: null }, notes: '' }
+      ] };
+      await Promise.all([writeFile(planPath, JSON.stringify(plan)), writeFile(resultsPath, JSON.stringify(results)), writeFile(receiptPath, receiptBytes), writeFile(gradePath, JSON.stringify(importGrade(hashReceipt(receiptBytes))))]);
+      const output: string[] = []; const errors: string[] = []; const io = { stdout: { write: (value: string) => output.push(value) }, stderr: { write: (value: string) => errors.push(value) } };
+      expect(await runBenchmarkCli(['import-grade', planPath, resultsPath, '--run', 'pair-a', '--receipt', receiptPath, '--grade', gradePath, '--output', outputPath], io)).toBe(0);
+      expect(JSON.parse(await readFile(outputPath, 'utf8')).runs[0].grade.runId).toBe('pair-a');
+      expect(await readFile(resultsPath, 'utf8')).toBe(JSON.stringify(results));
+      expect(await runBenchmarkCli(['import-grade', planPath, resultsPath, '--run', 'pair-a', '--receipt', receiptPath, '--grade', gradePath, '--output', resultsPath], io)).toBe(2);
+      expect(errors.join('')).toContain('output must be a new path');
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
 
   test('rejects answer-bearing or condition-inappropriate subject inventory', () => {
@@ -625,8 +663,8 @@ describe('W02 result accounting and endpoint fairness', () => {
     const plan = validPlan();
     for (let i = 2; i <= 5; i++) {
       plan.runs.push(
-        { id: `pair-${i}a`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' },
-        { id: `pair-${i}b`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/' }
+        { id: `pair-${i}a`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'ordinary', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: String(i).repeat(64) },
+        { id: `pair-${i}b`, pairId: `pair-${i}`, fixtureId: 'heldout-a', replicate: 1, condition: 'anwc-assisted', viewport: { width: 390, height: 844 }, state: 'initial', subjectUrl: 'http://127.0.0.1:4175/', receiptHash: String(i).repeat(64) }
       );
     }
     const validatedPlan = validateBenchmarkPlan(plan);

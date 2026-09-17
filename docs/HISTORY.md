@@ -565,4 +565,11 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Documentation validation: all 76 local Markdown links outside code examples resolve; `git diff --check` passed. Remote refs were fetched before committing the planning handoff.
 - No runtime/compiler/CLI feature was changed. Human model results remain absent. Private cases are needed for holdout claims, not to practise the public six-run workflow. Next implementation: Q01, then Q02/Q03 in Batch A.
 
+## 2026-09-17 — Q01 grade provenance and safe pilot import
+
+- Grade result `0.4` now records exact receipt bytes hash, optional evaluator-supplied run ID, staged submission hash, frozen receipt/evaluator identity, and the complete expected check/viewport inventory. Grading hashes the receipt bytes it parses and detects subject mutation during evaluator staging.
+- Scored-ledger import rejects old `0.3` grades, dirty/practice receipts, receipt/run/revision/fixture/state mismatches, empty/extra/duplicate check evidence, required unsupported checks, contradictory status/exit/verification/cleanup fields, and missing target viewport coverage. It retains detection/usage/regression fields and leaves full success unknown rather than inferring it from one repair grade.
+- `grade --run RUN_ID` makes an importable grade. Grade and import outputs use exclusive creation and reject dangerous overlap with protected inputs. The ledger stores receipt, grade, run, artifact and expected-check identity.
+- Evidence on Windows: `npm run typecheck`; focused ledger/import CLI tests; and the real staged browser-grade repair test passed. Batch A's full integration gate remains pending Q02/Q03. Next: Q02.
+
 
