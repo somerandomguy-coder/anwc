@@ -50,6 +50,13 @@ export function compareRepairs(
 
   const incompatibilityReasons: string[] = [];
   if (!originMatch) incompatibilityReasons.push(`Origin mismatch: '${beforeUrl.origin}' vs '${afterUrl.origin}'.`);
+  if (beforeUrl.href !== afterUrl.href || before.page.scenario !== after.page.scenario) {
+    incompatibilityReasons.push('Page URL or declared scenario differs. Reproduce the same state before comparing repairs.');
+  }
+  if (!rulesVersionMatch) incompatibilityReasons.push('Runtime versions differ. Capture both states with the same runtime.');
+  if (before.page.devicePixelRatio !== after.page.devicePixelRatio || before.page.visualViewportScale !== after.page.visualViewportScale) {
+    incompatibilityReasons.push('Device pixel ratio or visual viewport scale differs.');
+  }
   if (!viewportMatch) {
     incompatibilityReasons.push(
       `Viewport mismatch: ${before.page.viewport.width}x${before.page.viewport.height} vs ${after.page.viewport.width}x${after.page.viewport.height}. Comparison requires matching viewport.`
@@ -314,7 +321,7 @@ function toReportNodeRef(node: any): ReportNodeRef {
     } else {
       // Finding is absent in after!
       // Verify adequate coverage and behavior
-      if (!after.coverage.complete) {
+      if (!before.coverage.complete || !after.coverage.complete || !before.readiness.settled || !after.readiness.settled) {
         findingComparisons.push({
           comparisonId,
           status: 'inconclusive',
@@ -323,11 +330,11 @@ function toReportNodeRef(node: any): ReportNodeRef {
           target: afterNode,
           beforeFinding: bFinding,
           afterFinding: null,
-          explanation: 'Finding is no longer observed, but after capture had incomplete DOM/sampling coverage. Cannot verify repair.',
+          explanation: 'Finding is no longer observed, but a capture had incomplete DOM/sampling coverage or unsettled readiness. Cannot verify repair.',
           targetRetained: true,
           coverageAdequate: false
         });
-      } else if (options.behaviorCheckPassed === false) {
+      } else if (options.behaviorCheckPassed !== true || targetMatch.confidence !== 'definite') {
         findingComparisons.push({
           comparisonId,
           status: 'inconclusive',
@@ -336,7 +343,11 @@ function toReportNodeRef(node: any): ReportNodeRef {
           target: afterNode,
           beforeFinding: bFinding,
           afterFinding: null,
-          explanation: 'Finding is no longer observed, but declared behavior assertion failed. Action is not functionally verified.',
+          explanation: options.behaviorCheckPassed === false
+            ? 'Finding is no longer observed, but declared behavior assertion failed. Action is not functionally verified.'
+            : options.behaviorCheckPassed !== true
+            ? 'Finding is no longer observed, but no passing behavior check was supplied. Repair remains unverified.'
+            : 'Finding is no longer observed, but target identity is heuristic. Repair remains unverified.',
           targetRetained: true,
           coverageAdequate: true
         });
@@ -391,6 +402,8 @@ function toReportNodeRef(node: any): ReportNodeRef {
   } else if (persistent > 0) {
     repairIntegrityVerdict = 'unresolved-defects';
   } else if (inconclusive > 0) {
+    repairIntegrityVerdict = 'inconclusive-evidence';
+  } else if (beforeFindings.length === 0 || !before.coverage.complete || !after.coverage.complete || !before.readiness.settled || !after.readiness.settled) {
     repairIntegrityVerdict = 'inconclusive-evidence';
   } else {
     repairIntegrityVerdict = 'verified-repair';
