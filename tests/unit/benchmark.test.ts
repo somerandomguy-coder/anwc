@@ -170,8 +170,14 @@ describe('benchmark plan', () => {
       await expect(readPreparedPairReceipt(dirtyScoredPath)).rejects.toThrow(/scored receipt cannot have dirty source state/);
 
       // Scored preparation rejected on dirty git worktree
-      await expect(preparePair({ sourceRoot, output: join(root, 'dirty-scored-pair'), fixtureId: 'pricing-title', ordinaryPort: 4193, assistedPort: 4194 }))
-        .rejects.toThrow(/scored preparation requires a clean Git checkout/);
+      const dirtyMarker = join(sourceRoot, '.dirty-test-marker');
+      await writeFile(dirtyMarker, 'dirty');
+      try {
+        await expect(preparePair({ sourceRoot, output: join(root, 'dirty-scored-pair'), fixtureId: 'pricing-title', ordinaryPort: 4193, assistedPort: 4194 }))
+          .rejects.toThrow(/scored preparation requires a clean Git checkout/);
+      } finally {
+        await rm(dirtyMarker, { force: true });
+      }
 
       // Preparation rejected on mismatched revision
       await expect(preparePair({ sourceRoot, output: join(root, 'mismatched-pair'), fixtureId: 'pricing-title', ordinaryPort: 4193, assistedPort: 4194, practice: true, sourceRevision: '0'.repeat(40) }))
