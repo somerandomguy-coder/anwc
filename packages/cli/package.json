@@ -18,7 +18,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && node scripts/bundle.js"
   },
   "dependencies": {
     "@anwc/diagnostics": "0.1.0-alpha.0",
@@ -26,5 +26,8 @@
     "@anwc/runtime": "0.1.0-alpha.0",
     "esbuild": "0.25.0",
     "playwright": "1.51.1"
+  },
+  "devDependencies": {
+    "@anwc/report": "*"
   }
 }

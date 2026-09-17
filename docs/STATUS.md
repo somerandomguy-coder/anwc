@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance and Q02 binds source expectations to stable targets across modules. **Next task: Q03, create one shared report model for humans and agents.**
+Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, and Q03 introduces the unified report model for humans and agents. Batch A exit gates have passed. **Next task: Q04, readable local reports and evidence navigation (offline HTML/Markdown renderers).**
 
 ## What works today
 
@@ -14,16 +14,17 @@ The evaluator has 18 public broken/healthy pairs across shop, pricing and dashbo
 | --- | --- | --- |
 | Installed React/Vite path | ESM/declaration packages, local `0.1.0-alpha.0` tarballs, source linkage, production stripping, external consumer tests | Q10 validates the actual installed executable on Windows/Linux and the new complete workflow; macOS untested |
 | Public fixture corpus | 10 shop, 4 pricing, 4 dashboard pairs; independent browser checks and target-specific detector tests | Public practice, not holdout; Q05 adds a separate paired conformance corpus |
-| Preparation and grade | Receipt contract `0.4`; grade result `0.4` provenance, target-bound intent across every app `src` module, immutable/evaluator hashes, fresh staging and bounded server/check execution | Q03 shared report model; Batch A integration gate remains |
+| Preparation and grade | Receipt contract `0.4`; grade result `0.4` provenance, target-bound intent across every app `src` module, immutable/evaluator hashes, fresh staging and bounded server/check execution | Batch A complete; verified on Windows |
+| Shared report model | `packages/report` pure transformation module, Report 0.1 schema, SHA-256 capture hashing, structural character budgets, deterministic unack error->warning->info ordering | Q04 offline HTML/Markdown reports |
 | Rehearsal | Committed report: 18 grades, three apps, two conditions, broken/repaired/deletion states, two viewports each | Historical evidence at its recorded revisions, not a fresh gate for current HEAD |
 | Pilot ledger | Practice templates, receipt-hash command and provenance-bound `import-grade` | Q01 rejects substitution, incomplete evidence and unsafe output paths; Q11 finishes operator handoff and human results remain pending |
-| Everyday repair | Single-state JSON/text inspection and source-linked findings | Q03–Q09 add shared reports, HTML/Markdown, explicit state replay, conservative comparisons, conformance-driven fixes and compact drill-down |
+| Everyday repair | Single-state JSON/text inspection and source-linked findings; Report 0.1 | Q04–Q09 add HTML/Markdown, explicit state replay, conservative comparisons, conformance-driven fixes and compact drill-down |
 | Agent benefit | No real paired results recorded | Human sessions remain pending; no time/cost/success-rate claim |
 | Arbitrary sites | Experimental `--runtime-only` injection | Supported scope still requires installed runtime; R02–R06 remain deferred |
 
-**Latest verification, 2026-09-17:** Q01 repaired the reproduced ledger regression: TypeScript, the ledger/import CLI tests, and a real staged browser-grade test passed on Windows. Grade result `0.4` requires exact receipt, run, staged-submission, evaluator and expected-check provenance for scored-ledger import. The Batch A full integration suite has not run yet.
-
-Q02 now requires each benchmark contract to carry a unique static author key and preserves its tag/explicit semantic attributes across every `src` module. It rejects dynamic values and JSX spreads. This is a strong source-integrity check, not a hostile-code sandbox or proof that an author key was applied to the correct business concept. Earlier blanket M1/M2 certification and “only human testing remains” wording is superseded by this assessment.
+**Latest verification, 2026-09-17:** Q01 repaired the reproduced ledger regression: TypeScript, the ledger/import CLI tests, and a real staged browser-grade test passed on Windows. Grade result `0.4` requires exact receipt, run, staged-submission, evaluator and expected-check provenance for scored-ledger import.
+Q02 requires each benchmark contract to carry a unique static author key and preserves its tag/explicit semantic attributes across every `src` module.
+Q03 implemented the unified `Report 0.1` model in `packages/report`, with SHA-256 capture hashing, structural character budgets, and deterministic grouping. All 39 benchmark unit tests, report unit tests, CLI tests, and external consumer tests passed on Windows. Batch A exit gate passed.
 
 Historical results in [HISTORY](HISTORY.md) include Windows evaluator checks and a Linux integration pass (61 unit tests, 26 browser tests, three production builds). The committed [rehearsal report](../bench/rehearsals/rehearsal-report.json) records six broken failures, six repaired passes, and six deletion failures. Preserve those results with their revisions; do not represent them as a current pass.
 

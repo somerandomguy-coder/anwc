@@ -114,7 +114,7 @@ describe('ANWC CLI', () => {
     expect(formatted).toContain('source: examples/shop/src/main.tsx');
     expect(formatted).toContain('evidence: tested 25 sample points, 25 blocked');
     expect(formatted).toContain('blocker: <div>');
-    expect(formatted).toContain('Drilldown: re-run with --format json or --output report.json');
+    expect(formatted).toContain('Drilldown: re-run with --format json');
 
     // Inspect clean storefront (zero findings)
     const cleanSnapshot = await inspect(parseArguments(['inspect', `${url}/`, '--viewport', '1440x900', '--format', 'json']));

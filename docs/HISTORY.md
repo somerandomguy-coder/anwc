@@ -578,4 +578,11 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Prepared fixture materialization preserves or adds explicit stable contracts where evaluator expectations rely on them. The pricing action uses a static Growth key only on the Growth control; generated shop fixtures include static action/title/rail contracts.
 - Evidence on Windows: `npm run typecheck`; focused static-contract, prepared-subject, and dummy-target/file-move tests passed. Batch A's full integration gate remains pending Q03. Next: Q03.
 
+## 2026-09-17 — Q03 unified report model and Batch A exit gate
+
+- Created `packages/report` private pure transformation package defining `Report 0.1` Zod schema, SHA-256 capture hashing, deterministic grouping by directly measured shared blocker/clip ancestors, deterministic sorting (unacknowledged errors, warnings, informational/acknowledged results), and structural character budgeting with reserved footers.
+- Updated `@anwc/cli` `formatText` to delegate to `@anwc/report`, bundling it into the distribution entry so standalone consumers do not require unreleased external workspace packages.
+- Staged benchmark assisted subjects now include `packages/report` in workspace and tsconfig references.
+- Evidence on Windows: all 8 invariant report unit tests, all 8 CLI tests, 2 external consumer tests, and all 39 benchmark unit tests passed. Batch A integration gate passed cleanly. Next: Batch B (Q04 offline HTML/Markdown reports).
+
 

@@ -269,7 +269,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
     if (options.condition === 'anwc-assisted') {
       const packagesDir = join(sourceRoot, 'packages');
       if (await exists(packagesDir)) {
-        const allowedPackages = ['protocol', 'compiler', 'runtime', 'diagnostics', 'vite-plugin', 'cli'];
+        const allowedPackages = ['protocol', 'compiler', 'runtime', 'diagnostics', 'vite-plugin', 'cli', 'report'];
         for (const pkg of allowedPackages) {
           const pkgPath = join(packagesDir, pkg);
           if (!(await exists(pkgPath))) continue;
@@ -323,7 +323,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
     }
 
     const workspaces = options.condition === 'anwc-assisted'
-      ? ['packages/protocol', 'packages/compiler', 'packages/runtime', 'packages/diagnostics', 'packages/vite-plugin', 'packages/cli', 'examples/*']
+      ? ['packages/protocol', 'packages/compiler', 'packages/runtime', 'packages/diagnostics', 'packages/vite-plugin', 'packages/cli', 'packages/report', 'examples/*']
       : [`examples/${appId}`];
 
     const devDependencies: Record<string, string> = {};
@@ -360,6 +360,7 @@ export async function packageSubjectWorkspace(options: SubjectPackageOptions): P
           { path: './packages/diagnostics' },
           { path: './packages/vite-plugin' },
           { path: './packages/cli' },
+          { path: './packages/report' },
           { path: `./examples/${appId}` }
         ];
     await writeFile(join(stagingDir, 'tsconfig.json'), `${JSON.stringify({ files: [], references: tsconfigReferences }, null, 2)}\n`, 'utf8');

@@ -59,7 +59,7 @@ async function copyForEvaluation(source: string): Promise<string> {
       else if (entry.isFile() && !entry.name.endsWith('.log')) { await mkdir(dirname(output), { recursive: true }); await copyFile(input, output); }
     }
   }
-  try { await visit(root, staging); return staging; } catch (error) { await rm(staging, { recursive: true, force: true }); throw error; }
+  try { await visit(root, staging); return staging; } catch (error) { await rm(staging, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); throw error; }
 }
 
 async function assertPortAvailable(port: number): Promise<void> {
@@ -183,5 +183,5 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
     };
     produced = { ...base, stage: activeStage, status: passed ? 'passed' : 'failed', exitCode: passed ? 0 : 1, repairVerified: passed, checks, provenance, cleanup: 'not-needed' }; return produced;
   } catch (error) { produced = { ...base, stage: activeStage, status: 'infrastructure-failed', exitCode: 3, repairVerified: false, checks, error: error instanceof Error ? error.message : String(error), cleanup: 'not-needed' }; return produced;
-  } finally { cleanup = await stopOwnedProcess(child); if (stage) await rm(stage, { recursive: true, force: true }); if (produced) { produced.cleanup = cleanup; await writeResult(produced, options.output, subject); } }
+  } finally { cleanup = await stopOwnedProcess(child); if (stage) await rm(stage, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); if (produced) { produced.cleanup = cleanup; await writeResult(produced, options.output, subject); } }
 }

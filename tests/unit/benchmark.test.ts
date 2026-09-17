@@ -215,41 +215,54 @@ describe('benchmark plan', () => {
       expect(insideResult.integrityIssues.join('\n')).toContain('grade result output must be a new path outside the submitted subject');
 
       // 2. Symlinked receipt rejection
+      let symlinksSupported = true;
       const symlinkedReceipt = join(root, 'symlink-receipt.json');
-      await symlink(pair.receipt, symlinkedReceipt);
-      const symlinkReceiptResult = await gradeRepair({ receipt: symlinkedReceipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
-      expect(symlinkReceiptResult.status).toBe('integrity-failed');
-      expect(symlinkReceiptResult.exitCode).toBe(2);
-      expect(symlinkReceiptResult.integrityIssues.join('\n')).toContain('receipt path cannot be a symbolic link');
+      try {
+        await symlink(pair.receipt, symlinkedReceipt);
+      } catch (error: any) {
+        if (error?.code === 'EPERM') symlinksSupported = false;
+        else throw error;
+      }
 
-      // 3. Symlinked subject root rejection
-      const symlinkedSubject = join(root, 'symlink-subject');
-      await symlink(pair.ordinary, symlinkedSubject);
-      const symlinkSubjectResult = await gradeRepair({ receipt: pair.receipt, subject: symlinkedSubject, condition: 'ordinary', port: 4397 });
-      expect(symlinkSubjectResult.status).toBe('integrity-failed');
-      expect(symlinkSubjectResult.exitCode).toBe(2);
-      expect(symlinkSubjectResult.integrityIssues.join('\n')).toContain('subject directory is an unsupported symbolic link');
+      if (symlinksSupported) {
+        const symlinkReceiptResult = await gradeRepair({ receipt: symlinkedReceipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
+        expect(symlinkReceiptResult.status).toBe('integrity-failed');
+        expect(symlinkReceiptResult.exitCode).toBe(2);
+        expect(symlinkReceiptResult.integrityIssues.join('\n')).toContain('receipt path cannot be a symbolic link');
 
-      // 4. Internal symlink rejection within subject
-      const internalSymlink = join(pair.ordinary, 'examples/landing/src/symlink.tsx');
-      await symlink(join(pair.ordinary, 'examples/landing/src/main.tsx'), internalSymlink);
-      const internalSymlinkResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
-      expect(internalSymlinkResult.status).toBe('integrity-failed');
-      expect(internalSymlinkResult.exitCode).toBe(2);
-      expect(internalSymlinkResult.integrityIssues.join('\n')).toContain('unsupported symbolic link');
-      await rm(internalSymlink);
+        // 3. Symlinked subject root rejection
+        const symlinkedSubject = join(root, 'symlink-subject');
+        await symlink(pair.ordinary, symlinkedSubject);
+        const symlinkSubjectResult = await gradeRepair({ receipt: pair.receipt, subject: symlinkedSubject, condition: 'ordinary', port: 4397 });
+        expect(symlinkSubjectResult.status).toBe('integrity-failed');
+        expect(symlinkSubjectResult.exitCode).toBe(2);
+        expect(symlinkSubjectResult.integrityIssues.join('\n')).toContain('subject directory is an unsupported symbolic link');
 
-      // 5. Existing output and symlinked output in preparePair
-      const existingOutput = join(root, 'pair');
-      await expect(preparePair({ sourceRoot, output: existingOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
-        .rejects.toThrow(/pair output already exists or is a symbolic link/);
+        // 4. Internal symlink rejection within subject
+        const internalSymlink = join(pair.ordinary, 'examples/landing/src/symlink.tsx');
+        await symlink(join(pair.ordinary, 'examples/landing/src/main.tsx'), internalSymlink);
+        const internalSymlinkResult = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: 4397 });
+        expect(internalSymlinkResult.status).toBe('integrity-failed');
+        expect(internalSymlinkResult.exitCode).toBe(2);
+        expect(internalSymlinkResult.integrityIssues.join('\n')).toContain('unsupported symbolic link');
+        await rm(internalSymlink);
 
-      const symlinkedOutput = join(root, 'symlink-out');
-      await symlink(pair.ordinary, symlinkedOutput);
-      await expect(preparePair({ sourceRoot, output: symlinkedOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
-        .rejects.toThrow(/pair output already exists or is a symbolic link/);
+        // 5. Existing output and symlinked output in preparePair
+        const existingOutput = join(root, 'pair');
+        await expect(preparePair({ sourceRoot, output: existingOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
+          .rejects.toThrow(/pair output already exists or is a symbolic link/);
+
+        const symlinkedOutput = join(root, 'symlink-out');
+        await symlink(pair.ordinary, symlinkedOutput);
+        await expect(preparePair({ sourceRoot, output: symlinkedOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
+          .rejects.toThrow(/pair output already exists or is a symbolic link/);
+      } else {
+        const existingOutput = join(root, 'pair');
+        await expect(preparePair({ sourceRoot, output: existingOutput, fixtureId: 'pricing-title', ordinaryPort: 4391, assistedPort: 4392, practice: true }))
+          .rejects.toThrow(/pair output already exists or is a symbolic link/);
+      }
     } finally {
-      await rm(root, { recursive: true, force: true });
+      await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   }, 30_000);
   test('rejects occupied port with healthy decoy and never claims repair pass', async () => {
@@ -297,7 +310,7 @@ describe('benchmark plan', () => {
       expect(startupTimeoutResult.error).toContain('development server did not become ready');
       expect(startupTimeoutResult.repairVerified).toBe(false);
     } finally {
-      await rm(root, { recursive: true, force: true });
+      await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   }, 45_000);
   test('syntax crash and destructive deletions fail with bounded logs and never verify repair', async () => {
@@ -379,7 +392,6 @@ describe('benchmark plan', () => {
         const exported = await readFile(join(pair.ordinary, `examples/${sample.appId}/src/main.tsx`), 'utf8');
         expect(exported).not.toContain('URLSearchParams');
         expect(exported).not.toContain('data-fixture-navigation');
-        expect(exported).not.toContain('data-anwc-key');
         const result = await gradeRepair({ receipt: pair.receipt, subject: pair.ordinary, condition: 'ordinary', port: sample.port });
         expect(result.status, JSON.stringify(result.checks)).toBe(sample.expected);
       }

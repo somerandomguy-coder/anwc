@@ -79,7 +79,7 @@ Build:
 
 ## Q03 — One report model for humans and agents
 
-**Own:** new `packages/report` pure transformation module (private until Q10), protocol adapters, CLI presentation tests. **Depends:** Q01; may use existing snapshot `0.1`.
+**Own:** new `packages/report` pure transformation module (private until Q10), protocol adapters, CLI presentation tests. **Depends:** Q01; may use existing snapshot `0.1`. **Status:** complete 2026-09-17; Batch A exit gate passed; Batch B begins with Q04.
 
 Build:
 1. Define `Report 0.1`: input schema/capture hash, state/viewport/browser/source coverage, findings, related target/blocker/ancestor references, measured versus expected evidence, limitations, actionable/acknowledged/unknown counts. Keep raw snapshots authoritative; report fields are traceable to input facts.
@@ -87,7 +87,7 @@ Build:
 3. Deterministic ordering: unacknowledged errors, warnings, informational/acknowledged results; stable ties. Preserve the existing finding semantics. Repair suggestions name a measured relation and relevant source; no invented CSS property attribution.
 4. Make text/character budgets structural: whole finding sections, a reserved coverage/omission footer, exact emitted-size accounting, a minimum valid budget. Handle Unicode, control characters and huge labels. Fix JSON drilldown guidance to require `--format json` when writing JSON.
 
-**Acceptance:** all renderer counts/references agree with the raw snapshot; zero findings on partial/unsettled capture remains visibly incomplete; repeated instances and unknown blocker sources survive; output never exceeds its declared budget or truncates away limitations. Tests must check these invariants, not only string snapshots.
+**Acceptance:** all renderer counts/references agree with the raw snapshot; zero findings on partial/unsettled capture remains visibly incomplete; repeated instances and unknown blocker sources survive; output never exceeds its declared budget or truncates away limitations. Tests must check these invariants, not only string snapshots. **Evidence:** `packages/report` pure transformation module created with Zod `Report 0.1` schema, SHA-256 capture hashing, structural character budget with reserved footer, and 8 comprehensive invariant unit tests. CLI bundles `@anwc/report` and delegates `formatText`. All unit, CLI, consumer, and benchmark tests pass on Windows.
 
 ## Q04 — Readable local reports and evidence navigation
 

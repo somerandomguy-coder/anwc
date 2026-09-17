@@ -5,6 +5,7 @@ import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
 import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSchema } from '@anwc/protocol';
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
+import { createReport, formatReportText, type Report } from '@anwc/report';
 import { chromium, type Page } from 'playwright';
 
 type RuntimeApi = { capture(options?: { textLimit?: number; timeoutMs?: number }): Promise<RawCapture> };
@@ -139,11 +140,27 @@ async function capturePage(page: Page, options: InspectOptions): Promise<RawCapt
         'Runtime capture exceeded the timeout budget.',
         { recovery: `Capture timed out after ${options.timeoutMs}ms. Check for infinite loops or pending fonts, or increase the timeout using '--timeout-ms ${options.timeoutMs * 2}'.` }
       )), options.timeoutMs);
-      void page.evaluate(async (captureOptions) => {
-        const api = (window as Window & { __ANWC__?: RuntimeApi }).__ANWC__;
-        if (!api) throw new Error('ANWC runtime disappeared before capture.');
-        return api.capture(captureOptions);
-      }, { textLimit: 160, timeoutMs: options.timeoutMs }).then(
+      async function doCapture(): Promise<RawCapture> {
+        try {
+          return await page.evaluate(async (captureOptions) => {
+            const api = (window as Window & { __ANWC__?: RuntimeApi }).__ANWC__;
+            if (!api) throw new Error('ANWC runtime disappeared before capture.');
+            return api.capture(captureOptions);
+          }, { textLimit: 160, timeoutMs: options.timeoutMs });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes('Execution context was destroyed') || msg.includes('navigation')) {
+            await page.waitForFunction(() => Boolean((window as Window & { __ANWC__?: unknown }).__ANWC__), undefined, { timeout: Math.min(options.timeoutMs, 5_000) });
+            return await page.evaluate(async (captureOptions) => {
+              const api = (window as Window & { __ANWC__?: RuntimeApi }).__ANWC__;
+              if (!api) throw new Error('ANWC runtime disappeared before capture.');
+              return api.capture(captureOptions);
+            }, { textLimit: 160, timeoutMs: options.timeoutMs });
+          }
+          throw err;
+        }
+      }
+      doCapture().then(
         (capture) => { clearTimeout(timeout); resolve(capture); },
         (error: unknown) => { clearTimeout(timeout); reject(error); }
       );
@@ -214,81 +231,8 @@ function printable(value: string): string {
 }
 
 export function formatText(snapshot: Snapshot, limit: number, maxChars: number): string {
-  const nodeMap = new Map(snapshot.nodes.map((node) => [node.nodeId, node]));
-  const lines: string[] = [
-    `ANWC ${snapshot.schemaVersion} | ${snapshot.page.viewport.width}x${snapshot.page.viewport.height} | capture ${snapshot.captureId} | ${snapshot.coverage.complete ? 'complete' : 'partial'}${snapshot.readiness.settled ? ', settled' : ', unsettled'}`
-  ];
-
-  if (snapshot.findings.length === 0) {
-    lines.push('0 actionable findings for inspected rules (note: paint visibility unknown, no screenshots captured)');
-  } else {
-    let shown = 0;
-    for (const finding of snapshot.findings) {
-      if (shown >= limit) break;
-      const node = nodeMap.get(finding.nodeId);
-      const tag = node ? `<${node.tag}>` : '<element>';
-      const targetLabel = node?.label ? ` "${printable(node.label)}"` : (node?.semanticKey ? ` [${node.semanticKey}]` : '');
-      const source = finding.source
-        ? `${finding.source.file}:${finding.source.line}:${finding.source.column}`
-        : 'source unavailable (uninstrumented node)';
-
-      lines.push(`${finding.severity.toUpperCase()} ${finding.code} ${tag}${targetLabel} (node ${finding.nodeId})`);
-      lines.push(`  source: ${source}`);
-      lines.push(`  message: ${printable(finding.message)}`);
-
-      const ev = finding.evidence;
-      if (ev.kind === 'pointer-blocked') {
-        lines.push(`  evidence: tested ${ev.tested} sample points, ${ev.blocked} blocked`);
-        if (ev.blockerNodeIds.length > 0) {
-          const blockerDesc = ev.blockerNodeIds.map((bid) => {
-            const bNode = nodeMap.get(bid);
-            const bTag = bNode ? `<${bNode.tag}>` : '<element>';
-            const bLabel = bNode?.label ? ` "${printable(bNode.label)}"` : '';
-            const bSource = bNode?.source ? ` at ${bNode.source.file}:${bNode.source.line}:${bNode.source.column}` : '';
-            return `${bTag}${bLabel} (node ${bid})${bSource}`;
-          }).join(', ');
-          lines.push(`  blocker: ${blockerDesc}`);
-        }
-      } else if (ev.kind === 'horizontal-overflow') {
-        const overflow = ev.scrollWidth - ev.clientWidth;
-        lines.push(`  evidence: measured scrollWidth ${ev.scrollWidth}px vs clientWidth ${ev.clientWidth}px (${overflow}px horizontal overflow)`);
-      } else if (ev.kind === 'clipped-by-ancestor') {
-        const pct = Math.round((1 - ev.boxFraction) * 100);
-        const ancestors = ev.ancestorNodeIds.map((aid) => {
-          const aNode = nodeMap.get(aid);
-          return `<${aNode?.tag || 'element'}> (${aid})`;
-        }).join(', ');
-        lines.push(`  evidence: box is ${pct}% clipped by ancestor(s) ${ancestors}`);
-      } else if (ev.kind === 'text-clipped') {
-        lines.push(`  evidence: ${ev.clippedFragmentCount} text fragment(s) clipped across ${ev.lineCount} line(s)`);
-      } else if (ev.kind === 'text-line-budget-exceeded') {
-        lines.push(`  evidence: observed ${ev.observedLines} lines exceeds maximum allowed ${ev.maxLines} lines`);
-      } else if (ev.kind === 'expected-visible-but-hidden') {
-        lines.push(`  evidence: expected ${ev.expectedCurrent} but element is hidden (${ev.hiddenReasons.join(', ')})`);
-      }
-
-      if (finding.limitations.length > 0) {
-        lines.push(`  limitations: ${finding.limitations.join('; ')}`);
-      }
-      if (finding.suggestion) {
-        lines.push(`  suggestion: ${finding.suggestion}`);
-      }
-      shown += 1;
-    }
-
-    const omitted = snapshot.findings.length - shown;
-    lines.push(`${shown} findings | ${omitted} omitted | ${snapshot.coverage.complete ? 'complete capture' : 'partial capture'} | paint visibility unknown | no screenshots captured`);
-    if (omitted > 0) {
-      lines.push(`Note: ${omitted} finding(s) omitted. Increase limit with --limit <N> or view full report with --format json.`);
-    }
-  }
-
-  lines.push('Drilldown: re-run with --format json or --output report.json for full raw layout, hit samples, and DOM tree.');
-  let output = lines.join('\n');
-  if (output.length > maxChars) {
-    output = `${output.slice(0, Math.max(0, maxChars - 55))}\n... text output truncated by --max-chars (increase with --max-chars <N>) ...`;
-  }
-  return output;
+  const report = createReport(snapshot);
+  return formatReportText(report, { limit, maxChars });
 }
 
 function exitCode(snapshot: Snapshot, failOn: InspectOptions['failOn']): number {
