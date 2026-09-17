@@ -138,7 +138,7 @@ Proposed interface: `anwc diff before.json after.json --format html --output dif
 
 Match by unique author key and state first; otherwise use source/semantic/structural evidence as a labelled heuristic. Do not use session node IDs across reloads or line numbers as a permanent identifier. Reordered identical list instances remain ambiguous unless keys disambiguate. Report new, persistent, no-longer-observed, unmatched and non-comparable findings. “Verified fixed” additionally requires retained target/intent, adequate coverage and passing declared behavior checks. Deletion, unmounting, truncation, unsupported capture and changed setup cannot masquerade as a fix.
 
-**Acceptance:** CSS fix, source line shift and keyed list reorder match correctly; removed checkout, duplicate keys, swapped same-label nodes and changed viewport cannot produce false repair success; partial capture remains inconclusive. Human report explains the decision and agent JSON carries the same evidence.
+**Acceptance:** CSS fix, source line shift and keyed list reorder match correctly; removed checkout, duplicate keys, swapped same-label nodes and changed viewport cannot produce false repair success; partial capture remains inconclusive. Human report explains the decision and agent JSON carries the same evidence. **Status:** complete 2026-09-17; `DiffReport 0.1` schema in `packages/report/src/diff-schema.ts`, pure `compareRepairs` diff engine in `packages/report/src/diff.ts`, offline HTML/Markdown/Text renderers, and `anwc diff` CLI command. Retained-target and complete-coverage invariants verified in `tests/unit/diff.test.ts`. Batch C continues with Q08.
 
 ## Q08 — Fix the highest-value browser edge cases
 

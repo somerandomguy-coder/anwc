@@ -5,7 +5,17 @@ import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
 import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSchema } from '@anwc/protocol';
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
-import { createReport, formatReportText, renderReportHtml, renderReportMarkdown, type Report } from '@anwc/report';
+import {
+  createReport,
+  formatReportText,
+  renderReportHtml,
+  renderReportMarkdown,
+  compareRepairs,
+  formatDiffText,
+  renderDiffHtml,
+  renderDiffMarkdown,
+  type Report
+} from '@anwc/report';
 import { chromium, type Page } from 'playwright';
 import { stateManifestSchema, type StateManifest, type CheckRunResult } from './manifest.js';
 import { runCheckSuite } from './runner.js';
@@ -200,6 +210,46 @@ export function parseCheckArguments(arguments_: string[]): CheckCommandOptions {
   }
 
   return { manifestFile, outputDir };
+}
+
+export interface DiffCommandOptions {
+  beforeFile: string;
+  afterFile: string;
+  format: 'html' | 'markdown' | 'text' | 'json';
+  output?: string;
+}
+
+export function parseDiffArguments(arguments_: string[]): DiffCommandOptions {
+  if (arguments_[0] !== 'diff' || !arguments_[1] || arguments_[1].startsWith('-') || !arguments_[2] || arguments_[2].startsWith('-')) {
+    throw new CliError(
+      'INVALID_USAGE',
+      'Usage: anwc diff BEFORE_CAPTURE AFTER_CAPTURE [options]',
+      { recovery: "Run 'anwc diff before.json after.json [--format html|markdown|text|json] [--output path]'." }
+    );
+  }
+  const beforeFile = arguments_[1];
+  const afterFile = arguments_[2];
+  let format: 'html' | 'markdown' | 'text' | 'json' = 'html';
+  let output: string | undefined;
+
+  for (let index = 3; index < arguments_.length; index += 1) {
+    const option = arguments_[index]!;
+    const value = arguments_[index + 1];
+    if (!value || value.startsWith('--')) throw new CliError('INVALID_USAGE', `${option} requires a value.`);
+    index += 1;
+    if (option === '--format') {
+      if (value !== 'html' && value !== 'markdown' && value !== 'text' && value !== 'json') {
+        throw new CliError('INVALID_USAGE', `Unsupported diff format '${value}'. Use 'html', 'markdown', 'text', or 'json'.`);
+      }
+      format = value;
+    } else if (option === '--output') {
+      output = value;
+    } else {
+      throw new CliError('INVALID_USAGE', `Unknown or invalid option: ${option}.`);
+    }
+  }
+
+  return { beforeFile, afterFile, format, output };
 }
 
 async function capturePage(page: Page, options: InspectOptions): Promise<RawCapture> {
@@ -405,6 +455,57 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
 
       io.stdout(`${JSON.stringify(runResult, null, 2)}\n`);
       return runResult.passedAll ? 0 : 1;
+    }
+
+    if (arguments_[0] === 'diff') {
+      const diffOptions = parseDiffArguments(arguments_);
+      let beforeContent: string;
+      try {
+        beforeContent = await readFile(diffOptions.beforeFile, 'utf8');
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Cannot read before capture file '${diffOptions.beforeFile}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+      let afterContent: string;
+      try {
+        afterContent = await readFile(diffOptions.afterFile, 'utf8');
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Cannot read after capture file '${diffOptions.afterFile}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      let beforeJson: unknown;
+      try {
+        beforeJson = JSON.parse(beforeContent);
+      } catch {
+        throw new CliError('INVALID_USAGE', `Before capture file '${diffOptions.beforeFile}' is not valid JSON.`);
+      }
+
+      let afterJson: unknown;
+      try {
+        afterJson = JSON.parse(afterContent);
+      } catch {
+        throw new CliError('INVALID_USAGE', `After capture file '${diffOptions.afterFile}' is not valid JSON.`);
+      }
+
+      const diffResult = compareRepairs(beforeJson as Snapshot, afterJson as Snapshot);
+      let diffOutput: string;
+      if (diffOptions.format === 'html') {
+        diffOutput = renderDiffHtml(diffResult);
+      } else if (diffOptions.format === 'markdown') {
+        diffOutput = renderDiffMarkdown(diffResult);
+      } else if (diffOptions.format === 'text') {
+        diffOutput = formatDiffText(diffResult);
+      } else {
+        diffOutput = JSON.stringify(diffResult, null, 2);
+      }
+
+      if (diffOptions.output) {
+        await mkdir(dirname(diffOptions.output), { recursive: true });
+        await writeFile(diffOptions.output, diffOutput, 'utf8');
+      } else {
+        io.stdout(diffOutput.endsWith('\n') ? diffOutput : `${diffOutput}\n`);
+      }
+
+      return diffResult.summary.repairIntegrityVerdict === 'verified-repair' ? 0 : 1;
     }
 
     inspectOptions = parseArguments(arguments_);
