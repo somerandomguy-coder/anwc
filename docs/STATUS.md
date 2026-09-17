@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, Q03 introduces the unified report model, and Q04 implements offline HTML and Markdown reports. **Next task: Q05, browser conformance corpus (24+ paired cases across 6 families).**
+Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, Q03 introduces the unified report model, Q04 implements offline HTML and Markdown reports, and Q05 builds the browser conformance corpus (29 paired cases across 6 families with zero false positives). **Next task: Q06, state reproduction runner (`anwc check`).**
 
 ## What works today
 
