@@ -1,6 +1,6 @@
 # Evaluator setup
 
-Updated 2026-09-17. The evaluator uses receipt `0.3`, grade result `0.4`, materialized subjects and fresh staging for grading. Q01 closes grade identity/result validation; use it as a **development practice workflow** while Q02 closes target-bound intent gaps. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
+Updated 2026-09-17. The evaluator uses receipt and grade result `0.4`, materialized subjects and fresh staging for grading. Q01/Q02 close grade identity/result validation and target-bound intent; it remains a **development practice workflow** until the rest of Phase 3 is accepted. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
 
 ## Separate evaluator and agents
 
@@ -23,7 +23,7 @@ The default command requires a clean checkout and both full revision labels to e
 
 Current IDs are ten `shop-*` cases (`shop-horizontal-overflow` through `shop-outside-viewport`), `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, and `dashboard-outside-save`.
 
-The command creates ordinary/, assisted/, and receipt.json. The receipt records full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, source intent values, task, route/viewports, allowed editable paths, and available toolchain identifiers. Current intent hashing covers `main.tsx` values without binding them to targets; Q02 expands this. TASK.md describes common app behavior without naming a seeded defect, but materialized source may retain hints. These public development cases remain unblinded even after tooling improvements.
+The command creates ordinary/, assisted/, and receipt.json. Receipt `0.4` records full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, target-bound source contracts across all app `src` modules, task, route/viewports, allowed editable paths, and available toolchain identifiers. A contract must have a unique static `data-anwc-key`; dynamic contract values and JSX spreads are rejected. TASK.md describes common app behavior without naming a seeded defect, but materialized source may retain hints. These public development cases remain unblinded even after tooling improvements.
 
 Install/build/start each subject in its own terminal. Substitute the generated path; do not type PLACEHOLDER literally:
 

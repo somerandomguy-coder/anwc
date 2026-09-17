@@ -19,7 +19,7 @@ const pathKey = z.string().min(1).refine((value) => !value.split('/').includes('
 export type PreparePairOptions = { sourceRoot: string; output: string; fixtureId: string; state?: FixtureState; sourceRevision?: string; detectorRevision?: string; ordinaryPort: number; assistedPort: number; practice?: boolean };
 
 const receiptSchema = z.object({
-  schemaVersion: z.literal('0.3'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), fixtureState: z.enum(['broken', 'healthy']), appId: z.enum(['shop', 'landing', 'dashboard']),
+  schemaVersion: z.literal('0.4'), scored: z.boolean(), fixtureId: z.string().regex(/^[a-z0-9-]+$/), fixtureState: z.enum(['broken', 'healthy']), appId: z.enum(['shop', 'landing', 'dashboard']),
   source: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/), dirty: z.boolean() }).strict(),
   detector: z.object({ revision: z.string().regex(/^[a-f0-9]{40}$/) }).strict(),
   evaluator: z.object({ checker: sha256, registry: sha256, sidecar: sha256, grader: sha256 }).strict(),
@@ -48,7 +48,7 @@ async function hashImmutableFiles(root: string, appId: string): Promise<Record<s
 }
 function equalHashes(left: Record<string, string>, right: Record<string, string>): boolean { return JSON.stringify(left) === JSON.stringify(right); }
 
-export type SourceIntentDeclaration = Readonly<{ expect?: string; maxLines?: string }>;
+export type SourceIntentDeclaration = Readonly<{ file: string; key: string; tag: string; role?: string; ariaLabel?: string; expect?: string; maxLines?: string; allow?: string }>;
 
 function jsxAttributeName(attribute: ts.JsxAttribute, file: ts.SourceFile): string {
   return ts.isIdentifier(attribute.name) ? attribute.name.text : attribute.name.getText(file);
@@ -76,29 +76,57 @@ export function extractSourceIntent(source: string, sourcePath = 'main.tsx'): So
   const declarations: SourceIntentDeclaration[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isJsxOpeningLikeElement(node)) {
-      const declaration: { expect?: string; maxLines?: string } = {};
+      const declaration: { expect?: string; maxLines?: string; allow?: string; key?: string; role?: string; ariaLabel?: string } = {};
+      let keyAttribute: ts.JsxAttribute | undefined;
+      let roleAttribute: ts.JsxAttribute | undefined;
+      let ariaLabelAttribute: ts.JsxAttribute | undefined;
+      const hasSpread = node.attributes.properties.some(ts.isJsxSpreadAttribute);
       for (const property of node.attributes.properties) {
         if (!ts.isJsxAttribute(property)) continue;
         if (jsxAttributeName(property, file) === 'data-anwc-expect') declaration.expect = staticJsxValue(property, file, sourcePath);
         if (jsxAttributeName(property, file) === 'data-anwc-max-lines') declaration.maxLines = staticJsxValue(property, file, sourcePath);
+        if (jsxAttributeName(property, file) === 'data-anwc-allow') declaration.allow = staticJsxValue(property, file, sourcePath);
+        if (jsxAttributeName(property, file) === 'data-anwc-key') keyAttribute = property;
+        if (jsxAttributeName(property, file) === 'role') roleAttribute = property;
+        if (jsxAttributeName(property, file) === 'aria-label') ariaLabelAttribute = property;
       }
-      if (declaration.expect !== undefined || declaration.maxLines !== undefined) declarations.push(declaration);
+      if (declaration.expect !== undefined || declaration.maxLines !== undefined || declaration.allow !== undefined) {
+        const line = file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1;
+        if (hasSpread) throw new BenchmarkPlanError([`unverifiable JSX spread on declared intent in ${sourcePath}:${line}; use explicit static contract attributes`]);
+        if (!keyAttribute) throw new BenchmarkPlanError([`declared intent requires a static data-anwc-key in ${sourcePath}:${line}`]);
+        declaration.key = staticJsxValue(keyAttribute, file, sourcePath);
+        if (roleAttribute) declaration.role = staticJsxValue(roleAttribute, file, sourcePath);
+        if (ariaLabelAttribute) declaration.ariaLabel = staticJsxValue(ariaLabelAttribute, file, sourcePath);
+        declarations.push({ file: sourcePath, key: declaration.key, tag: node.tagName.getText(file), ...(declaration.role === undefined ? {} : { role: declaration.role }), ...(declaration.ariaLabel === undefined ? {} : { ariaLabel: declaration.ariaLabel }), ...(declaration.expect === undefined ? {} : { expect: declaration.expect }), ...(declaration.maxLines === undefined ? {} : { maxLines: declaration.maxLines }), ...(declaration.allow === undefined ? {} : { allow: declaration.allow }) });
+      }
     }
     ts.forEachChild(node, visit);
   };
   visit(file);
-  return declarations
-    .map(({ expect, maxLines }) => ({ ...(expect === undefined ? {} : { expect }), ...(maxLines === undefined ? {} : { maxLines }) }))
-    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  const duplicateKeys = declarations.filter((item, index) => declarations.findIndex((candidate) => candidate.key === item.key) !== index).map((item) => item.key);
+  if (duplicateKeys.length > 0) throw new BenchmarkPlanError([`duplicate declared intent data-anwc-key in ${sourcePath}: ${[...new Set(duplicateKeys)].join(', ')}`]);
+  return declarations.sort((left, right) => left.key.localeCompare(right.key));
 }
 
 export function hashSourceIntent(source: string, sourcePath?: string): string {
-  return hash(JSON.stringify(extractSourceIntent(source, sourcePath)));
+  return hash(JSON.stringify(extractSourceIntent(source, sourcePath).map(({ file: _file, ...declaration }) => declaration)));
 }
 
 async function intentHash(root: string, appId: string): Promise<string> {
-  const sourcePath = join(root, 'examples', appId, 'src', 'main.tsx');
-  return hashSourceIntent(await readFile(sourcePath, 'utf8'), normalizedPath(relative(root, sourcePath)));
+  const sourceRoot = join(root, 'examples', appId, 'src');
+  const declarations: SourceIntentDeclaration[] = [];
+  async function visit(directory: string): Promise<void> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const full = join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new BenchmarkPlanError([`symbolic link is not allowed in source intent: ${normalizedPath(relative(root, full))}`]);
+      if (entry.isDirectory()) await visit(full);
+      else if (entry.isFile() && /\.(?:[cm]?[jt]sx?)$/.test(entry.name)) declarations.push(...extractSourceIntent(await readFile(full, 'utf8'), normalizedPath(relative(root, full))));
+    }
+  }
+  await visit(sourceRoot);
+  const duplicateKeys = declarations.filter((item, index) => declarations.findIndex((candidate) => candidate.key === item.key) !== index).map((item) => item.key);
+  if (duplicateKeys.length > 0) throw new BenchmarkPlanError([`duplicate declared intent data-anwc-key across ${appId} source: ${[...new Set(duplicateKeys)].join(', ')}`]);
+  return hash(JSON.stringify(declarations.map(({ file: _file, ...declaration }) => declaration).sort((left, right) => left.key.localeCompare(right.key))));
 }
 async function gitState(sourceRoot: string, requested: string | undefined, practice: boolean): Promise<{ revision: string; dirty: boolean }> {
   try {
@@ -118,7 +146,7 @@ async function evaluatorHashes(sourceRoot: string): Promise<PreparedPairReceipt[
 
 export function parsePreparedPairReceipt(raw: unknown, receiptPath = 'receipt'): PreparedPairReceipt {
   try {
-    if (typeof raw === 'object' && raw !== null && (raw as { schemaVersion?: string }).schemaVersion === '0.2') throw new Error('receipt schema 0.2 is historical and uncertified; regenerate from the original pinned source with schema 0.3');
+    if (typeof raw === 'object' && raw !== null && ['0.2', '0.3'].includes((raw as { schemaVersion?: string }).schemaVersion ?? '')) throw new Error('receipt schema 0.2/0.3 is historical and uncertified; regenerate from the original pinned source with schema 0.4');
     return receiptSchema.parse(raw);
   } catch (error) { throw new BenchmarkPlanError([`invalid evaluator receipt: ${receiptPath}: ${error instanceof Error ? error.message : String(error)}`]); }
 }
@@ -193,7 +221,7 @@ export async function preparePair(options: PreparePairOptions): Promise<{ ordina
     await packageSubjectWorkspace({ sourceRoot, destination: ordinary, overlayRoot: overlay, condition: 'ordinary', appId: fixture.appId }); await packageSubjectWorkspace({ sourceRoot, destination: assisted, overlayRoot: overlay, condition: 'anwc-assisted', appId: fixture.appId });
     const task = taskMarkdown(fixture); await Promise.all([writeFile(join(ordinary, 'TASK.md'), task), writeFile(join(assisted, 'TASK.md'), task)]);
     const applicationFiles = await hashApplicationFiles(ordinary, fixture.appId); if (!equalHashes(applicationFiles, await hashApplicationFiles(assisted, fixture.appId))) throw new BenchmarkPlanError(['prepared application files differ between conditions']);
-    const receipt: PreparedPairReceipt = { schemaVersion: '0.3', scored: !practice, fixtureId: fixture.id, fixtureState: state, appId: fixture.appId, source: sourceState, detector: { revision: sourceState.revision }, evaluator: await evaluatorHashes(sourceRoot), route: fixture.route, setup: fixture.setup, viewports: fixture.viewports, ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, editablePaths: [`examples/${fixture.appId}/src`], toolchain: { node: process.version, npm: process.env.npm_config_user_agent ?? 'unknown', browser: 'playwright' }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, intentHashes: { ordinary: await intentHash(ordinary, fixture.appId), assisted: await intentHash(assisted, fixture.appId) }, taskHash: hash(task) };
+    const receipt: PreparedPairReceipt = { schemaVersion: '0.4', scored: !practice, fixtureId: fixture.id, fixtureState: state, appId: fixture.appId, source: sourceState, detector: { revision: sourceState.revision }, evaluator: await evaluatorHashes(sourceRoot), route: fixture.route, setup: fixture.setup, viewports: fixture.viewports, ports: { ordinary: options.ordinaryPort, assisted: options.assistedPort }, editablePaths: [`examples/${fixture.appId}/src`], toolchain: { node: process.version, npm: process.env.npm_config_user_agent ?? 'unknown', browser: 'playwright' }, applicationFiles, immutableFiles: { ordinary: await hashImmutableFiles(ordinary, fixture.appId), assisted: await hashImmutableFiles(assisted, fixture.appId) }, intentHashes: { ordinary: await intentHash(ordinary, fixture.appId), assisted: await intentHash(assisted, fixture.appId) }, taskHash: hash(task) };
     const receiptPath = join(output, 'receipt.json'); await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`); const issues = await checkPreparedPair(output); if (issues.length > 0) throw new BenchmarkPlanError(['prepared pair did not pass readiness:', ...issues]); return { ordinary, assisted, receipt: receiptPath };
   } catch (error) { if (created) await rm(output, { recursive: true, force: true }); throw error; } finally { await rm(overlay, { recursive: true, force: true }); }
 }

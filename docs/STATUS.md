@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance and unsafe-import gaps. **Next task: Q02, bind source expectations to their intended UI across modules.**
+Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance and Q02 binds source expectations to stable targets across modules. **Next task: Q03, create one shared report model for humans and agents.**
 
 ## What works today
 
@@ -14,7 +14,7 @@ The evaluator has 18 public broken/healthy pairs across shop, pricing and dashbo
 | --- | --- | --- |
 | Installed React/Vite path | ESM/declaration packages, local `0.1.0-alpha.0` tarballs, source linkage, production stripping, external consumer tests | Q10 validates the actual installed executable on Windows/Linux and the new complete workflow; macOS untested |
 | Public fixture corpus | 10 shop, 4 pricing, 4 dashboard pairs; independent browser checks and target-specific detector tests | Public practice, not holdout; Q05 adds a separate paired conformance corpus |
-| Preparation and grade | Receipt contract `0.3`; grade result `0.4` provenance, immutable/evaluator hashes, fresh staging and bounded server/check execution | Q02 binds intent to targets across modules; Batch A integration gate remains |
+| Preparation and grade | Receipt contract `0.4`; grade result `0.4` provenance, target-bound intent across every app `src` module, immutable/evaluator hashes, fresh staging and bounded server/check execution | Q03 shared report model; Batch A integration gate remains |
 | Rehearsal | Committed report: 18 grades, three apps, two conditions, broken/repaired/deletion states, two viewports each | Historical evidence at its recorded revisions, not a fresh gate for current HEAD |
 | Pilot ledger | Practice templates, receipt-hash command and provenance-bound `import-grade` | Q01 rejects substitution, incomplete evidence and unsafe output paths; Q11 finishes operator handoff and human results remain pending |
 | Everyday repair | Single-state JSON/text inspection and source-linked findings | Q03–Q09 add shared reports, HTML/Markdown, explicit state replay, conservative comparisons, conformance-driven fixes and compact drill-down |
@@ -23,13 +23,13 @@ The evaluator has 18 public broken/healthy pairs across shop, pricing and dashbo
 
 **Latest verification, 2026-09-17:** Q01 repaired the reproduced ledger regression: TypeScript, the ledger/import CLI tests, and a real staged browser-grade test passed on Windows. Grade result `0.4` requires exact receipt, run, staged-submission, evaluator and expected-check provenance for scored-ledger import. The Batch A full integration suite has not run yet.
 
-Q02's source-intent gap remains a source-review finding: current checks cover values in `main.tsx` without binding them to intended targets. ROADMAP records exact acceptance work. Earlier blanket M1/M2 certification and “only human testing remains” wording is superseded by this assessment.
+Q02 now requires each benchmark contract to carry a unique static author key and preserves its tag/explicit semantic attributes across every `src` module. It rejects dynamic values and JSX spreads. This is a strong source-integrity check, not a hostile-code sandbox or proof that an author key was applied to the correct business concept. Earlier blanket M1/M2 certification and “only human testing remains” wording is superseded by this assessment.
 
 Historical results in [HISTORY](HISTORY.md) include Windows evaluator checks and a Linux integration pass (61 unit tests, 26 browser tests, three production builds). The committed [rehearsal report](../bench/rehearsals/rehearsal-report.json) records six broken failures, six repaired passes, and six deletion failures. Preserve those results with their revisions; do not represent them as a current pass.
 
 ## How to continue
 
-Use the Q cards and dependency/batch table in ROADMAP. Batch A is Q01–Q03: result integrity, target-bound intent, and one shared report model. Q01 is committed; run relevant focused checks as needed and the full integration gate once at the Batch A boundary. Record final exit codes, failures and limitations before pushing. Do not mark a task complete because its command started or a process disappeared.
+Use the Q cards and dependency/batch table in ROADMAP. Batch A is Q01–Q03: result integrity, target-bound intent, and one shared report model. Q01/Q02 are committed; run relevant focused checks as needed and the full integration gate once at the Batch A boundary. Record final exit codes, failures and limitations before pushing. Do not mark a task complete because its command started or a process disappeared.
 
 Routine implementation choices are fixed in the roadmap. Human input is needed for actual model sessions, paid execution or a scope change; engineering work need not wait for those sessions. Phase 3 stops at a usable, validated kit and pending human evidence instead of inventing another feature backlog.
 

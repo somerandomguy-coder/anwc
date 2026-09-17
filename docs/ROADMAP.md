@@ -67,7 +67,7 @@ Build:
 
 ## Q02 — Bind source expectations to the intended UI
 
-**Own:** intent extraction in `prepare.ts`, fixture materialization in `fixtures/registry.ts`, parser helpers/tests. **Depends:** Q01 version boundary.
+**Own:** intent extraction in `prepare.ts`, fixture materialization in `fixtures/registry.ts`, parser helpers/tests. **Depends:** Q01 version boundary. **Status:** complete 2026-09-17; Batch A continues with Q03.
 
 Build:
 1. Traverse all allowed app source modules, not only `main.tsx`. Freeze contract values and the target's author-provided stable identity, relevant semantics and declared state scope. Shared legitimate intent must be identical in ordinary and assisted subjects and disclose no defect labels.
@@ -75,7 +75,7 @@ Build:
 3. Handle duplicated keys, JSX spreads and dynamic values conservatively. Reject unverifiable benchmark intent with file/location and remedy. Track `expect`, `max-lines`, and allowed exceptions that affect grading. No executing source to guess dynamic meaning.
 4. Replace remaining broad materialization substitutions with explicit templates or parser-based app-specific boundaries. Remove dead healthy/broken alternatives and selected-defect identifiers while preserving tabs, drawer, cart and source editability. Inspect prepared source as well as behavior.
 
-**Acceptance:** moving an expectation to a dummy element fails; weakening contracts in an imported component or through a spread fails; duplicate identity fails; equivalent literals/CSS-only repair/file moves with stable keys pass; every prepared app retains required actions. Browser-grade representative alternatives/deletions independently. **Handoff:** supported static contract rules and explicit dynamic limitations. This is benchmark integrity, not a hostile-code sandbox.
+**Acceptance:** moving an expectation to a dummy element fails; weakening contracts in an imported component or through a spread fails; duplicate identity fails; equivalent literals/CSS-only repair/file moves with stable keys pass; every prepared app retains required actions. **Evidence:** TypeScript and focused source-intent/prepared-subject tests pass on Windows. The Batch A full integration gate remains due after Q03. **Handoff:** receipt `0.4` freezes contracts across all `src` JS/TS modules. A contract needs a unique static `data-anwc-key`, static expect/max-lines/allow values, no JSX spread, and its tag plus explicit role/aria-label where supplied. Files may move because file paths are diagnostic rather than hash identity; a moved contract must preserve its key and target semantics. This is benchmark integrity, not a hostile-code sandbox.
 
 ## Q03 — One report model for humans and agents
 

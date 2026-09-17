@@ -572,4 +572,10 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - `grade --run RUN_ID` makes an importable grade. Grade and import outputs use exclusive creation and reject dangerous overlap with protected inputs. The ledger stores receipt, grade, run, artifact and expected-check identity.
 - Evidence on Windows: `npm run typecheck`; focused ledger/import CLI tests; and the real staged browser-grade repair test passed. Batch A's full integration gate remains pending Q02/Q03. Next: Q02.
 
+## 2026-09-17 — Q02 target-bound source intent
+
+- Receipt `0.4` now hashes declared contracts across every JS/TS module under the prepared app's `src` tree. Each contract requires a unique static `data-anwc-key`, static expect/max-lines/allow values, no JSX spread, and freezes element tag plus explicit role/aria-label semantics. File paths remain diagnostic so a valid component move with the same key/shape does not invalidate a repair.
+- Prepared fixture materialization preserves or adds explicit stable contracts where evaluator expectations rely on them. The pricing action uses a static Growth key only on the Growth control; generated shop fixtures include static action/title/rail contracts.
+- Evidence on Windows: `npm run typecheck`; focused static-contract, prepared-subject, and dummy-target/file-move tests passed. Batch A's full integration gate remains pending Q03. Next: Q03.
+
 

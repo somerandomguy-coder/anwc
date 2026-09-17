@@ -30,17 +30,17 @@ function materializePublicApp(source: string, fixture: PreparedFixture, state: F
   const withoutTypes = source.replace(/const caseIds = \[.*?\] as const;\r?\ntype CaseId = typeof caseIds\[number\];\r?\ntype Variant = 'broken' \| 'healthy';\r?\n/, '');
   const frozenState = withoutTypes.replace(/\s*const (?:search|query) = new URLSearchParams\(location\.search\);\r?\n\s*const caseId = .*?;\r?\n\s*const variant: Variant = .*?;\r?\n\s*const broken = variant === 'broken';/, `\n  const broken = ${state === 'broken'};`);
   const selected = (caseId: string): string => String(state === 'broken' && caseId === fixture.caseId);
-  return frozenState.replace(/\s*<span data-fixture-navigation>.*?<\/span>/, '').replace(/caseId === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/current === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/\s*const current = broken && caseId;/, '').replace(/\sdata-anwc-key=(?:\{[^}]+\}|"[^"]*")/g, '').replace(/data-anwc-scenario=(?:\{`[^`]+`\}|"[^"]*")/, 'data-subject="prepared"');
+  return frozenState.replace(/\s*<span data-fixture-navigation>.*?<\/span>/, '').replace(/caseId === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/current === '([^']+)'/g, (_match, caseId: string) => selected(caseId)).replace(/\s*const current = broken && caseId;/, '').replace(/data-anwc-scenario=(?:\{`[^`]+`\}|"[^"]*")/, 'data-subject="prepared"');
 }
 
 function shopDefect(caseId: string, state: FixtureState): { markup: string; styles: string } {
-  const action = '<button className="checkout-action" onClick={checkout}>Checkout now</button>';
+  const action = '<button data-anwc-key="subject-checkout" data-anwc-expect="interactive" className="checkout-action" onClick={checkout}>Checkout now</button>';
   const defects: Record<string, { markup: string; styles: string }> = {
-    'horizontal-overflow': { markup: '<section className="subject-rail"><div className="subject-rail-track"><span>Limited drop</span><span>North star collection</span><span>Members-only colourway</span></div></section>', styles: '.subject-rail{overflow:hidden;border:1px solid #b56b55}.subject-rail-track{display:flex;width:52rem;gap:2rem}.subject-rail-track span{width:16rem;flex:none}' },
+    'horizontal-overflow': { markup: '<section className="subject-rail"><div data-anwc-key="subject-rail" data-anwc-expect="visible" className="subject-rail-track"><span>Limited drop</span><span>North star collection</span><span>Members-only colourway</span></div></section>', styles: '.subject-rail{overflow:hidden;border:1px solid #b56b55}.subject-rail-track{display:flex;width:52rem;gap:2rem}.subject-rail-track span{width:16rem;flex:none}' },
     'ancestor-clip': { markup: `<section className="subject-frame">${action}</section>`, styles: '.subject-frame{width:12rem;overflow:hidden}.checkout-action{width:28rem}' },
     'nested-clip': { markup: `<section className="subject-frame"><div className="subject-inner">${action}</div></section>`, styles: '.subject-frame{width:15rem;overflow:hidden}.subject-inner{width:11rem;overflow:hidden}.checkout-action{width:28rem}' },
-    'line-budget': { markup: '<section className="subject-card"><h2>A deliberately long product title that cannot fit in the compact card</h2></section>', styles: '.subject-card{width:12rem}.subject-card h2{font-size:1.1rem}' },
-    'text-clipped': { markup: '<section className="subject-card"><h2>A detailed product description that extends below a deliberately cropped preview card</h2></section>', styles: '.subject-card{width:14rem;height:4.8rem;overflow:hidden}.subject-card h2{line-height:1.3}' },
+    'line-budget': { markup: '<section className="subject-card"><h2 data-anwc-key="subject-title" data-anwc-max-lines="2">A deliberately long product title that cannot fit in the compact card</h2></section>', styles: '.subject-card{width:12rem}.subject-card h2{font-size:1.1rem}' },
+    'text-clipped': { markup: '<section className="subject-card"><h2 data-anwc-key="subject-title" data-anwc-expect="visible">A detailed product description that extends below a deliberately cropped preview card</h2></section>', styles: '.subject-card{width:14rem;height:4.8rem;overflow:hidden}.subject-card h2{line-height:1.3}' },
     'hidden-checkout': { markup: action, styles: '.checkout-action{display:none}' },
     'opacity-checkout': { markup: action, styles: '.checkout-action{opacity:0}' },
     'blocked-checkout': { markup: `<section className="subject-obstacle">${action}<div className="notice">Cookie choices</div></section>`, styles: '.subject-obstacle{position:relative;width:16rem;height:4rem}.subject-obstacle .checkout-action{width:100%;height:100%}.notice{position:absolute;inset:0;background:#24302d;color:white;display:grid;place-items:center}' },
@@ -51,13 +51,13 @@ function shopDefect(caseId: string, state: FixtureState): { markup: string; styl
 }
 
 function shopHealthy(caseId: string): { markup: string; styles: string } {
-  const action = '<button className="checkout-action" onClick={checkout}>Checkout now</button>';
+  const action = '<button data-anwc-key="subject-checkout" data-anwc-expect="interactive" className="checkout-action" onClick={checkout}>Checkout now</button>';
   const states: Record<string, { markup: string; styles: string }> = {
-    'horizontal-overflow': { markup: '<section className="subject-rail"><div className="subject-rail-track"><span>Limited drop</span><span>North star collection</span><span>Members-only colourway</span></div></section>', styles: '.subject-rail-track{display:flex;flex-wrap:wrap;gap:.75rem}.subject-rail-track span{flex:1 1 12rem}' },
+    'horizontal-overflow': { markup: '<section className="subject-rail"><div data-anwc-key="subject-rail" data-anwc-expect="visible" className="subject-rail-track"><span>Limited drop</span><span>North star collection</span><span>Members-only colourway</span></div></section>', styles: '.subject-rail-track{display:flex;flex-wrap:wrap;gap:.75rem}.subject-rail-track span{flex:1 1 12rem}' },
     'ancestor-clip': { markup: `<section className="subject-frame">${action}</section>`, styles: '.checkout-action{width:100%}' },
     'nested-clip': { markup: `<section className="subject-frame"><div className="subject-inner">${action}</div></section>`, styles: '.subject-inner{width:100%}.checkout-action{width:100%}' },
-    'line-budget': { markup: '<section className="subject-card"><h2>A deliberately long product title that cannot fit in the compact card</h2></section>', styles: '.subject-card{width:100%}.subject-card h2{font-size:.85rem;line-height:1.2}' },
-    'text-clipped': { markup: '<section className="subject-card"><h2>A detailed product description that extends below a deliberately cropped preview card</h2></section>', styles: '.subject-card{width:100%;height:auto}.subject-card h2{line-height:1.3}' },
+    'line-budget': { markup: '<section className="subject-card"><h2 data-anwc-key="subject-title" data-anwc-max-lines="2">A deliberately long product title that cannot fit in the compact card</h2></section>', styles: '.subject-card{width:100%}.subject-card h2{font-size:.85rem;line-height:1.2}' },
+    'text-clipped': { markup: '<section className="subject-card"><h2 data-anwc-key="subject-title" data-anwc-expect="visible">A detailed product description that extends below a deliberately cropped preview card</h2></section>', styles: '.subject-card{width:100%;height:auto}.subject-card h2{line-height:1.3}' },
     'hidden-checkout': { markup: action, styles: '' }, 'opacity-checkout': { markup: action, styles: '' },
     'blocked-checkout': { markup: `<section className="subject-obstacle">${action}<div className="notice">Cookie choices</div></section>`, styles: '.subject-obstacle{width:16rem}.notice{position:static;margin-top:.5rem;background:#24302d;color:white;padding:.75rem}' },
     'partial-checkout': { markup: `<section className="subject-obstacle">${action}<div className="notice">Cookie choices</div></section>`, styles: '.subject-obstacle{width:16rem}.notice{position:static;margin-top:.5rem;background:#24302d;color:white;padding:.75rem}' },

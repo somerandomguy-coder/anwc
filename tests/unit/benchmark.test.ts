@@ -4,7 +4,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashReceipt, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
+import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkReturnedSubject, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashReceipt, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
 const validPlan = () => ({
@@ -23,7 +23,7 @@ const validPlan = () => ({
 });
 
 const importReceipt = () => ({
-  schemaVersion: '0.3', scored: true, fixtureId: 'heldout-a', fixtureState: 'broken', appId: 'shop',
+  schemaVersion: '0.4', scored: true, fixtureId: 'heldout-a', fixtureState: 'broken', appId: 'shop',
   source: { revision: `${'4c6cafe'}${'0'.repeat(33)}`, dirty: false }, detector: { revision: `${'4c6cafe'}${'0'.repeat(33)}` },
   evaluator: { checker: 'd'.repeat(64), registry: 'e'.repeat(64), sidecar: 'f'.repeat(64), grader: '1'.repeat(64) }, route: '/', setup: [], viewports: [{ width: 390, height: 844 }], ports: { ordinary: 4301, assisted: 4302 }, editablePaths: ['examples/shop/src'], toolchain: { node: 'v24', npm: 'npm', browser: 'playwright' }, applicationFiles: {}, immutableFiles: { ordinary: {}, assisted: {} }, intentHashes: { ordinary: '2'.repeat(64), assisted: '3'.repeat(64) }, taskHash: '4'.repeat(64)
 });
@@ -42,12 +42,14 @@ describe('benchmark plan', () => {
     expect(repairVerified([{ id: 'usable', required: true, status: 'unsupported', evidence: {} }])).toBe(false);
   });
   test('freezes static source intent semantically rather than by source formatting', () => {
-    const first = '<><button data-anwc-expect="interactive" data-anwc-max-lines={2}>Save</button><p data-anwc-max-lines="3">Copy</p></>';
-    const equivalent = '<><p data-anwc-max-lines={"3"}>Copy</p>\n<button data-anwc-max-lines={2} data-anwc-expect={"interactive"}>Save</button></>';
-    expect(extractSourceIntent(first, 'first.tsx')).toEqual([{ expect: 'interactive', maxLines: '2' }, { maxLines: '3' }]);
-    expect(hashSourceIntent(first, 'first.tsx')).toBe(hashSourceIntent(equivalent, 'equivalent.tsx'));
+    const first = '<><button data-anwc-key="save" data-anwc-expect="interactive" data-anwc-max-lines={2}>Save</button><p data-anwc-key="copy" data-anwc-max-lines="3">Copy</p></>';
+    const equivalent = '<><p data-anwc-key="copy" data-anwc-max-lines={"3"}>Copy</p>\n<button data-anwc-max-lines={2} data-anwc-expect={"interactive"} data-anwc-key="save">Save</button></>';
+    expect(extractSourceIntent(first, 'first.tsx')).toEqual([{ file: 'first.tsx', key: 'copy', tag: 'p', maxLines: '3' }, { file: 'first.tsx', key: 'save', tag: 'button', expect: 'interactive', maxLines: '2' }]);
+    expect(hashSourceIntent(first, 'first.tsx')).toBe(hashSourceIntent(equivalent, 'first.tsx'));
     expect(hashSourceIntent(first, 'first.tsx')).not.toBe(hashSourceIntent(first.replace('max-lines={2}', 'max-lines={3}'), 'changed.tsx'));
-    expect(() => hashSourceIntent('<button data-anwc-expect={mode}>Save</button>', 'dynamic.tsx')).toThrow(/unverifiable dynamic data-anwc-expect intent/);
+    expect(() => hashSourceIntent('<button data-anwc-key="save" data-anwc-expect={mode}>Save</button>', 'dynamic.tsx')).toThrow(/unverifiable dynamic data-anwc-expect intent/);
+    expect(() => hashSourceIntent('<button data-anwc-expect="interactive">Save</button>', 'missing-key.tsx')).toThrow(/requires a static data-anwc-key/);
+    expect(() => hashSourceIntent('<button data-anwc-key="save" {...props} data-anwc-expect="interactive">Save</button>', 'spread.tsx')).toThrow(/unverifiable JSX spread/);
     expect(() => extractSourceIntent('<button data-anwc-max-lines="2">', 'broken.tsx')).toThrow(/cannot parse source intent/);
   });
   test('materializes a neutral fixture into one broken app variant and public task', () => {
@@ -101,6 +103,24 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  }, 20_000);
+  test('binds declared intent to a stable key and element shape across source modules', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'anwc-intent-identity-'));
+    const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+    try {
+      const pair = await preparePair({ sourceRoot, output: join(root, 'pair'), fixtureId: 'pricing-blocked', ordinaryPort: 4381, assistedPort: 4382, practice: true });
+      const receipt = await readPreparedPairReceipt(pair.receipt);
+      const mainPath = join(pair.ordinary, 'examples/landing/src/main.tsx');
+      const original = await readFile(mainPath, 'utf8');
+      const dummy = original.replace('<button data-anwc-key="pricing-growth-action"', '<div data-anwc-key="pricing-growth-action"').replace('>Choose {plan.name}</button> :', '>Choose {plan.name}</div> :');
+      await writeFile(mainPath, dummy);
+      expect((await checkReturnedSubject(receipt, pair.ordinary, 'ordinary')).join('\n')).toContain('declared source intent differs');
+
+      const moved = original.replace(' data-anwc-key="pricing-growth-action" data-anwc-expect="interactive"', '');
+      await writeFile(mainPath, moved);
+      await writeFile(join(pair.ordinary, 'examples/landing/src/intent-contract.tsx'), 'export const GrowthActionContract = <button data-anwc-key="pricing-growth-action" data-anwc-expect="interactive">Choose Growth</button>;\n');
+      expect((await checkReturnedSubject(receipt, pair.ordinary, 'ordinary')).filter((issue) => issue.includes('declared source intent differs'))).toEqual([]);
+    } finally { await rm(root, { recursive: true, force: true }); }
   }, 20_000);
   test('grades a broken repair independently and accepts a source-only valid repair', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-grade-repair-'));
