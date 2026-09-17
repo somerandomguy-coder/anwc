@@ -18,7 +18,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/bundle.js"
+    "build": "tsc -p tsconfig.json && node scripts/bundle.js",
+    "prepack": "node scripts/bundle.js"
   },
   "dependencies": {
     "@anwc/diagnostics": "0.1.0-alpha.0",

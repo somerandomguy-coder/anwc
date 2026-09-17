@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
-import { formatText, inspect, parseArguments, parseReportArguments, run } from '../../packages/cli/src/index.js';
+import { formatText, inspect, parseArguments, parseReportArguments, parseCheckArguments, run } from '../../packages/cli/src/index.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
 let server: ViteDevServer;
@@ -192,4 +192,89 @@ describe('ANWC CLI', () => {
       await rm(tmp, { recursive: true, force: true });
     }
   });
+
+  test('parses check arguments and executes state reproduction suite', async () => {
+    expect(parseCheckArguments(['check', 'anwc.checks.json', '--output', 'artifacts/ui'])).toEqual({
+      manifestFile: 'anwc.checks.json',
+      outputDir: 'artifacts/ui'
+    });
+    expect(() => parseCheckArguments(['check'])).toThrow('Usage: anwc check');
+
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-check-cli-'));
+    try {
+      const manifestPath = join(tmp, 'checks.json');
+      const outDir = join(tmp, 'out');
+      const manifest = {
+        schemaVersion: '0.1',
+        baseUrl: url,
+        scenarios: [
+          {
+            id: 'root-storefront',
+            title: 'Root Storefront Initial & Scrolled Check',
+            viewport: { width: 1440, height: 900 },
+            checkpoints: [
+              {
+                name: 'initial-view',
+                steps: [
+                  { action: 'navigate', path: '/' },
+                  { action: 'capture', name: 'initial-capture' }
+                ],
+                assertions: [
+                  {
+                    id: 'header-visible',
+                    description: 'Main header is visible',
+                    selector: 'h1',
+                    expected: 'visible'
+                  }
+                ]
+              },
+              {
+                name: 'scrolled-view',
+                steps: [
+                  { action: 'scroll', y: 300 },
+                  { action: 'capture', name: 'scrolled-capture' }
+                ],
+                assertions: [
+                  {
+                    id: 'header-still-visible',
+                    description: 'Header text matches shop title',
+                    selector: 'h1',
+                    expected: 'text-contains',
+                    expectedValue: 'Useful objects'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+      await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+
+      const stdout: string[] = [];
+      const stderr: string[] = [];
+      const io = { stdout: (m: string) => stdout.push(m), stderr: (m: string) => stderr.push(m) };
+      const exitCode = await run(['check', manifestPath, '--output', outDir], io);
+      if (exitCode !== 0) {
+        console.error('Check failed with stdout:', stdout.join(''), 'stderr:', stderr.join(''));
+      }
+      expect(exitCode).toBe(0);
+
+      const runResult = JSON.parse(stdout.join(''));
+      expect(runResult.schemaVersion).toBe('0.1');
+      expect(runResult.totalScenarios).toBe(1);
+      expect(runResult.passedScenarios).toBe(1);
+      expect(runResult.passedAll).toBe(true);
+
+      const initialCapture = JSON.parse(await readFile(join(outDir, 'initial-capture.json'), 'utf8'));
+      expect(initialCapture.schemaVersion).toBe('0.1');
+      expect(initialCapture.nodes.length).toBeGreaterThan(0);
+
+      const checkSummary = JSON.parse(await readFile(join(outDir, 'check-summary.json'), 'utf8'));
+      expect(checkSummary.passedAll).toBe(true);
+      expect(checkSummary.scenarios[0].checkpoints).toHaveLength(2);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }, 30_000);
 });
+

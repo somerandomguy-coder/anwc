@@ -7,13 +7,20 @@ import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSc
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
 import { createReport, formatReportText, renderReportHtml, renderReportMarkdown, type Report } from '@anwc/report';
 import { chromium, type Page } from 'playwright';
+import { stateManifestSchema, type StateManifest, type CheckRunResult } from './manifest.js';
+import { runCheckSuite } from './runner.js';
 
 type RuntimeApi = { capture(options?: { textLimit?: number; timeoutMs?: number }): Promise<RawCapture> };
 export type CliIo = { stdout(message: string): void; stderr(message: string): void };
 
 class CliError extends Error {
-  constructor(readonly code: ErrorEnvelope['error']['code'], message: string, readonly details: Record<string, unknown> | null = null) {
+  readonly code: ErrorEnvelope['error']['code'];
+  readonly details: Record<string, unknown> | null;
+
+  constructor(code: ErrorEnvelope['error']['code'], message: string, details: Record<string, unknown> | null = null) {
     super(message);
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -162,6 +169,37 @@ export function parseReportArguments(arguments_: string[]): ReportCommandOptions
   }
 
   return { captureFile, format, output, redact };
+}
+
+export interface CheckCommandOptions {
+  manifestFile: string;
+  outputDir?: string;
+}
+
+export function parseCheckArguments(arguments_: string[]): CheckCommandOptions {
+  if (arguments_[0] !== 'check' || !arguments_[1] || arguments_[1].startsWith('-')) {
+    throw new CliError(
+      'INVALID_USAGE',
+      'Usage: anwc check MANIFEST_FILE [--output DIR]',
+      { recovery: "Run 'anwc check anwc.checks.json [--output artifacts/ui]'." }
+    );
+  }
+  const manifestFile = arguments_[1];
+  let outputDir: string | undefined;
+
+  for (let index = 2; index < arguments_.length; index += 1) {
+    const option = arguments_[index]!;
+    const value = arguments_[index + 1];
+    if (!value || value.startsWith('--')) throw new CliError('INVALID_USAGE', `${option} requires a value.`);
+    index += 1;
+    if (option === '--output') {
+      outputDir = value;
+    } else {
+      throw new CliError('INVALID_USAGE', `Unknown or invalid option: ${option}.`);
+    }
+  }
+
+  return { manifestFile, outputDir };
 }
 
 async function capturePage(page: Page, options: InspectOptions): Promise<RawCapture> {
@@ -337,6 +375,38 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       return 0;
     }
 
+    if (arguments_[0] === 'check') {
+      const checkOptions = parseCheckArguments(arguments_);
+      let content: string;
+      try {
+        content = await readFile(checkOptions.manifestFile, 'utf8');
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Cannot read manifest file '${checkOptions.manifestFile}': ${error instanceof Error ? error.message : String(error)}`);
+      }
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(content);
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Manifest file '${checkOptions.manifestFile}' is not valid JSON.`);
+      }
+      let manifest: StateManifest;
+      try {
+        manifest = stateManifestSchema.parse(parsedJson);
+      } catch (error) {
+        throw new CliError('INVALID_USAGE', `Manifest file '${checkOptions.manifestFile}' does not match StateManifest 0.1 schema: ${error instanceof Error ? error.message : String(error)}`);
+      }
+
+      const runResult = await runCheckSuite({
+        manifest,
+        manifestRaw: content,
+        outputDir: checkOptions.outputDir,
+        runtimeScriptProvider: runtimeScript
+      });
+
+      io.stdout(`${JSON.stringify(runResult, null, 2)}\n`);
+      return runResult.passedAll ? 0 : 1;
+    }
+
     inspectOptions = parseArguments(arguments_);
     const snapshot = await inspect(inspectOptions);
     const output = inspectOptions.format === 'json' ? `${JSON.stringify(snapshot)}\n` : `${formatText(snapshot, inspectOptions.limit, inspectOptions.maxChars)}\n`;
@@ -362,3 +432,5 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
   }
 }
 
+export * from './manifest.js';
+export * from './runner.js';

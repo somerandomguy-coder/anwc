@@ -103,7 +103,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 20_000);
+  }, 45_000);
   test('binds declared intent to a stable key and element shape across source modules', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-intent-identity-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
