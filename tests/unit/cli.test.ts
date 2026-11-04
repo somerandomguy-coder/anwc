@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
-import { formatText, inspect, parseArguments, parseReportArguments, parseCheckArguments, run } from '../../packages/cli/src/index.js';
+import { formatText, inspect, parseArguments, parseReportArguments, parseCheckArguments, parseStudioArguments, run } from '../../packages/cli/src/index.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
 let server: ViteDevServer;
@@ -276,5 +276,62 @@ describe('ANWC CLI', () => {
       await rm(tmp, { recursive: true, force: true });
     }
   }, 30_000);
+
+  test('parses studio command arguments correctly', () => {
+    const options = parseStudioArguments(['studio', 'http://127.0.0.1:5173', '--port', '4500', '--capture', 'test.json', '--no-open']);
+    expect(options).toEqual({
+      url: 'http://127.0.0.1:5173',
+      port: 4500,
+      capture: 'test.json',
+      open: false
+    });
+
+    // Default options
+    expect(parseStudioArguments(['studio'])).toEqual({
+      url: undefined,
+      port: undefined,
+      capture: undefined,
+      open: true
+    });
+
+    // Only URL
+    expect(parseStudioArguments(['studio', 'http://127.0.0.1:3000'])).toEqual({
+      url: 'http://127.0.0.1:3000',
+      port: undefined,
+      capture: undefined,
+      open: true
+    });
+
+    // Error handling
+    expect(() => parseStudioArguments(['not-studio'])).toThrow('Usage: anwc studio');
+    expect(() => parseStudioArguments(['studio', '--port'])).toThrow('--port must be a positive integer.');
+    expect(() => parseStudioArguments(['studio', '--port', 'invalid'])).toThrow('--port must be a positive integer.');
+    expect(() => parseStudioArguments(['studio', '--capture'])).toThrow('--capture requires a file path.');
+    expect(() => parseStudioArguments(['studio', '--unknown-flag'])).toThrow("Unknown studio argument '--unknown-flag'.");
+    expect(() => parseStudioArguments(['studio', '[markdown](http://127.0.0.1:5173)'])).toThrow('Markdown link syntax is not allowed');
+  });
+
+  test('runs studio command in test mode and cleanly shuts down', async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const io = { stdout: (m: string) => stdout.push(m), stderr: (m: string) => stderr.push(m) };
+
+    const exitCode = await run(['studio', 'http://127.0.0.1:5173', '--port', '0', '--no-open'], io);
+    expect(exitCode).toBe(0);
+    const output = stdout.join('');
+    expect(output).toContain('ANWC Studio running at http://127.0.0.1:');
+    expect(output).toContain('Target URL: http://127.0.0.1:5173');
+    expect(stderr).toEqual([]);
+  });
+
+  test('reports errors when studio arguments are invalid in run()', async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const io = { stdout: (m: string) => stdout.push(m), stderr: (m: string) => stderr.push(m) };
+
+    const exitCode = await run(['studio', '--port', 'not-a-number'], io);
+    expect(exitCode).toBe(2);
+    expect(stderr.join('')).toContain('ANWC INVALID_USAGE: --port must be a positive integer.');
+  });
 });
 

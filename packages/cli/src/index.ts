@@ -26,6 +26,7 @@ import { chromium, type Page } from 'playwright';
 import { stateManifestSchema, type StateManifest, type CheckRunResult } from './manifest.js';
 import { runDoctor, formatDoctorText, type DoctorResult, type DoctorCheck } from './doctor.js';
 import { runCheckSuite } from './runner.js';
+import { startStudioServer } from './studio.js';
 
 type RuntimeApi = { capture(options?: { textLimit?: number; timeoutMs?: number }): Promise<RawCapture> };
 export type CliIo = { stdout(message: string): void; stderr(message: string): void };
@@ -308,6 +309,48 @@ export function parseDiffArguments(arguments_: string[]): DiffCommandOptions {
   }
 
   return { beforeFile, afterFile, format, output };
+}
+
+export interface StudioCliOptions {
+  url?: string;
+  port?: number;
+  capture?: string;
+  open: boolean;
+}
+
+export function parseStudioArguments(arguments_: string[]): StudioCliOptions {
+  if (arguments_[0] !== 'studio') {
+    throw new CliError(
+      'INVALID_USAGE',
+      'Usage: anwc studio [url] [--port <n>] [--capture <path>] [--no-open]',
+      { recovery: "Run 'anwc studio [url] [--port 4180] [--capture path] [--no-open]'." }
+    );
+  }
+  let url: string | undefined;
+  let port: number | undefined;
+  let capture: string | undefined;
+  let open = true;
+
+  for (let i = 1; i < arguments_.length; i++) {
+    const arg = arguments_[i]!;
+    if (arg === '--port') {
+      const next = arguments_[++i];
+      if (!next || !/^\d+$/.test(next)) throw new CliError('INVALID_USAGE', '--port must be a positive integer.');
+      port = Number(next);
+    } else if (arg === '--capture') {
+      const next = arguments_[++i];
+      if (!next) throw new CliError('INVALID_USAGE', '--capture requires a file path.');
+      capture = next;
+    } else if (arg === '--no-open') {
+      open = false;
+    } else if (!arg.startsWith('-') && !url) {
+      url = parseUrl(arg);
+    } else {
+      throw new CliError('INVALID_USAGE', `Unknown studio argument '${arg}'.`);
+    }
+  }
+
+  return { url, port, capture, open };
 }
 
 async function capturePage(page: Page, options: InspectOptions): Promise<RawCapture> {
@@ -602,6 +645,39 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       return diffResult.summary.repairIntegrityVerdict === 'verified-repair' ? 0 : 1;
     }
 
+    if (arguments_[0] === 'studio') {
+      const studioOpts = parseStudioArguments(arguments_);
+      const handle = await startStudioServer({
+        port: studioOpts.port,
+        openBrowser: studioOpts.open,
+        capturePath: studioOpts.capture
+      });
+      io.stdout(`ANWC Studio running at ${handle.url}\n`);
+      if (studioOpts.url) {
+        io.stdout(`Target URL: ${studioOpts.url}\n`);
+      }
+      if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+        await handle.close();
+        return 0;
+      }
+
+      await new Promise<void>((resolve) => {
+        const onShutdown = async () => {
+          process.off('SIGINT', onShutdown);
+          process.off('SIGTERM', onShutdown);
+          try {
+            await handle.close();
+          } catch {
+            // ignore
+          }
+          resolve();
+        };
+        process.on('SIGINT', onShutdown);
+        process.on('SIGTERM', onShutdown);
+      });
+      return 0;
+    }
+
     inspectOptions = parseArguments(arguments_);
     const snapshot = await inspect(inspectOptions);
     const output = inspectOptions.format === 'json' ? `${JSON.stringify(snapshot)}\n` : `${formatText(snapshot, inspectOptions.limit, inspectOptions.maxChars)}\n`;
@@ -630,3 +706,4 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
 export * from './manifest.js';
 export * from './runner.js';
 export * from './doctor.js';
+export * from './studio.js';
