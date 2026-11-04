@@ -1,6 +1,6 @@
 # Testing ANWC
 
-Updated 2026-09-17. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for Phase 3 tasks. Existing demos and grading commands are usable for practice. Q01/Q02 address result/intent integrity gaps; Q11 completes operator handoff. Planned HTML reports, state replay and comparisons are not implemented yet.
+Updated 2026-11-05. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for Phase 3 tasks. Existing inspection demos, single-file HTML reports, scenario reproduction, conservative diffing, and evaluator grading are fully functional. Q11 completes the **Operator Kit and Synthetic Six-Run Practice Harness**.
 
 ## 1. Verify and start the shop
 
@@ -10,7 +10,7 @@ From the evaluator repository:
 git pull --ff-only
 npm install
 npx playwright install chromium
-npm run test:integration
+npm run test:unit
 npm run dev -- --host 127.0.0.1 --port 4175
 ```
 
@@ -58,29 +58,50 @@ Use 390×844 and 1440×900. Reset the page between cases and record any setup/sc
 
 Follow [EVALUATOR_SETUP](EVALUATOR_SETUP.md), which owns the current export, startup, grading and rehearsal command sequence. Give the agent its exported folder plus URL. Do not give it an ANWC clone, enclosing evaluator directory, grader definitions, earlier answers, receipt, or other condition's patch.
 
-Treat current exports/grades as development practice. Neutral briefs, immutable/evaluator hashes and intent-value checks exist, but target-bound intent across modules and grade-to-receipt binding are incomplete. Public source variants can retain fault hints. Q01/Q02 define the fixes; neither a clean CLI exit nor the historical rehearsal closes those gaps.
+Treat public cases as development practice. Neutral briefs, immutable/evaluator hashes and intent-value checks exist, but public source variants can retain fault hints. Freeze app/detector/fixture/task/grader/settings per pair.
 
-## 4. Planned small pilot
+## 4. Six-run pilot operator kit (Q11)
 
-After Q01/Q02 acceptance and Q11's operator dry-run, start with **one exact model, three cases spanning three apps, two conditions = six runs**. Keep high thinking if available, matching the founder's preference; no ultra or automatic paid execution. Record the exact provider label/settings actually used, rather than assuming a named version exists. Casual demo testing can happen now.
+Q11 provides the complete start-to-finish pilot procedure: **one exact model, three cases spanning three apps, two conditions = six runs**.
 
-A: normal source, shell/build, browser DOM/Playwright and screenshots. B: identical inputs and normal tools plus ANWC. Both get the same neutral task, viewport/setup and initial 20-minute cap. Fresh sessions and storage for each run; counterbalance condition order. Keep screenshot usage, interventions, patches and transcripts.
-
-Grade independently and record verified repairs/regressions, wall time, observed input/cache/output tokens and cost. Unknown billing is null/NA. Include ANWC tool/report context cost. A shorter report alone is not a successful repair.
-
-Use the first six runs to find workflow problems. Expand models/repetitions only after the kit works and the founder chooses a budget. Public cases remain unblinded; private independently authored material is needed for holdout claims.
-
-## 5. Existing ledger commands
-
-Copy the examples outside subject access and replace placeholders before recording actual runs:
-
+### Scaffolding practice artifacts
 ```powershell
-npm run bench -- validate PATH_TO_PLAN.json
-npm run bench -- runbook PATH_TO_PLAN.json --output artifacts/benchmark/runbook.md
-npm run bench -- validate-results PATH_TO_PLAN.json PATH_TO_RESULTS.json
-npm run bench -- summarize PATH_TO_PLAN.json PATH_TO_RESULTS.json --output artifacts/benchmark/summary.md
+npm run bench -- practice-setup --out bench/practice
 ```
 
-The ledger is separate from the grader. Explicit grade import exists; see EVALUATOR_SETUP for its command and current limitations. It represents planned, completed, capped, infrastructure-failed and excluded rows, but the latest ledger regression and result-integrity fixes are still pending in Q01. Do not copy repair check outcomes into detection precision/recall or infer absence of regressions from a passing grade.
+This generates `practice-plan.json`, `practice-results.json`, `neutral-briefs.json`, and `OPERATOR_RUNBOOK.md`.
+
+### Run sequence and ports
+Execute sessions in the pre-registered counterbalanced order with unique ports:
+1. `shop-ordinary`: port 4301, mobile 390×844 (`shop-blocked-checkout`)
+2. `shop-assisted`: port 4302, mobile 390×844 (`shop-blocked-checkout`)
+3. `pricing-assisted`: port 4303, desktop 1440×900 (`pricing-blocked`)
+4. `pricing-ordinary`: port 4304, desktop 1440×900 (`pricing-blocked`)
+5. `dashboard-ordinary`: port 4305, mobile 390×844 (`dashboard-outside-save`)
+6. `dashboard-assisted`: port 4306, mobile 390×844 (`dashboard-outside-save`)
+
+### Neutral task briefs
+Give each agent only the neutral brief matching its subject:
+- **Shop:** "The mobile web shop allows users to open their cart and complete checkout. Inspect the checkout flow at viewport 390x844. Ensure the customer can proceed from viewing cart items to confirming checkout cleanly without UI obstructions or interactive errors." (Hash: `ff7964d14f4d96cc569a27e9718fe6651844f539e56b17ed0a9f63700226e8d4`)
+- **Pricing:** "The desktop pricing page displays available plan tiers and pricing information. Inspect the plan selection experience at viewport 1440x900. Ensure users can inspect and select the Growth plan cleanly without obstructed controls or hidden options." (Hash: `ad2c2c2f203653743adf4db526f22dfe5721af50c230c5daa5ab884d60964e86`)
+- **Dashboard:** "The mobile dashboard allows users to manage workspace tasks. Inspect the task editing experience at viewport 390x844. Ensure users can open task details, make updates, and save changes cleanly without critical controls clipped or placed outside the viewport." (Hash: `e5618ebc79b1cb50a767e75eb59b75d5b889a554324c097c208442e9a8b08466`)
+
+### Synthetic tooling dry-run
+Test the full evaluation and grade import lifecycle headlessly with synthetic submissions:
+```powershell
+npm run bench -- practice-dryrun --out bench/practice --fast
+```
+Produces `synthetic-practice-report.json`, `synthetic-practice-report.md`, and `practice-results.imported.json`.
+
+## 5. Ledger commands
+
+```powershell
+npm run bench -- validate bench/practice/practice-plan.json
+npm run bench -- runbook bench/practice/practice-plan.json --output artifacts/benchmark/runbook.md
+npm run bench -- validate-results bench/practice/practice-plan.json bench/practice/practice-results.json
+npm run bench -- summarize bench/practice/practice-plan.json bench/practice/practice-results.json --output artifacts/benchmark/summary.md
+```
+
+Grade import binds exact receipt and run provenance, rejects tampered receipts, requires a new output path, and preserves unrelated rows. Full success remains null until regressions are adjudicated.
 
 Read [BENCHMARK](BENCHMARK.md) before interpreting any result. Geometry and pointer samples do not prove paint visibility; masks, transforms, canvas and unsupported subtrees need explicit limits.

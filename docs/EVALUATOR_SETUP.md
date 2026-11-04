@@ -1,6 +1,6 @@
 # Evaluator setup
 
-Updated 2026-09-17. The evaluator uses receipt and grade result `0.4`, materialized subjects and fresh staging for grading. Q01/Q02 close grade identity/result validation and target-bound intent; it remains a **development practice workflow** until the rest of Phase 3 is accepted. Q11 in [ROADMAP](ROADMAP.md) owns the complete operator handoff. Do not confuse command availability with benchmark validity.
+Updated 2026-11-05. The evaluator uses receipt and grade result `0.4`, materialized subjects and fresh staging for grading. Q01/Q02 enforce grade identity, result validation, and target-bound intent. Q11 implements the complete **Operator Kit and Synthetic Six-Run Practice Harness** (`anwc-bench practice-setup` and `anwc-bench practice-dryrun`). Tooling acceptance is complete; human model sessions (P09) remain pending founder execution.
 
 ## Separate evaluator and agents
 
@@ -8,65 +8,91 @@ Keep three areas: the ANWC evaluator checkout, an ordinary subject folder, and a
 
 An agent with only a URL cannot change application source. An ANWC clone exposes answers and history. Use a fresh exported folder plus its own development URL for a repair task. Folder layout alone is not an access-control boundary if the agent can browse its parent directories.
 
-## Existing practice workflow
+## Six-run operator kit (Q11)
 
-Commands below use PowerShell and create a new timestamped output beside the repo. Run from the ANWC root. Do not run a subject inside the evaluator repo or give an agent the enclosing pair directory.
+Q11 provides an executable six-run setup using three public cases, neutral per-subject briefs, unique ports (4301–4306), and an explicit counterbalanced order: `ordinary → assisted`, `assisted → ordinary`, `ordinary → assisted`.
 
-```powershell
-$anwcRevision = git rev-parse HEAD
-$anwcPair = Join-Path (Split-Path (Get-Location).Path -Parent) ("anwc-practice-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
-npm run bench -- prepare-pair . --fixture pricing-blocked --out "$anwcPair" --source-revision "$anwcRevision" --detector-revision "$anwcRevision" --ordinary-port 4301 --assisted-port 4302
-npm run bench -- check-pair "$anwcPair"
-```
+### Setup generation
 
-The default command requires a clean checkout and both full revision labels to equal `git rev-parse HEAD`. For an explicitly unscored local experiment from a dirty checkout, append `--practice`; the receipt records `scored: false` and dirty state. It never becomes a scored result later.
-
-Current IDs are ten `shop-*` cases (`shop-horizontal-overflow` through `shop-outside-viewport`), `pricing-title`, `pricing-description`, `pricing-blocked`, `pricing-hidden`, `dashboard-clipped-save`, `dashboard-long-title`, `dashboard-blocked-input`, and `dashboard-outside-save`.
-
-The command creates ordinary/, assisted/, and receipt.json. Receipt `0.4` records full Git revision, evaluator checker/registry/sidecar hashes, app and immutable hashes, target-bound source contracts across all app `src` modules, task, route/viewports, allowed editable paths, and available toolchain identifiers. A contract must have a unique static `data-anwc-key`; dynamic contract values and JSX spreads are rejected. TASK.md describes common app behavior without naming a seeded defect, but materialized source may retain hints. These public development cases remain unblinded even after tooling improvements.
-
-Install/build/start each subject in its own terminal. Substitute the generated path; do not type PLACEHOLDER literally:
+Generate practice artifacts into a dedicated directory:
 
 ```powershell
-Set-Location "PLACEHOLDER\ordinary"
-npm ci
-npm run typecheck
-npm run build
-npm run dev --workspace=@anwc/landing -- --host 127.0.0.1 --port 4301
+npm run bench -- practice-setup --out bench/practice
 ```
 
-Repeat in assisted/ on 4302. For a dashboard fixture use @anwc/dashboard; for shop use @anwc/shop. Open the root URL; do not append the public lab query. `check-pair` is intended before agent edits/build artifacts; it is not a returned-repair check.
+This scaffolds:
+1. `practice-plan.json`: Valid `BenchmarkPlan` (schema 0.1, kind: `example`) declaring the 6 runs across 3 pairs with exact ports and viewports.
+2. `practice-results.json`: Valid `BenchmarkResults` ledger with all 6 runs initialized in `status: "planned"`.
+3. `neutral-briefs.json`: Neutral task prompts with SHA-256 hashes for all 3 subjects.
+4. `OPERATOR_RUNBOOK.md`: Procedural guide with copyable commands.
 
-Give each agent only its own folder and matching URL. Assisted can run its available `npm run anwc -- inspect "http://127.0.0.1:4302/" --viewport 390x844 --format text`. Both may use screenshots and ordinary DOM tools. Stop the agent's server before grading.
+### Start-to-finish operator procedure
 
-From the evaluator repository, grade a practice submission on an unused port:
+#### Step 1: Prepare isolated subject arms with unique ports
+```powershell
+$rev = git rev-parse HEAD
+npm run bench -- prepare-pair . --fixture shop-blocked-checkout --out ..\pair-shop --source-revision $rev --detector-revision $rev --ordinary-port 4301 --assisted-port 4302
+npm run bench -- prepare-pair . --fixture pricing-blocked --out ..\pair-pricing --source-revision $rev --detector-revision $rev --ordinary-port 4304 --assisted-port 4303
+npm run bench -- prepare-pair . --fixture dashboard-outside-save --out ..\pair-dashboard --source-revision $rev --detector-revision $rev --ordinary-port 4305 --assisted-port 4306
+```
+
+#### Step 2: Validate readiness
+```powershell
+npm run bench -- check-pair ..\pair-shop
+npm run bench -- check-pair ..\pair-pricing
+npm run bench -- check-pair ..\pair-dashboard
+```
+
+#### Step 3: Session handover in counterbalanced order
+Run sessions in the pre-registered counterbalanced order to minimize learning effects:
+1. `shop-ordinary`: port 4301, mobile viewport 390×844
+2. `shop-assisted`: port 4302, mobile viewport 390×844
+3. `pricing-assisted`: port 4303, desktop viewport 1440×900
+4. `pricing-ordinary`: port 4304, desktop viewport 1440×900
+5. `dashboard-ordinary`: port 4305, mobile viewport 390×844
+6. `dashboard-assisted`: port 4306, mobile viewport 390×844
+
+**Handover rule:** Give each agent only its assigned subject directory and URL, paired with the corresponding neutral brief:
+- **Shop:** "The mobile web shop allows users to open their cart and complete checkout. Inspect the checkout flow at viewport 390x844. Ensure the customer can proceed from viewing cart items to confirming checkout cleanly without UI obstructions or interactive errors." (Prompt hash: `ff7964d14f4d96cc569a27e9718fe6651844f539e56b17ed0a9f63700226e8d4`)
+- **Pricing:** "The desktop pricing page displays available plan tiers and pricing information. Inspect the plan selection experience at viewport 1440x900. Ensure users can inspect and select the Growth plan cleanly without obstructed controls or hidden options." (Prompt hash: `ad2c2c2f203653743adf4db526f22dfe5721af50c230c5daa5ab884d60964e86`)
+- **Dashboard:** "The mobile dashboard allows users to manage workspace tasks. Inspect the task editing experience at viewport 390x844. Ensure users can open task details, make updates, and save changes cleanly without critical controls clipped or placed outside the viewport." (Prompt hash: `e5618ebc79b1cb50a767e75eb59b75d5b889a554324c097c208442e9a8b08466`)
+
+Keep transcripts, patches, screenshots, and token logs strictly outside the subject workspaces.
+
+#### Step 4: Grade returned repairs
+Grade each returned subject on an unused port (4311–4316) outside the subject:
+```powershell
+npm run bench -- grade --receipt ..\pair-shop\receipt.json --subject ..\pair-shop\ordinary --condition ordinary --port 4311 --run shop-ordinary --output ..\results\shop-ordinary.json
+npm run bench -- grade --receipt ..\pair-shop\receipt.json --subject ..\pair-shop\assisted --condition anwc-assisted --port 4312 --run shop-assisted --output ..\results\shop-assisted.json
+npm run bench -- grade --receipt ..\pair-pricing\receipt.json --subject ..\pair-pricing\assisted --condition anwc-assisted --port 4313 --run pricing-assisted --output ..\results\pricing-assisted.json
+npm run bench -- grade --receipt ..\pair-pricing\receipt.json --subject ..\pair-pricing\ordinary --condition ordinary --port 4314 --run pricing-ordinary --output ..\results\pricing-ordinary.json
+npm run bench -- grade --receipt ..\pair-dashboard\receipt.json --subject ..\pair-dashboard\ordinary --condition ordinary --port 4315 --run dashboard-ordinary --output ..\results\dashboard-ordinary.json
+npm run bench -- grade --receipt ..\pair-dashboard\receipt.json --subject ..\pair-dashboard\assisted --condition anwc-assisted --port 4316 --run dashboard-assisted --output ..\results\dashboard-assisted.json
+```
+
+The grader verifies immutable files, intent hashes, stages the subject to a fresh temp directory, executes `npm ci --ignore-scripts`, starts Vite, and evaluates behavioral checks with Chromium.
+
+#### Step 5: Import grades into the ledger
+Import evaluator results with provenance binding:
+```powershell
+npm run bench -- import-grade bench\practice\practice-plan.json bench\practice\practice-results.json --run shop-ordinary --receipt ..\pair-shop\receipt.json --grade ..\results\shop-ordinary.json --output bench\practice\results.step1.json
+```
+Repeat for each completed run. Grade import verifies exact receipt and run provenance, rejects tampered receipts, requires a new output path, and preserves unrelated rows. Full success remains null until regressions are adjudicated.
+
+#### Step 6: Summarize findings
+```powershell
+npm run bench -- summarize bench\practice\practice-plan.json bench\practice\results.final.json --output bench\practice\practice-summary.md
+```
+
+### Synthetic dry-run tool acceptance
+
+To verify the entire tooling chain without calling LLMs, run the automated dry-run:
 
 ```powershell
-npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\ordinary" --condition ordinary --port 4311 --run pricing-ordinary --output "$anwcPair\ordinary-result.json"
-npm run bench -- grade --receipt "$anwcPair\receipt.json" --subject "$anwcPair\assisted" --condition anwc-assisted --port 4312 --run pricing-assisted --output "$anwcPair\assisted-result.json"
+npm run bench -- practice-dryrun --out bench/practice --fast
 ```
 
-The grader first checks immutable inputs, its current intent-value digest, and evaluator hashes. It then copies the returned subject to an evaluator-owned temporary directory, verifies the staged artifact hash, excludes dependencies/build/cache/logs, runs `npm ci --ignore-scripts`, and starts Vite directly on loopback with `--strictPort`. It leaves the returned subject untouched. Use a fresh output path outside the submitted subject and distinct from the receipt; the CLI will not overwrite an existing result. For a ledger import, pass the exact ledger run ID with `--run`. Install, startup, per-check, and overall grade deadlines are bounded; retained output includes capped install/server logs and page errors.
-
-Current result labels: `passed`, `failed`, `integrity-failed`, `infrastructure-failed`. CLI exits are 0 verified, 1 behavioral failure, 2 integrity/invalid invocation, and 3 infrastructure/incomplete. These are still provisional development-case checks, not complete repair certification. Inspect failed check IDs/evidence: a timeout/crash is not proof that the intended seeded defect was detected. Preserve missing usage as NA and do not infer detection precision/recall from grades.
-
-## Pilot grade import
-
-Scored-plan validation requires each prepared receipt hash in that run's `receiptHash` field. Q01 makes a `0.4` grade bind the same receipt bytes, named run, staged submission, evaluator identity and expected check inventory; dependable scored use still awaits Q02:
-
-```powershell
-npm run bench -- receipt-hash C:\evaluator\pairs\run-01\receipt.json
-```
-
-After recording the agent's completed or time-capped row in the ledger, import its evaluator result without editing scoring by hand:
-
-```powershell
-npm run bench -- import-grade C:\pilot\plan.json C:\pilot\results.json --run run-01 --receipt C:\evaluator\pairs\run-01\receipt.json --grade C:\evaluator\results\run-01.json --output C:\pilot\results.with-grade.json
-```
-
-Import rejects unknown runs, supplied-receipt/plan mismatches, fixture/condition mismatches, practice/dirty receipts, historical grade `0.3` files, receipt/run substitution, incomplete/contradictory check evidence, existing manual scoring and duplicate imports. It records a grade hash and keeps full success `null` while regressions remain unadjudicated. Detection precision, recall and regression counts require separate evaluator adjudication.
-
-Use a new output path every time and preserve the inputs: current import can overwrite an existing output, including the input ledger if pointed there. Q01 will enforce safe file/version handling. The example's separate output path is intentional.
+This executes all 6 runs with synthetic submissions (broken, CSS valid-repair, deletion, wrong-receipt), tests negative integrity gates, imports grades to the ledger, and outputs `bench/practice/synthetic-practice-report.json` and `bench/practice/synthetic-practice-report.md`.
 
 ## Existing rehearsal
 
@@ -77,14 +103,10 @@ npm run bench -- rehearse . --out "$anwcRehearsal" --source-revision "$anwcRevis
 
 The committed rehearsal covers Shop, Pricing, and Dashboard in ordinary and ANWC-assisted conditions, for broken, repaired, and runnable deletion states at both required viewports: 18 grades in total. Its durable report is [bench/rehearsals/rehearsal-report.json](../bench/rehearsals/rehearsal-report.json). Do not reuse any rehearsal subject or patch as a fresh agent subject. Each grade uses its own clean evaluator stage.
 
-Wait for the actual process exit and report. A partial log or observation timeout does not establish completion. Retain reports outside subjects; no model calls occur.
-
 ## Manual overlay path
 
 `package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted` and `check-subject SUBJECT --condition ordinary|anwc-assisted` are older shop-default commands. The overlay materializes application files; the packager generates condition-specific configs afterward. Do not instruct operators to hand-author two different Vite overlays. Their leakage gate is advisory, not proof of clean installation, hidden answers, protected source intent, or OS isolation.
 
-## Remaining scored-workflow acceptance
+## Pilot decision gate
 
-Phase 2 implemented the foundation, packaging and pilot helpers. Q01/Q02 close the remaining trust gaps; Q11 dry-runs the complete procedure with explicitly synthetic submissions before real model sessions. The roadmap proposes benchmark contract `0.4`; it is not implemented yet. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public. Human results are still pending.
-
-See [TESTING](TESTING.md) for demo steps and [BENCHMARK](BENCHMARK.md) for scoring policy.
+Q11 completes the engineering acceptance of the operator kit. Founder choices for actual model providers, reasoning budgets, and session execution remain pending. Follow [BENCHMARK](BENCHMARK.md) for scoring policy and [TESTING](TESTING.md) for pilot walkthroughs.

@@ -1,6 +1,6 @@
 # ANWC benchmark policy
 
-Updated 2026-09-17. No real paired-agent results or verified time/cost savings are recorded. Export, grade, rehearsal and pilot import exist, with trust gaps assigned to Q01/Q02 and operator handoff to Q11 in [ROADMAP](ROADMAP.md). [STATUS](STATUS.md) owns current test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns existing runnable commands.
+Updated 2026-11-05. No real paired-agent results or verified time/cost savings are recorded. Q01/Q02 close grade identity/result validation; Q11 completes the operator kit and tooling acceptance via the six-run practice manifest generator and synthetic dry-run harness (anwc-bench practice-setup and anwc-bench practice-dryrun). Tooling acceptance is complete; human model pilot sessions (P09) remain pending founder execution. [STATUS](STATUS.md) owns current test evidence; [EVALUATOR_SETUP](EVALUATOR_SETUP.md) owns runnable commands.
 
 Current public corpus: ten shop, four pricing and four dashboard defect/healthy pairs. Public lab URLs and source reveal their cases; they are practice data, not holdout. The committed rehearsal contains 18 grades across all three apps and both arms, with broken/repaired/deletion states at two widths. Preserve its recorded revisions without treating it as a current integration pass or a model experiment.
 

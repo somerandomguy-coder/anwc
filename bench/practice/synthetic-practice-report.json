@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "0.1",
+  "kind": "synthetic-practice",
+  "generatedAt": "2026-11-04T14:47:21.484Z",
+  "sourceRevision": "ae8c58c75ee7bacef97b72f16077ac08c3d4f022",
+  "detectorRevision": "ae8c58c75ee7bacef97b72f16077ac08c3d4f022",
+  "runs": [
+    {
+      "runId": "shop-ordinary",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "condition": "ordinary",
+      "port": 4301,
+      "submissionType": "broken",
+      "gradeStatus": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "importedToLedger": true,
+      "failingChecks": [
+        "checkout-confirms"
+      ]
+    },
+    {
+      "runId": "shop-assisted",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "condition": "anwc-assisted",
+      "port": 4302,
+      "submissionType": "repaired",
+      "gradeStatus": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "importedToLedger": true,
+      "failingChecks": []
+    },
+    {
+      "runId": "pricing-assisted",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "condition": "anwc-assisted",
+      "port": 4303,
+      "submissionType": "deletion",
+      "gradeStatus": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "importedToLedger": true,
+      "failingChecks": [
+        "content-1"
+      ]
+    },
+    {
+      "runId": "pricing-ordinary",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "condition": "ordinary",
+      "port": 4304,
+      "submissionType": "broken",
+      "gradeStatus": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "importedToLedger": true,
+      "failingChecks": [
+        "growth-selects"
+      ]
+    },
+    {
+      "runId": "dashboard-ordinary",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "condition": "ordinary",
+      "port": 4305,
+      "submissionType": "repaired",
+      "gradeStatus": "passed",
+      "exitCode": 0,
+      "repairVerified": true,
+      "importedToLedger": true,
+      "failingChecks": []
+    },
+    {
+      "runId": "dashboard-assisted",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "condition": "anwc-assisted",
+      "port": 4306,
+      "submissionType": "broken",
+      "gradeStatus": "failed",
+      "exitCode": 1,
+      "repairVerified": false,
+      "importedToLedger": true,
+      "failingChecks": [
+        "save-in-viewport"
+      ]
+    }
+  ],
+  "negativeIntegrityChecks": {
+    "wrongReceiptRejected": true,
+    "duplicateOutputPathRejected": true,
+    "unrelatedRowsPreserved": true
+  },
+  "summary": {
+    "totalRuns": 6,
+    "repairedPassed": 2,
+    "brokenFailed": 3,
+    "deletionFailed": 1,
+    "allLedgerImportsSucceeded": true,
+    "allIntegrityChecksPassed": true
+  },
+  "limitations": [
+    "This report records an automated synthetic tooling dry-run; no human model sessions or billing data were generated.",
+    "The public development fixtures (shop, pricing, dashboard) are unblinded practice cases, not holdout benchmarks.",
+    "Paint, transform, and canvas rendering visibility remain outside ANWC guarantees.",
+    "Human pilot results (P09) remain pending until founder-selected model sessions are conducted."
+  ]
+}

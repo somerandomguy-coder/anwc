@@ -3,16 +3,101 @@
   "id": "anwc-three-app-practice",
   "kind": "example",
   "title": "ANWC three-app matched practice pilot",
-  "baseline": { "appCommit": "1c5dda30ff0baf11cf848e42485d5afc83c7de0e", "detectorCommit": "1c5dda30ff0baf11cf848e42485d5afc83c7de0e", "browser": "replace-before-scored-run", "node": "replace-before-scored-run", "packageManager": "replace-before-scored-run" },
-  "agent": { "provider": "replace-before-scored-run", "model": "replace-before-scored-run", "reasoning": "replace-before-scored-run" },
-  "budget": { "wallMinutes": 20, "tokenLimit": null },
-  "promptId": "replace-before-scored-run",
+  "baseline": {
+    "appCommit": "1c5dda30ff0baf11cf848e42485d5afc83c7de0e",
+    "detectorCommit": "1c5dda30ff0baf11cf848e42485d5afc83c7de0e",
+    "browser": "replace-before-scored-run",
+    "node": "replace-before-scored-run",
+    "packageManager": "replace-before-scored-run"
+  },
+  "agent": {
+    "provider": "replace-before-scored-run",
+    "model": "replace-before-scored-run",
+    "reasoning": "replace-before-scored-run"
+  },
+  "budget": {
+    "wallMinutes": 20,
+    "tokenLimit": null
+  },
+  "promptId": "ui-repair-v1",
   "runs": [
-    { "id": "shop-ordinary", "pairId": "shop", "fixtureId": "shop-blocked-checkout", "replicate": 1, "condition": "ordinary", "viewport": { "width": 390, "height": 844 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4175/" },
-    { "id": "shop-assisted", "pairId": "shop", "fixtureId": "shop-blocked-checkout", "replicate": 1, "condition": "anwc-assisted", "viewport": { "width": 390, "height": 844 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4175/" },
-    { "id": "pricing-ordinary", "pairId": "pricing", "fixtureId": "pricing-blocked", "replicate": 1, "condition": "ordinary", "viewport": { "width": 1440, "height": 900 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4176/" },
-    { "id": "pricing-assisted", "pairId": "pricing", "fixtureId": "pricing-blocked", "replicate": 1, "condition": "anwc-assisted", "viewport": { "width": 1440, "height": 900 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4176/" },
-    { "id": "dashboard-ordinary", "pairId": "dashboard", "fixtureId": "dashboard-outside-save", "replicate": 1, "condition": "ordinary", "viewport": { "width": 390, "height": 844 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4177/" },
-    { "id": "dashboard-assisted", "pairId": "dashboard", "fixtureId": "dashboard-outside-save", "replicate": 1, "condition": "anwc-assisted", "viewport": { "width": 390, "height": 844 }, "state": "broken", "subjectUrl": "http://127.0.0.1:4177/" }
+    {
+      "id": "shop-ordinary",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4301/"
+    },
+    {
+      "id": "shop-assisted",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4302/"
+    },
+    {
+      "id": "pricing-assisted",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4303/"
+    },
+    {
+      "id": "pricing-ordinary",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4304/"
+    },
+    {
+      "id": "dashboard-ordinary",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4305/"
+    },
+    {
+      "id": "dashboard-assisted",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4306/"
+    }
   ]
 }

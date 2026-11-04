@@ -1,0 +1,174 @@
+{
+  "schemaVersion": "0.1",
+  "planId": "anwc-three-app-practice",
+  "runs": [
+    {
+      "runId": "shop-ordinary",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 0,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "a113a84fd24f7a3b03e37659fb224122a9df6c4a84858ba1dcb563191e573e9b",
+        "gradeHash": "447e4ac9f7fdf6a0834f0db7fca7349a10e8604d8cbeda1ecee2c8f1a55ee1f8",
+        "runId": "shop-ordinary",
+        "status": "failed",
+        "submittedArtifactHash": "70b4131958c8353091ccded5563bad9cf1882e368442a2b4f5bbbd4f48159828",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic broken test."
+    },
+    {
+      "runId": "shop-assisted",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 1,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "9f1fb362dd312848172c91d8daffe7bc4c752757aba94ea9f841e7a424f6c473",
+        "gradeHash": "1446543c142456aaf21d7d0364fb3983a6b50e723a64d7094f2ec3df65331d0b",
+        "runId": "shop-assisted",
+        "status": "passed",
+        "submittedArtifactHash": "917222fd715e178c8a58473a4d28483b4ede9a683fabf33dd53a149cce3e2f86",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic repaired test."
+    },
+    {
+      "runId": "pricing-assisted",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 0,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "94eb52847251716f311d4d5e3e538141350ac67557511ec64a39179f00e0008c",
+        "gradeHash": "6e88ccf0878e0b0f7a99f54460899dab7516a0e484ad93a45da877b7d3b82d86",
+        "runId": "pricing-assisted",
+        "status": "failed",
+        "submittedArtifactHash": "6ed51c3c3a40bf3e9aa532c0ea8a3c0beead6dc05053e93d5970d0ab2de2935d",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic deletion test."
+    },
+    {
+      "runId": "pricing-ordinary",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 0,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "f43b7a480ae2247d5a3335725be71e640629e1b655345f0fac737cb57108e6a5",
+        "gradeHash": "f00bef78dd7a862a8f9e1d333bcff4075ea56a902330a1bc28bf725fd44a0a07",
+        "runId": "pricing-ordinary",
+        "status": "failed",
+        "submittedArtifactHash": "0ab65574b082e98ed52c50c06df054985ebf6eb7eb0386c946677a8d37e4b67f",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic broken test."
+    },
+    {
+      "runId": "dashboard-ordinary",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 1,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "ca60deaac166167feee5b2ac663a1640c867c22e7e132537f4fe1b47286c6a60",
+        "gradeHash": "3df7d23cd3d0b63e9450e34017709d2ac74b7638d915db2dfb996e0cc8a45bdb",
+        "runId": "dashboard-ordinary",
+        "status": "passed",
+        "submittedArtifactHash": "16e3db86ba4e6d63a3946159448016d5b0707d41a4e3672d88986ea6eb9e360a",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic repaired test."
+    },
+    {
+      "runId": "dashboard-assisted",
+      "status": "completed",
+      "wallSeconds": 42,
+      "usage": {
+        "inputTokens": null,
+        "cachedInputTokens": null,
+        "outputTokens": null,
+        "costUsd": null
+      },
+      "scoring": {
+        "truePositives": null,
+        "falsePositives": null,
+        "falseNegatives": null,
+        "verifiedRepairs": 0,
+        "regressions": null,
+        "fullSuccess": null
+      },
+      "grade": {
+        "receiptHash": "70c470a0c5c44030c7d902cebc88c07410737c65d256bb611751582327d1aa62",
+        "gradeHash": "5d9b6978af90570bd97c66be01434501bb30acdb004db9a3b9f7cfef46a07e40",
+        "runId": "dashboard-assisted",
+        "status": "failed",
+        "submittedArtifactHash": "64d7041349270a516af38fc8dd13f8526d9e51814d6205293215b2e93148e4c2",
+        "expectedChecks": 1
+      },
+      "notes": "Synthetic broken test."
+    }
+  ]
+}

@@ -43,7 +43,7 @@
       "notes": "Not run."
     },
     {
-      "runId": "pricing-ordinary",
+      "runId": "pricing-assisted",
       "status": "planned",
       "wallSeconds": null,
       "usage": {
@@ -63,7 +63,7 @@
       "notes": "Not run."
     },
     {
-      "runId": "pricing-assisted",
+      "runId": "pricing-ordinary",
       "status": "planned",
       "wallSeconds": null,
       "usage": {

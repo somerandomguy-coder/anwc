@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, hashReceipt, importGradeFiles, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, type SubjectCondition } from './index.js';
+import { BenchmarkPlanError, checkPreparedPair, checkSubjectWorkspace, gradeRepair, hashReceipt, importGradeFiles, packageSubjectWorkspace, preparePair, rehearseBenchmark, renderResultsSummary, renderRunbook, validateBenchmarkPlan, validateBenchmarkResults, generatePracticeSetup, dryRunPractice, type SubjectCondition } from './index.js';
 
 function usage(): string {
-  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench receipt-hash RECEIPT.json | anwc-bench import-grade PLAN.json RESULTS.json --run RUN_ID --receipt RECEIPT.json --grade GRADE.json --output NEW_RESULTS.json | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--run RUN_ID] [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA]';
+  return 'Usage: anwc-bench validate PLAN.json | anwc-bench runbook PLAN.json --output FILE.md | anwc-bench receipt-hash RECEIPT.json | anwc-bench import-grade PLAN.json RESULTS.json --run RUN_ID --receipt RECEIPT.json --grade GRADE.json --output NEW_RESULTS.json | anwc-bench validate-results PLAN.json RESULTS.json | anwc-bench summarize PLAN.json RESULTS.json --output FILE.md | anwc-bench check-subject SUBJECT_PATH --condition ordinary|anwc-assisted | anwc-bench package-subject SOURCE DEST --overlay PRIVATE_OVERLAY --condition ordinary|anwc-assisted | anwc-bench prepare-pair SOURCE --fixture ID --out DIRECTORY --source-revision SHA --detector-revision SHA [--state broken|healthy] [--practice] [--ordinary-port PORT --assisted-port PORT] | anwc-bench check-pair DIRECTORY | anwc-bench grade --receipt RECEIPT --subject SUBJECT --condition ordinary|anwc-assisted --port PORT --output RESULT.json [--run RUN_ID] [--evaluator-root PATH] | anwc-bench rehearse SOURCE --out DIRECTORY [--source-revision SHA --detector-revision SHA] | anwc-bench practice-setup --out DIRECTORY [--source-root PATH] [--app-commit SHA] [--detector-revision SHA] | anwc-bench practice-dryrun --out DIRECTORY [--source-root PATH] [--source-revision SHA] [--detector-revision SHA] [--fast]';
 }
 
 export type BenchmarkIo = {
@@ -13,7 +13,7 @@ export type BenchmarkIo = {
 
 export async function run(args: string[], io: BenchmarkIo = process): Promise<number> {
   const [command, planPath, ...rest] = args;
-  if ((!planPath && command !== 'grade') || !['validate', 'runbook', 'receipt-hash', 'import-grade', 'validate-results', 'summarize', 'check-subject', 'package-subject', 'prepare-pair', 'check-pair', 'grade', 'rehearse'].includes(command ?? '')) {
+  if ((!planPath && command !== 'grade') || !['validate', 'runbook', 'receipt-hash', 'import-grade', 'validate-results', 'summarize', 'check-subject', 'package-subject', 'prepare-pair', 'check-pair', 'grade', 'rehearse', 'practice-setup', 'practice-dryrun'].includes(command ?? '')) {
     io.stderr.write(`${usage()}\n`);
     return 2;
   }
@@ -127,6 +127,44 @@ export async function run(args: string[], io: BenchmarkIo = process): Promise<nu
         return 2;
       }
       io.stdout.write(`Subject workspace is ready for the ${rest[1]} condition.\n`);
+      return 0;
+    }
+    if (command === 'practice-setup') {
+      const argsList = [planPath, ...rest];
+      let outputDir: string | undefined;
+      let sourceRoot: string | undefined;
+      let appCommit: string | undefined;
+      let detectorCommit: string | undefined;
+      for (let i = 0; i < argsList.length; i++) {
+        if (argsList[i] === '--out') { outputDir = argsList[++i]; }
+        else if (argsList[i] === '--source-root') { sourceRoot = argsList[++i]; }
+        else if (argsList[i] === '--app-commit') { appCommit = argsList[++i]; }
+        else if (argsList[i] === '--detector-revision') { detectorCommit = argsList[++i]; }
+        else { io.stderr.write(`${usage()}\n`); return 2; }
+      }
+      if (!outputDir) { io.stderr.write(`${usage()}\n`); return 2; }
+      const setup = await generatePracticeSetup({ outputDir, sourceRoot, appCommit, detectorCommit });
+      io.stdout.write(`Generated 6-run practice setup at ${outputDir}:\n- ${setup.planPath}\n- ${setup.resultsPath}\n- ${setup.briefsPath}\n- ${setup.runbookPath}\n`);
+      return 0;
+    }
+    if (command === 'practice-dryrun') {
+      const argsList = [planPath, ...rest];
+      let outputDir: string | undefined;
+      let sourceRoot = process.cwd();
+      let sourceRevision: string | undefined;
+      let detectorRevision: string | undefined;
+      let fast = false;
+      for (let i = 0; i < argsList.length; i++) {
+        if (argsList[i] === '--out') { outputDir = argsList[++i]; }
+        else if (argsList[i] === '--source-root') { sourceRoot = argsList[++i]!; }
+        else if (argsList[i] === '--source-revision') { sourceRevision = argsList[++i]; }
+        else if (argsList[i] === '--detector-revision') { detectorRevision = argsList[++i]; }
+        else if (argsList[i] === '--fast') { fast = true; }
+        else { io.stderr.write(`${usage()}\n`); return 2; }
+      }
+      if (!outputDir) { io.stderr.write(`${usage()}\n`); return 2; }
+      const report = await dryRunPractice({ sourceRoot, outputDir, sourceRevision, detectorRevision, fast });
+      io.stdout.write(`Synthetic practice dry-run completed (${report.summary.totalRuns} runs: ${report.summary.repairedPassed} passed, ${report.summary.brokenFailed + report.summary.deletionFailed} failed). Report: ${join(outputDir, 'synthetic-practice-report.json')}\n`);
       return 0;
     }
     const plan = validateBenchmarkPlan(JSON.parse(await readFile(planPath, 'utf8')));

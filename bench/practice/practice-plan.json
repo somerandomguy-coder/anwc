@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "0.1",
+  "id": "anwc-three-app-practice",
+  "kind": "example",
+  "title": "ANWC three-app matched practice pilot",
+  "baseline": {
+    "appCommit": "ae8c58c75ee7bacef97b72f16077ac08c3d4f022",
+    "detectorCommit": "ae8c58c75ee7bacef97b72f16077ac08c3d4f022",
+    "browser": "Chromium",
+    "node": "v24.18.0",
+    "packageManager": "npm"
+  },
+  "agent": {
+    "provider": "replace-before-scored-run",
+    "model": "replace-before-scored-run",
+    "reasoning": "replace-before-scored-run"
+  },
+  "budget": {
+    "wallMinutes": 20,
+    "tokenLimit": null
+  },
+  "promptId": "ui-repair-v1",
+  "runs": [
+    {
+      "id": "shop-ordinary",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4301/",
+      "receiptHash": "a113a84fd24f7a3b03e37659fb224122a9df6c4a84858ba1dcb563191e573e9b"
+    },
+    {
+      "id": "shop-assisted",
+      "pairId": "shop",
+      "fixtureId": "shop-blocked-checkout",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4302/",
+      "receiptHash": "9f1fb362dd312848172c91d8daffe7bc4c752757aba94ea9f841e7a424f6c473"
+    },
+    {
+      "id": "pricing-assisted",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4303/",
+      "receiptHash": "94eb52847251716f311d4d5e3e538141350ac67557511ec64a39179f00e0008c"
+    },
+    {
+      "id": "pricing-ordinary",
+      "pairId": "pricing",
+      "fixtureId": "pricing-blocked",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4304/",
+      "receiptHash": "f43b7a480ae2247d5a3335725be71e640629e1b655345f0fac737cb57108e6a5"
+    },
+    {
+      "id": "dashboard-ordinary",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "replicate": 1,
+      "condition": "ordinary",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4305/",
+      "receiptHash": "ca60deaac166167feee5b2ac663a1640c867c22e7e132537f4fe1b47286c6a60"
+    },
+    {
+      "id": "dashboard-assisted",
+      "pairId": "dashboard",
+      "fixtureId": "dashboard-outside-save",
+      "replicate": 1,
+      "condition": "anwc-assisted",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "state": "broken",
+      "subjectUrl": "http://127.0.0.1:4306/",
+      "receiptHash": "70c470a0c5c44030c7d902cebc88c07410737c65d256bb611751582327d1aa62"
+    }
+  ]
+}

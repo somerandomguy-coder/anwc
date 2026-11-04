@@ -1,0 +1,38 @@
+[
+  {
+    "pairId": "shop",
+    "appId": "shop",
+    "fixtureId": "shop-blocked-checkout",
+    "title": "Complete Mobile Checkout",
+    "taskText": "The mobile web shop allows users to open their cart and complete checkout. Inspect the checkout flow at viewport 390x844. Ensure the customer can proceed from viewing cart items to confirming checkout cleanly without UI obstructions or interactive errors.",
+    "taskHash": "ff7964d14f4d96cc569a27e9718fe6651844f539e56b17ed0a9f63700226e8d4",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  {
+    "pairId": "pricing",
+    "appId": "landing",
+    "fixtureId": "pricing-blocked",
+    "title": "Desktop Plan Selection",
+    "taskText": "The desktop pricing page displays available plan tiers and pricing information. Inspect the plan selection experience at viewport 1440x900. Ensure users can inspect and select the Growth plan cleanly without obstructed controls or hidden options.",
+    "taskHash": "ad2c2c2f203653743adf4db526f22dfe5721af50c230c5daa5ab884d60964e86",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  {
+    "pairId": "dashboard",
+    "appId": "dashboard",
+    "fixtureId": "dashboard-outside-save",
+    "title": "Save Task Changes",
+    "taskText": "The mobile dashboard allows users to manage workspace tasks. Inspect the task editing experience at viewport 390x844. Ensure users can open task details, make updates, and save changes cleanly without critical controls clipped or placed outside the viewport.",
+    "taskHash": "e5618ebc79b1cb50a767e75eb59b75d5b889a554324c097c208442e9a8b08466",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    }
+  }
+]

@@ -437,3 +437,19 @@ export { preparePair, checkPreparedPair, checkReturnedSubject, checkEvaluatorRec
 export { gradeRepair, gradeResultSchema, type GradeOptions, type GradeResult } from './grade.js';
 export { hashReceipt, importGradeFiles, importGradeIntoResults, type ImportedGrade } from './pilot.js';
 export { rehearseBenchmark, rehearsalReportSchema, type RehearsalOptions, type RehearsalReport } from './rehearse.js';
+
+export {
+  NEUTRAL_BRIEFS,
+  SIX_RUN_PRACTICE_CONFIG,
+  syntheticPracticeReportSchema,
+  generatePracticePlan,
+  generatePracticeResults,
+  renderOperatorRunbook,
+  generatePracticeSetup,
+  renderSyntheticPracticeMarkdown,
+  dryRunPractice,
+  type NeutralBrief,
+  type PracticeRunConfig,
+  type SyntheticPracticeReport,
+  type DryRunPracticeOptions
+} from './practice.js';

@@ -28,7 +28,7 @@ export function importGradeIntoResults(plan: BenchmarkPlan, results: BenchmarkRe
   if (!run) throw new BenchmarkPlanError([`pilot grade import: unknown runId ${runId}`]);
   if (!run.receiptHash) throw new BenchmarkPlanError([`pilot grade import: run ${runId} has no frozen receiptHash`]);
   if (run.receiptHash !== receiptHash) throw new BenchmarkPlanError([`pilot grade import: receipt hash does not match frozen run ${runId}`]);
-  if (!receipt.scored || receipt.source.dirty) throw new BenchmarkPlanError(['pilot grade import: scored runs require a clean scored receipt']);
+  if (plan.kind === 'scored' && (!receipt.scored || receipt.source.dirty)) throw new BenchmarkPlanError(['pilot grade import: scored runs require a clean scored receipt']);
   if (receipt.fixtureId !== run.fixtureId) throw new BenchmarkPlanError([`pilot grade import: receipt fixture ${receipt.fixtureId} does not match run fixture ${run.fixtureId}`]);
   if (receipt.fixtureState !== run.state) throw new BenchmarkPlanError([`pilot grade import: receipt state ${receipt.fixtureState} does not match run state ${run.state}`]);
   if (grade.fixtureId !== receipt.fixtureId || grade.condition !== run.condition) throw new BenchmarkPlanError([`pilot grade import: grade identity does not match run ${runId}`]);
