@@ -61,6 +61,13 @@ describe('ANWC Studio HTTP Server', () => {
     expect(body.report.schemaVersion).toBe('0.1');
   });
 
+  test('rejects non-loopback host 0.0.0.0', async () => {
+    await expect(startStudioServer({
+      host: '0.0.0.0',
+      port: 0
+    })).rejects.toThrow("ANWC Studio server must bind to loopback (127.0.0.1). Binding to '0.0.0.0' is prohibited.");
+  });
+
   test('rejects unsafe target URLs in POST /api/inspect', async () => {
     const res = await fetch(`${studio!.url}/api/inspect`, {
       method: 'POST',
@@ -71,6 +78,30 @@ describe('ANWC Studio HTTP Server', () => {
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toContain('Only http: and https:');
+  });
+
+  test('rejects malformed and markdown syntax target URLs in POST /api/inspect', async () => {
+    // Malformed URL
+    const malformedRes = await fetch(`${studio!.url}/api/inspect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'http://' })
+    });
+    expect(malformedRes.status).toBe(400);
+    const malformedBody = await malformedRes.json();
+    expect(malformedBody.ok).toBe(false);
+    expect(malformedBody.error).toContain('Only http: and https:');
+
+    // Markdown link syntax
+    const mdRes = await fetch(`${studio!.url}/api/inspect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: '[My Page](http://127.0.0.1:4174)' })
+    });
+    expect(mdRes.status).toBe(400);
+    const mdBody = await mdRes.json();
+    expect(mdBody.ok).toBe(false);
+    expect(mdBody.error).toContain('Markdown');
   });
 
   test('accepts uploaded capture payload via POST /api/upload', async () => {
@@ -178,12 +209,18 @@ describe('ANWC Studio HTTP Server', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
-  test('returns 404 for unknown routes', async () => {
-    const res = await fetch(`${studio!.url}/api/unknown-endpoint`, {
+  test('returns 404 for unknown routes and does not intercept GET /api/* with SPA html', async () => {
+    const postRes = await fetch(`${studio!.url}/api/unknown-endpoint`, {
       method: 'POST'
     });
-    expect(res.status).toBe(404);
-    const body = await res.json();
-    expect(body.ok).toBe(false);
+    expect(postRes.status).toBe(404);
+    const postBody = await postRes.json();
+    expect(postBody.ok).toBe(false);
+
+    const getRes = await fetch(`${studio!.url}/api/unknown-endpoint`);
+    expect(getRes.status).toBe(404);
+    expect(getRes.headers.get('Content-Type')).toContain('application/json');
+    const getBody = await getRes.json();
+    expect(getBody).toEqual({ ok: false, error: 'Not found' });
   });
 });

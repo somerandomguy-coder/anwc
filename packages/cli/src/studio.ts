@@ -85,7 +85,34 @@ function defaultHtml(): string {
 </html>`;
 }
 
+function validateTargetUrl(raw: string): string {
+  const trimmed = raw.trim();
+  const mdMatch = /^\[(?:[^\]]*)\]\((https?:\/\/[^)]+)\)$/.exec(trimmed)
+    || /^<(https?:\/\/[^>]+)>$/.exec(trimmed)
+    || /^\[(https?:\/\/[^\]]+)\]$/.exec(trimmed);
+  if (mdMatch || trimmed.startsWith('[') || (trimmed.endsWith(')') && !trimmed.includes('('))) {
+    throw new Error(`Invalid URL '${raw}'. Markdown formatting is not allowed; provide a raw http: or https: URL.`);
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch (err) {
+    throw new Error(`Invalid URL '${raw}': ${err instanceof Error ? err.message : 'Must be a valid URL.'}. Only http: and https: URLs are supported.`);
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`Unsupported URL protocol '${parsed.protocol}'. Only http: and https: URLs are supported.`);
+  }
+
+  return trimmed;
+}
+
 export async function startStudioServer(options: StudioServerOptions = {}): Promise<StudioServerHandle> {
+  if (options.host && options.host !== '127.0.0.1' && options.host !== 'localhost') {
+    throw new Error(`ANWC Studio server must bind to loopback (127.0.0.1). Binding to '${options.host}' is prohibited.`);
+  }
+
   const host = options.host ?? '127.0.0.1';
   const requestedPort = options.port ?? 4180;
   const inspectHandler = options.inspectFn ?? inspect;
@@ -141,9 +168,11 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
         if (!body.url || typeof body.url !== 'string') {
           return sendJson(res, 400, { ok: false, error: "Missing required 'url' field." });
         }
-        const targetUrl = body.url.trim();
-        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-          return sendJson(res, 400, { ok: false, error: "Unsupported URL protocol. Only http: and https: URLs are supported." });
+        let targetUrl: string;
+        try {
+          targetUrl = validateTargetUrl(body.url);
+        } catch (err) {
+          return sendJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
         }
 
         const snapshot = await inspectHandler({
@@ -181,7 +210,7 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
     }
 
     // Static Asset Serving
-    if (req.method === 'GET') {
+    if (req.method === 'GET' && !pathname.startsWith('/api/')) {
       let relativePath = pathname === '/' ? 'index.html' : pathname.replace(/^\//, '');
       const filePath = resolve(join(staticDir, relativePath));
 
