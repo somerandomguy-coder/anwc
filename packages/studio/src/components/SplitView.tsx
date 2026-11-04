@@ -43,12 +43,12 @@ export interface SplitViewProps {
 export function SplitView({
   left,
   right,
-  splitRatio = 0.5,
-  overlayMode = false,
-  overlayOpacity = 0.75,
-  blendMode = 'normal' as BlendMode,
+  splitRatio: propSplitRatio,
+  overlayMode: propOverlayMode,
+  overlayOpacity: propOpacity,
+  blendMode: propBlendMode,
   zoom = 1,
-  activePane = 'both',
+  activePane: propActivePane,
   onSplitRatioChange,
   onOverlayModeChange,
   onOverlayOpacityChange,
@@ -58,34 +58,55 @@ export function SplitView({
   style
 }: SplitViewProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [internalRatio, setInternalRatio] = useState(splitRatio);
-  const [internalOpacity, setInternalOpacity] = useState(overlayOpacity);
-  const [internalBlend, setInternalBlend] = useState<BlendMode>(blendMode);
+  const [internalRatio, setInternalRatio] = useState(propSplitRatio ?? 0.5);
+  const [internalOverlay, setInternalOverlay] = useState(propOverlayMode ?? false);
+  const [internalOpacity, setInternalOpacity] = useState(propOpacity ?? 0.75);
+  const [internalBlend, setInternalBlend] = useState<BlendMode>(propBlendMode ?? ('normal' as BlendMode));
+  const [internalActivePane, setInternalActivePane] = useState<SplitPaneMode>(propActivePane ?? 'both');
   const [isDragging, setIsDragging] = useState(false);
 
-  // Sync state if props change
+  // Synchronize internal state when controlled props change
   useEffect(() => {
-    setInternalRatio(splitRatio);
-  }, [splitRatio]);
-
-  useEffect(() => {
-    setInternalOpacity(overlayOpacity);
-  }, [overlayOpacity]);
+    if (propSplitRatio !== undefined) {
+      setInternalRatio(propSplitRatio);
+    }
+  }, [propSplitRatio]);
 
   useEffect(() => {
-    setInternalBlend(blendMode);
-  }, [blendMode]);
+    if (propOverlayMode !== undefined) {
+      setInternalOverlay(propOverlayMode);
+    }
+  }, [propOverlayMode]);
 
-  const currentRatio = splitRatio !== undefined ? splitRatio : internalRatio;
-  const currentOpacity = overlayOpacity !== undefined ? overlayOpacity : internalOpacity;
-  const currentBlend = blendMode !== undefined ? blendMode : internalBlend;
+  useEffect(() => {
+    if (propOpacity !== undefined) {
+      setInternalOpacity(propOpacity);
+    }
+  }, [propOpacity]);
 
-  const widths = computePaneWidths(currentRatio, activePane, overlayMode);
+  useEffect(() => {
+    if (propBlendMode !== undefined) {
+      setInternalBlend(propBlendMode);
+    }
+  }, [propBlendMode]);
 
-  // Divider drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+  useEffect(() => {
+    if (propActivePane !== undefined) {
+      setInternalActivePane(propActivePane);
+    }
+  }, [propActivePane]);
+
+  const currentRatio = propSplitRatio !== undefined ? propSplitRatio : internalRatio;
+  const currentOverlay = propOverlayMode !== undefined ? propOverlayMode : internalOverlay;
+  const currentOpacity = propOpacity !== undefined ? propOpacity : internalOpacity;
+  const currentBlend = propBlendMode !== undefined ? propBlendMode : internalBlend;
+  const currentActivePane = propActivePane !== undefined ? propActivePane : internalActivePane;
+
+  const widths = computePaneWidths(currentRatio, currentActivePane, currentOverlay);
+
+  // Drag listeners managed with proper useEffect cleanup
+  useEffect(() => {
+    if (!isDragging) return;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (!containerRef.current) return;
@@ -98,12 +119,20 @@ export function SplitView({
 
     const onMouseUp = () => {
       setIsDragging(false);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
     };
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isDragging, onSplitRatioChange]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
   };
 
   const handlePresetSelect = (ratio: number) => {
@@ -123,16 +152,21 @@ export function SplitView({
     onBlendModeChange?.(val);
   };
 
+  const handleExitOverlay = () => {
+    setInternalOverlay(false);
+    onOverlayModeChange?.(false);
+  };
+
   // If in overlay mode and right pane is a React component (not a raw host DOM element like 'div'),
   // pass overlayMode: true so XRayPane can activate transparent background
-  const rightChild = React.isValidElement(right) && overlayMode && typeof right.type !== 'string'
+  const rightChild = React.isValidElement(right) && currentOverlay && typeof right.type !== 'string'
     ? React.cloneElement(right as React.ReactElement<{ overlayMode?: boolean }>, {
         overlayMode: true
       })
     : right;
 
   // Render Overlay Mode
-  if (overlayMode) {
+  if (currentOverlay) {
     return (
       <div
         ref={containerRef}
@@ -154,8 +188,8 @@ export function SplitView({
             position: 'relative',
             width: '100%',
             height: '100%',
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top center'
+            transform: zoom === 1 ? undefined : `scale(${zoom})`,
+            transformOrigin: zoom === 1 ? undefined : 'top center'
           }}
         >
           {/* Base Layer: Ground Truth */}
@@ -249,24 +283,22 @@ export function SplitView({
             </select>
           </label>
 
-          {onOverlayModeChange && (
-            <button
-              type="button"
-              onClick={() => onOverlayModeChange(false)}
-              style={{
-                backgroundColor: '#334155',
-                color: '#f8fafc',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '3px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              Exit Overlay
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleExitOverlay}
+            style={{
+              backgroundColor: '#334155',
+              color: '#f8fafc',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '3px 8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Exit Overlay
+          </button>
         </div>
       </div>
     );
@@ -291,7 +323,7 @@ export function SplitView({
       }}
     >
       {/* Left Pane (Ground Truth) */}
-      {activePane !== 'right' && (
+      {currentActivePane !== 'right' && (
         <div
           className="anwc-split-pane anwc-split-pane-left"
           data-testid="split-pane-left"
@@ -299,7 +331,8 @@ export function SplitView({
             width: widths.left,
             height: '100%',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            pointerEvents: isDragging ? 'none' : 'auto'
           }}
         >
           <div
@@ -307,8 +340,8 @@ export function SplitView({
             style={{
               width: '100%',
               height: '100%',
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top center'
+              transform: zoom === 1 ? undefined : `scale(${zoom})`,
+              transformOrigin: zoom === 1 ? undefined : 'top center'
             }}
           >
             {left}
@@ -317,7 +350,7 @@ export function SplitView({
       )}
 
       {/* Draggable Divider (visible in both pane mode) */}
-      {activePane === 'both' && (
+      {currentActivePane === 'both' && (
         <div
           className="anwc-split-divider"
           data-testid="split-divider"
@@ -422,7 +455,7 @@ export function SplitView({
       )}
 
       {/* Right Pane (X-Ray Canvas) */}
-      {activePane !== 'left' && (
+      {currentActivePane !== 'left' && (
         <div
           className="anwc-split-pane anwc-split-pane-right"
           data-testid="split-pane-right"
@@ -430,7 +463,8 @@ export function SplitView({
             width: widths.right,
             height: '100%',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            pointerEvents: isDragging ? 'none' : 'auto'
           }}
         >
           <div
@@ -438,8 +472,8 @@ export function SplitView({
             style={{
               width: '100%',
               height: '100%',
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top center'
+              transform: zoom === 1 ? undefined : `scale(${zoom})`,
+              transformOrigin: zoom === 1 ? undefined : 'top center'
             }}
           >
             {rightChild}

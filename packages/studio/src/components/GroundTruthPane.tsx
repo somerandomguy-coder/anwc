@@ -28,6 +28,30 @@ const PULSE_KEYFRAMES = `
 }
 `;
 
+/**
+ * Validates that a target URL is a safe, well-formed http: or https: URL.
+ * Rejects file://, javascript:, data:, ftp:, and markdown syntax (e.g. [app](http://...)).
+ */
+export function isValidTargetUrl(rawUrl?: string | null): boolean {
+  if (!rawUrl || typeof rawUrl !== 'string') {
+    return false;
+  }
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return false;
+  }
+  // Reject markdown link syntax e.g. [app](http://...)
+  if (trimmed.startsWith('[') || trimmed.includes('](')) {
+    return false;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function GroundTruthPane({
   url,
   targetUrl,
@@ -43,8 +67,9 @@ export function GroundTruthPane({
   const patternId = useId().replace(/:/g, '');
   const gridPatternId = `blueprint-grid-${patternId}`;
 
-  const effectiveUrl = (url ?? targetUrl ?? '').trim();
-  const hasLiveUrl = effectiveUrl.length > 0;
+  const rawUrl = (url ?? targetUrl ?? '').trim();
+  const hasLiveUrl = isValidTargetUrl(rawUrl);
+  const effectiveUrl = hasLiveUrl ? rawUrl : '';
 
   // Determine target bounding box for highlight overlay
   let targetBox: Rect | null = activeFindingBox ?? null;
@@ -83,8 +108,8 @@ export function GroundTruthPane({
         style={{
           width: `${viewport.width}px`,
           height: `${viewport.height}px`,
-          transform: `scale(${zoom})`,
-          transformOrigin,
+          transform: zoom === 1 ? undefined : `scale(${zoom})`,
+          transformOrigin: zoom === 1 ? undefined : transformOrigin,
           position: 'relative',
           backgroundColor: '#0f172a',
           boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',

@@ -7,7 +7,7 @@ import {
   clampSplitRatio,
   computePaneWidths
 } from '../../packages/studio/src/components/split-utils.js';
-import { GroundTruthPane } from '../../packages/studio/src/components/GroundTruthPane.js';
+import { GroundTruthPane, isValidTargetUrl } from '../../packages/studio/src/components/GroundTruthPane.js';
 import { SplitView } from '../../packages/studio/src/components/SplitView.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 
@@ -67,7 +67,20 @@ describe('Studio Split View & Scaling Utilities', () => {
 describe('GroundTruthPane Component', () => {
   const defaultViewport = { width: 390, height: 844 };
 
-  test('renders sandboxed iframe when target URL is provided', () => {
+  test('validates target URLs safely against dangerous schemes and markdown syntax', () => {
+    expect(isValidTargetUrl('http://localhost:3000/app')).toBe(true);
+    expect(isValidTargetUrl('https://demo.anwc.dev')).toBe(true);
+    expect(isValidTargetUrl('file:///etc/passwd')).toBe(false);
+    expect(isValidTargetUrl('javascript:alert(1)')).toBe(false);
+    expect(isValidTargetUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isValidTargetUrl('ftp://ftp.example.com')).toBe(false);
+    expect(isValidTargetUrl('[app](http://localhost:3000)')).toBe(false);
+    expect(isValidTargetUrl('')).toBe(false);
+    expect(isValidTargetUrl(null)).toBe(false);
+    expect(isValidTargetUrl(undefined)).toBe(false);
+  });
+
+  test('renders sandboxed iframe when valid target URL is provided', () => {
     const html = renderToStaticMarkup(
       React.createElement(GroundTruthPane, {
         url: 'http://localhost:3000/app',
@@ -83,6 +96,26 @@ describe('GroundTruthPane Component', () => {
     // Dimensions match viewport exactly
     expect(html).toContain('width:390px');
     expect(html).toContain('height:844px');
+  });
+
+  test('falls back to blueprint SVG when unsafe or malicious URL is provided', () => {
+    const maliciousSchemes = [
+      'javascript:alert(document.cookie)',
+      'file:///C:/Windows/System32',
+      '[click here](http://malicious.com)',
+      'data:text/html,bad'
+    ];
+
+    for (const badUrl of maliciousSchemes) {
+      const html = renderToStaticMarkup(
+        React.createElement(GroundTruthPane, {
+          url: badUrl,
+          viewport: defaultViewport
+        })
+      );
+      expect(html).not.toContain('<iframe');
+      expect(html).toContain('anwc-blueprint-svg');
+    }
   });
 
   test('renders animated highlight pulse overlay over active target element', () => {
@@ -157,7 +190,7 @@ describe('GroundTruthPane Component', () => {
     expect(html).toContain('No Live Ground Truth URL');
   });
 
-  test('applies zoom scaling with top center transform origin', () => {
+  test('applies zoom scaling with top center transform origin when zoom is specified', () => {
     const html = renderToStaticMarkup(
       React.createElement(GroundTruthPane, {
         url: 'http://localhost:3000/app',
@@ -169,18 +202,29 @@ describe('GroundTruthPane Component', () => {
     expect(html).toContain('transform:scale(0.75)');
     expect(html).toContain('transform-origin:top center');
   });
+
+  test('omits transform style when zoom is 1 (unscaled)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(GroundTruthPane, {
+        url: 'http://localhost:3000/app',
+        viewport: defaultViewport,
+        zoom: 1
+      })
+    );
+
+    expect(html).not.toContain('transform:scale(1)');
+  });
 });
 
 describe('SplitView Component', () => {
   const dummyLeft = React.createElement('div', { 'data-testid': 'mock-left' }, 'Left Content');
   const dummyRight = React.createElement('div', { 'data-testid': 'mock-right' }, 'Right Content');
 
-  test('renders side-by-side layout with default 50/50 split', () => {
+  test('renders side-by-side layout with default 50/50 split in uncontrolled mode', () => {
     const html = renderToStaticMarkup(
       React.createElement(SplitView, {
         left: dummyLeft,
-        right: dummyRight,
-        splitRatio: 0.5
+        right: dummyRight
       })
     );
 
@@ -255,7 +299,7 @@ describe('SplitView Component', () => {
     expect(html).toContain('anwc-overlay-toolbar');
   });
 
-  test('applies uniform zoom scaling consistently', () => {
+  test('applies uniform zoom scaling consistently when scaled', () => {
     const html = renderToStaticMarkup(
       React.createElement(SplitView, {
         left: dummyLeft,
@@ -266,5 +310,17 @@ describe('SplitView Component', () => {
 
     expect(html).toContain('transform:scale(0.65)');
     expect(html).toContain('transform-origin:top center');
+  });
+
+  test('omits transform style when unscaled (zoom === 1)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(SplitView, {
+        left: dummyLeft,
+        right: dummyRight,
+        zoom: 1
+      })
+    );
+
+    expect(html).not.toContain('transform:scale(1)');
   });
 });
