@@ -66,6 +66,12 @@ export function computeXRayBoundingBoxes(
         blockerNodeIdSet.add(id);
       }
     }
+  } else if (finding.evidence.kind === 'clipped-by-ancestor') {
+    for (const id of finding.evidence.ancestorNodeIds) {
+      if (id && id !== finding.nodeId) {
+        blockerNodeIdSet.add(id);
+      }
+    }
   }
 
   for (const id of finding.relatedNodeIds) {

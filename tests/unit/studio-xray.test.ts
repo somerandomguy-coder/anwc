@@ -32,6 +32,19 @@ describe('Studio X-Ray Canvas Utilities', () => {
     expect(boxes.blockerNodes[0]?.nodeId).toBe('n-overlay');
   });
 
+  test('extracts ancestor bounding boxes for clipped-by-ancestor finding', () => {
+    const clippedFinding = {
+      ...validSnapshotFixture.findings[0]!,
+      code: 'CLIPPED_BY_ANCESTOR',
+      evidence: { kind: 'clipped-by-ancestor' as const, boxFraction: 0.2, ancestorNodeIds: ['n-overlay'] },
+      relatedNodeIds: []
+    };
+    const boxes = computeXRayBoundingBoxes(validSnapshotFixture, clippedFinding);
+    expect(boxes.target).toBeDefined();
+    expect(boxes.blockers.length).toBe(1);
+    expect(boxes.blockerNodes[0]?.nodeId).toBe('n-overlay');
+  });
+
   test('handles undefined or null finding gracefully', () => {
     const boxes = computeXRayBoundingBoxes(validSnapshotFixture, null);
     expect(boxes.target).toBeUndefined();

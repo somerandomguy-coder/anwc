@@ -2,6 +2,7 @@ import React, { useState, useId } from 'react';
 import type { Finding, Snapshot } from '@anwc/protocol';
 import type { HitSample, HoveredSampleInfo } from '../types.js';
 import {
+  buildHoveredSampleInfo,
   computeXRayBoundingBoxes,
   getAllPointerSamples,
   mapSampleColor,
@@ -52,22 +53,7 @@ export function XRayPane({
   const allSamples = getAllPointerSamples(snapshot);
 
   const handleMouseEnterSample = (e: React.MouseEvent, sample: SampleWithNode) => {
-    const blockerNode = sample.blockerNodeId
-      ? snapshot.nodes.find((n) => n.nodeId === sample.blockerNodeId)
-      : null;
-
-    const sampleInfo: HoveredSampleInfo = {
-      x: sample.x,
-      y: sample.y,
-      result: sample.result,
-      blockerNodeId: sample.blockerNodeId ?? null,
-      blockerTag: blockerNode?.tag ?? null,
-      blockerLabel: blockerNode?.label || blockerNode?.tag || null,
-      targetNodeId: sample.targetNodeId,
-      screenX: e.clientX,
-      screenY: e.clientY
-    };
-
+    const sampleInfo = buildHoveredSampleInfo(sample, snapshot, { screenX: e.clientX, screenY: e.clientY });
     setInternalHoveredSample(sampleInfo);
     onHoverSample?.(sampleInfo);
   };
@@ -329,10 +315,10 @@ export function XRayPane({
             })}
           </g>
         </svg>
-
-        {/* Embedded Hover Tooltip */}
-        {internalHoveredSample && <SampleTooltip sample={internalHoveredSample} />}
       </div>
+
+      {/* Embedded Hover Tooltip */}
+      {internalHoveredSample && <SampleTooltip sample={internalHoveredSample} />}
     </div>
   );
 }
