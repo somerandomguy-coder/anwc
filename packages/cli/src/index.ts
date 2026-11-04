@@ -5,6 +5,7 @@ import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
 import { errorEnvelopeSchema, inspectOptionsSchema, rawCaptureSchema, snapshotSchema } from '@anwc/protocol';
 import type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
+export type { ErrorEnvelope, InspectOptions, RawCapture, Snapshot };
 import {
   createReport,
   formatReportText,
