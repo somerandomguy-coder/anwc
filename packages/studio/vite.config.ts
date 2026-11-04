@@ -7,6 +7,12 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'node:crypto': resolve(__dirname, 'src/crypto-shim.ts'),
+      'crypto': resolve(__dirname, 'src/crypto-shim.ts')
+    }
+  },
   build: {
     outDir: resolve(__dirname, '../cli/dist/studio'),
     emptyOutDir: true
