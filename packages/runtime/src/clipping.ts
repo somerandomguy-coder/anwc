@@ -3,7 +3,7 @@ import type { Assessment, Measurement, Rect } from '@anwc/protocol';
 type ClipValue = NonNullable<Measurement['clip']['value']>;
 
 function known(value: ClipValue): Assessment<ClipValue> {
-  return { status: 'known', value, method: 'client-box-ancestor-clipping', limitations: ['Supports normal-flow rectangular clips only.'] };
+  return { status: 'known', value, method: 'client-box-ancestor-clipping', limitations: ['Supports normal-flow and sticky rectangular clips only.'] };
 }
 
 function unknown(reason: string): Assessment<ClipValue> {
@@ -48,7 +48,14 @@ export function observeAncestorClip(element: Element, box: Rect | null, nodeIdFo
   const ownUnsupported = unsupported(element);
   if (ownUnsupported) return unknown(ownUnsupported);
   const position = getComputedStyle(element).position;
-  if (position === 'absolute' || position === 'fixed' || position === 'sticky') return unknown(`Position:${position} descendants are outside T05's normal-flow clip model.`);
+  if (position === 'absolute' || position === 'fixed') return unknown(`Position:${position} descendants are outside normal-flow clip model.`);
+
+  // Top-layer modal dialog is rendered in top layer; DOM ancestors do not clip it.
+  try {
+    if (element.matches?.('dialog:modal')) {
+      return known({ intersection: box, boxFraction: 1, ancestors: [] });
+    }
+  } catch {}
 
   let visible: Rect | null = box;
   const ancestors: ClipValue['ancestors'] = [];
@@ -59,11 +66,16 @@ export function observeAncestorClip(element: Element, box: Rect | null, nodeIdFo
     const style = getComputedStyle(current);
     const x = clipAxis(style.overflowX);
     const y = clipAxis(style.overflowY);
-    if (!x && !y) continue;
-    const clip = clientBox(current);
-    visible = visible && applyAxis(visible, clip, x, y);
-    const nodeId = nodeIdFor(current);
-    if (nodeId) ancestors.push({ nodeId, axes: x && y ? 'xy' : x ? 'x' : 'y', box: clip });
+    if (x || y) {
+      const clip = clientBox(current);
+      visible = visible && applyAxis(visible, clip, x, y);
+      const nodeId = nodeIdFor(current);
+      if (nodeId) ancestors.push({ nodeId, axes: x && y ? 'xy' : x ? 'x' : 'y', box: clip });
+    }
+    // Top-layer boundary: an active modal dialog is not clipped by its DOM ancestors
+    try {
+      if (current.matches?.('dialog:modal')) break;
+    } catch {}
   }
   return known({ intersection: visible, boxFraction: fraction(box, visible), ancestors });
 }

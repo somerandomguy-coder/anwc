@@ -1,21 +1,21 @@
 {
   "schemaVersion": "0.1",
-  "generatedAt": "2026-09-17T04:52:16.859Z",
-  "totalCases": 29,
-  "defectiveCount": 10,
-  "healthyCount": 10,
+  "generatedAt": "2026-11-04T13:35:59.848Z",
+  "totalCases": 34,
+  "defectiveCount": 12,
+  "healthyCount": 13,
   "boundaryCount": 9,
   "passedAll": true,
   "familyBreakdown": {
     "text": {
-      "total": 6,
-      "passed": 6,
+      "total": 8,
+      "passed": 8,
       "falsePositives": 0,
       "falseNegatives": 0
     },
     "clips-scroll": {
-      "total": 4,
-      "passed": 4,
+      "total": 6,
+      "passed": 6,
       "falsePositives": 0,
       "falseNegatives": 0
     },
@@ -26,8 +26,8 @@
       "falseNegatives": 0
     },
     "state-semantics": {
-      "total": 5,
-      "passed": 5,
+      "total": 6,
+      "passed": 6,
       "falsePositives": 0,
       "falseNegatives": 0
     },
@@ -64,7 +64,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 33,
       "notes": "Correctly detected expected rule: HORIZONTAL_OVERFLOW"
     },
     {
@@ -86,7 +86,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 41,
+      "durationMs": 40,
       "notes": "Zero actionable false positives (2 acknowledged/info ignored)"
     },
     {
@@ -105,7 +105,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 38,
+      "durationMs": 37,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -124,7 +124,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 31,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -146,8 +146,49 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
+      "durationMs": 40,
+      "notes": "Correctly detected expected rule: TEXT_LINE_BUDGET_EXCEEDED"
+    },
+    {
+      "id": "text-nested-inline-budget-defective",
+      "family": "text",
+      "role": "defective",
+      "oraclePassed": true,
+      "oracleDetails": {
+        "observedLines": 6,
+        "maxLines": 1
+      },
+      "classification": "detected-defect",
+      "anwcPassed": true,
+      "findingsCount": 1,
+      "detectedRules": [
+        "TEXT_LINE_BUDGET_EXCEEDED"
+      ],
+      "complete": true,
+      "paintVisibility": "unknown",
+      "inspectedNodes": 5,
+      "skippedNodes": 0,
       "durationMs": 26,
       "notes": "Correctly detected expected rule: TEXT_LINE_BUDGET_EXCEEDED"
+    },
+    {
+      "id": "text-nested-inline-budget-healthy",
+      "family": "text",
+      "role": "healthy",
+      "oraclePassed": true,
+      "oracleDetails": {
+        "fits": true
+      },
+      "classification": "healthy-pass",
+      "anwcPassed": true,
+      "findingsCount": 0,
+      "detectedRules": [],
+      "complete": true,
+      "paintVisibility": "unknown",
+      "inspectedNodes": 5,
+      "skippedNodes": 0,
+      "durationMs": 23,
+      "notes": "Zero false positives on clean control"
     },
     {
       "id": "text-delayed-font-boundary",
@@ -165,7 +206,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 26,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -189,7 +230,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 30,
       "notes": "Correctly detected expected rule: CLIPPED_BY_ANCESTOR"
     },
     {
@@ -212,7 +253,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 25,
       "notes": "Correctly detected expected rule: CLIPPED_BY_ANCESTOR"
     },
     {
@@ -231,7 +272,49 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 41,
+      "notes": "Zero false positives on clean control"
+    },
+    {
+      "id": "clip-sticky-overflow-defective",
+      "family": "clips-scroll",
+      "role": "defective",
+      "oraclePassed": true,
+      "oracleDetails": {
+        "clipped": true
+      },
+      "classification": "detected-defect",
+      "anwcPassed": true,
+      "findingsCount": 3,
+      "detectedRules": [
+        "HORIZONTAL_OVERFLOW",
+        "CLIPPED_BY_ANCESTOR",
+        "CLIPPED_BY_ANCESTOR"
+      ],
+      "complete": true,
+      "paintVisibility": "unknown",
+      "inspectedNodes": 6,
+      "skippedNodes": 0,
+      "durationMs": 24,
+      "notes": "Correctly detected expected rule: CLIPPED_BY_ANCESTOR"
+    },
+    {
+      "id": "clip-sticky-healthy",
+      "family": "clips-scroll",
+      "role": "healthy",
+      "oraclePassed": true,
+      "oracleDetails": {
+        "fits": true
+      },
+      "classification": "healthy-pass",
+      "anwcPassed": true,
+      "findingsCount": 0,
+      "detectedRules": [],
+      "complete": true,
+      "paintVisibility": "unknown",
+      "inspectedNodes": 6,
+      "skippedNodes": 0,
+      "durationMs": 26,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -252,7 +335,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 26,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -273,7 +356,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 41,
       "notes": "Correctly detected expected rule: POINTER_BLOCKED_AT_SAMPLES"
     },
     {
@@ -313,7 +396,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 31,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -332,7 +415,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 27,
+      "durationMs": 40,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -395,7 +478,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 28,
       "notes": "Correctly detected expected rule: EXPECTED_VISIBLE_BUT_HIDDEN"
     },
     {
@@ -414,7 +497,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 27,
+      "durationMs": 39,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -433,7 +516,26 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 32,
+      "durationMs": 26,
+      "notes": "Zero false positives on clean control"
+    },
+    {
+      "id": "state-modal-dialog-healthy",
+      "family": "state-semantics",
+      "role": "healthy",
+      "oraclePassed": true,
+      "oracleDetails": {
+        "isModal": true
+      },
+      "classification": "healthy-pass",
+      "anwcPassed": true,
+      "findingsCount": 0,
+      "detectedRules": [],
+      "complete": true,
+      "paintVisibility": "unknown",
+      "inspectedNodes": 6,
+      "skippedNodes": 0,
+      "durationMs": 42,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -455,7 +557,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 42,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -474,7 +576,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 29,
+      "durationMs": 41,
       "notes": "Duplicate key detected in captured inventory"
     },
     {
@@ -497,7 +599,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 9,
       "skippedNodes": 0,
-      "durationMs": 30,
+      "durationMs": 44,
       "notes": "Zero false positives on clean control"
     },
     {
@@ -516,7 +618,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 5,
       "skippedNodes": 0,
-      "durationMs": 38,
+      "durationMs": 39,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -539,7 +641,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 25,
+      "durationMs": 36,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -558,7 +660,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 4,
       "skippedNodes": 0,
-      "durationMs": 28,
+      "durationMs": 29,
       "notes": "Correctly reported boundary/unsupported scope (complete: true, paintUnknown: true)"
     },
     {
@@ -596,7 +698,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 100,
       "skippedNodes": 803,
-      "durationMs": 105,
+      "durationMs": 152,
       "notes": "Correctly reported boundary/unsupported scope (complete: false, paintUnknown: true)"
     },
     {
@@ -617,7 +719,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 3,
       "skippedNodes": 0,
-      "durationMs": 306,
+      "durationMs": 309,
       "notes": "Readiness unsettled detected: fonts ready; geometry remained unstable before timeout"
     },
     {
@@ -636,7 +738,7 @@
       "paintVisibility": "unknown",
       "inspectedNodes": 6,
       "skippedNodes": 0,
-      "durationMs": 39,
+      "durationMs": 34,
       "notes": "Zero false positives on clean control"
     }
   ]

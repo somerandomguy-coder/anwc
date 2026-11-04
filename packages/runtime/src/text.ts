@@ -2,7 +2,7 @@ import type { Assessment, Measurement, Rect } from '@anwc/protocol';
 import { observeOwnTextClip } from './clipping.js';
 
 function unknown(reason: string): Assessment<NonNullable<Measurement['text']['value']>> {
-  return { status: 'unknown', value: null, method: 'range-client-rects-direct-text', limitations: [reason] };
+  return { status: 'unknown', value: null, method: 'range-client-rects-inline-text', limitations: [reason] };
 }
 
 function toRect(rect: DOMRect): Rect {
@@ -13,8 +13,25 @@ function equalRect(a: Rect, b: Rect): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 }
 
-function directTextNodes(element: Element): Text[] {
-  return [...element.childNodes].filter((node): node is Text => node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim()));
+function inlineTextNodes(element: Element): Text[] {
+  const result: Text[] = [];
+  function collect(parent: Node) {
+    for (const child of parent.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        if (child.textContent && child.textContent.trim().length > 0) {
+          result.push(child as Text);
+        }
+      } else if (child.nodeType === Node.ELEMENT_NODE && child instanceof Element) {
+        const display = getComputedStyle(child).display;
+        if (display === 'none') continue;
+        if (display === 'inline' || display === 'contents') {
+          collect(child);
+        }
+      }
+    }
+  }
+  collect(element);
+  return result;
 }
 
 function lineCount(rects: Rect[]): number {
@@ -34,7 +51,7 @@ export function observeText(element: Element, clip: Measurement['clip']): Measur
   if (!style.writingMode.startsWith('horizontal-tb')) return unknown('Vertical writing modes are unsupported for text fragment observations.');
 
   const fragments: Rect[] = [];
-  for (const text of directTextNodes(element)) {
+  for (const text of inlineTextNodes(element)) {
     const range = element.ownerDocument.createRange();
     range.selectNodeContents(text);
     for (const clientRect of [...range.getClientRects()]) {
@@ -51,7 +68,7 @@ export function observeText(element: Element, clip: Measurement['clip']): Measur
   return {
     status: 'known',
     value: { lineCount: lineCount(fragments), fragmentRects: fragments, clippedFragmentCount },
-    method: 'range-client-rects-direct-text',
-    limitations: ['Own direct text nodes only; nested elements own their text observations.', 'Line grouping is approximate.']
+    method: 'range-client-rects-inline-text',
+    limitations: ['Inline descendant text nodes included; block children establish independent flow.', 'Line grouping is approximate.']
   };
 }

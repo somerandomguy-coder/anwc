@@ -101,7 +101,7 @@ export async function runConformanceSuite(page: Page): Promise<ConformanceMatrix
         anwcPassed = false;
         classification = 'detected-defect'; // False positive!
         familyStats[family].falsePositives++;
-        notes = `False positive: reported actionable [${actionable.map((f) => f.ruleId).join(', ')}] on clean control`;
+        notes = `False positive: reported actionable [${actionable.map((f) => `${f.code}: ${f.message}`).join('; ')}] on clean control`;
       }
     } else {
       // Boundary / unsupported case

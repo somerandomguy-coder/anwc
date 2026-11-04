@@ -8,3 +8,5 @@ export * from './diff.js';
 export * from './diff-format.js';
 export * from './diff-html.js';
 export * from './diff-markdown.js';
+export * from './query-schema.js';
+export * from './query.js';

@@ -135,7 +135,17 @@ function isDisabled(element: Element): boolean {
 }
 
 function isInert(element: Element): boolean {
-  for (let current: Element | null = element; current; current = current.parentElement) if (current.hasAttribute('inert')) return true;
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    if (current.hasAttribute('inert')) return true;
+  }
+  try {
+    const modals = element.ownerDocument.querySelectorAll('dialog:modal');
+    if (modals.length > 0 && ![...modals].some((dialog) => dialog.contains(element))) {
+      return true;
+    }
+  } catch {
+    // If dialog:modal selector is unsupported by browser engine, ignore
+  }
   return false;
 }
 

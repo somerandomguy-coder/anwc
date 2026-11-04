@@ -14,6 +14,11 @@ import {
   formatDiffText,
   renderDiffHtml,
   renderDiffMarkdown,
+  queryReportSummary,
+  queryFindingDetail,
+  formatAgentSummaryText,
+  formatAgentDetailText,
+  reportSchema,
   type Report
 } from '@anwc/report';
 import { chromium, type Page } from 'playwright';
@@ -141,6 +146,14 @@ export interface ReportCommandOptions {
   format: 'html' | 'markdown' | 'text' | 'json';
   output?: string;
   redact: boolean;
+  query?: 'summary' | 'detail';
+  findingId?: string;
+  code?: string;
+  severity?: 'error' | 'warning' | 'info';
+  file?: string;
+  nodeId?: string;
+  actionableOnly?: boolean;
+  limit?: number;
 }
 
 export function parseReportArguments(arguments_: string[]): ReportCommandOptions {
@@ -148,18 +161,30 @@ export function parseReportArguments(arguments_: string[]): ReportCommandOptions
     throw new CliError(
       'INVALID_USAGE',
       'Usage: anwc report CAPTURE_FILE [options]',
-      { recovery: "Run 'anwc report capture.json [--format html|markdown|text|json] [--output path] [--redact]'." }
+      { recovery: "Run 'anwc report capture.json [--query summary|detail] [--finding-id <id>] [--format html|markdown|text|json] [--output path] [--redact]'." }
     );
   }
   const captureFile = arguments_[1];
   let format: 'html' | 'markdown' | 'text' | 'json' = 'html';
   let output: string | undefined;
   let redact = false;
+  let query: 'summary' | 'detail' | undefined;
+  let findingId: string | undefined;
+  let code: string | undefined;
+  let severity: 'error' | 'warning' | 'info' | undefined;
+  let file: string | undefined;
+  let nodeId: string | undefined;
+  let actionableOnly: boolean | undefined;
+  let limit: number | undefined;
 
   for (let index = 2; index < arguments_.length; index += 1) {
     const option = arguments_[index]!;
     if (option === '--redact') {
       redact = true;
+      continue;
+    }
+    if (option === '--actionable-only') {
+      actionableOnly = true;
       continue;
     }
     const value = arguments_[index + 1];
@@ -173,12 +198,43 @@ export function parseReportArguments(arguments_: string[]): ReportCommandOptions
       }
     } else if (option === '--output') {
       output = value;
+    } else if (option === '--query') {
+      if (value === 'summary' || value === 'detail') {
+        query = value;
+      } else {
+        throw new CliError('INVALID_USAGE', `Invalid --query '${value}'. Supported queries: summary, detail.`);
+      }
+    } else if (option === '--finding-id' || option === '--finding') {
+      findingId = value;
+    } else if (option === '--code' || option === '--filter-code') {
+      code = value;
+    } else if (option === '--severity' || option === '--filter-severity') {
+      if (value === 'error' || value === 'warning' || value === 'info') {
+        severity = value;
+      } else {
+        throw new CliError('INVALID_USAGE', `Invalid --severity '${value}'. Supported: error, warning, info.`);
+      }
+    } else if (option === '--file' || option === '--filter-file') {
+      file = value;
+    } else if (option === '--node-id' || option === '--filter-node') {
+      nodeId = value;
+    } else if (option === '--limit') {
+      limit = positiveInteger(value, option);
     } else {
       throw new CliError('INVALID_USAGE', `Unknown or invalid option: ${option}.`);
     }
   }
 
-  return { captureFile, format, output, redact };
+  const hasFormatArg = arguments_.includes('--format');
+  if (query && !hasFormatArg) {
+    format = 'text';
+  }
+
+  if (query === 'detail' && !findingId) {
+    throw new CliError('INVALID_USAGE', '--query detail requires --finding-id <id>.');
+  }
+
+  return { captureFile, format, output, redact, query, findingId, code, severity, file, nodeId, actionableOnly, limit };
 }
 
 export interface CheckCommandOptions {
@@ -397,23 +453,48 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       } catch (error) {
         throw new CliError('INVALID_USAGE', `Capture file '${reportOptions.captureFile}' is not valid JSON.`);
       }
-      let snapshot: Snapshot;
-      try {
-        snapshot = snapshotSchema.parse(parsedJson);
-      } catch (error) {
-        throw new CliError('INVALID_USAGE', `Capture file '${reportOptions.captureFile}' does not match Snapshot 0.1 schema.`);
+      let snapshot: Snapshot | null = null;
+      let report: Report | null = null;
+      const snapResult = snapshotSchema.safeParse(parsedJson);
+      if (snapResult.success) {
+        snapshot = snapResult.data;
+        report = createReport(snapshot);
+      } else {
+        const repResult = reportSchema.safeParse(parsedJson);
+        if (repResult.success) {
+          report = repResult.data;
+        } else {
+          throw new CliError('INVALID_USAGE', `Capture file '${reportOptions.captureFile}' does not match Snapshot 0.1 or Report 0.1 schema.`);
+        }
       }
 
-      const report = createReport(snapshot);
       let output: string;
-      if (reportOptions.format === 'html') {
-        output = renderReportHtml(report, { redact: reportOptions.redact });
+      const inputObj = snapshot ?? report!;
+      if (reportOptions.query === 'detail') {
+        const detail = queryFindingDetail(inputObj, reportOptions.findingId!);
+        if (!detail) {
+          throw new CliError('INVALID_USAGE', `Finding '${reportOptions.findingId}' was not found in report.`);
+        }
+        output = reportOptions.format === 'json' ? JSON.stringify(detail, null, 2) : formatAgentDetailText(detail);
+      } else if (reportOptions.query === 'summary' || reportOptions.code || reportOptions.severity || reportOptions.file || reportOptions.nodeId || reportOptions.actionableOnly) {
+        const summary = queryReportSummary(inputObj, {
+          code: reportOptions.code,
+          severity: reportOptions.severity,
+          file: reportOptions.file,
+          nodeId: reportOptions.nodeId,
+          findingId: reportOptions.findingId,
+          actionableOnly: reportOptions.actionableOnly,
+          limit: reportOptions.limit
+        });
+        output = reportOptions.format === 'json' ? JSON.stringify(summary, null, 2) : formatAgentSummaryText(summary);
+      } else if (reportOptions.format === 'html') {
+        output = renderReportHtml(report!, { redact: reportOptions.redact });
       } else if (reportOptions.format === 'markdown') {
-        output = renderReportMarkdown(report, { redact: reportOptions.redact });
+        output = renderReportMarkdown(report!, { redact: reportOptions.redact });
       } else if (reportOptions.format === 'text') {
-        output = formatReportText(report);
+        output = formatReportText(report!);
       } else {
-        output = JSON.stringify(report, null, 2);
+        output = JSON.stringify(report!, null, 2);
       }
 
       if (reportOptions.output) {

@@ -127,6 +127,54 @@ export const conformanceCases: ConformanceCase[] = [
     }
   },
   {
+    id: 'text-nested-inline-budget-defective',
+    family: 'text',
+    role: 'defective',
+    title: 'Nested Inline Text Line Budget Overflow',
+    description: 'Text containing nested inline tags (span, em, strong) wraps onto multiple lines exceeding data-anwc-max-lines="1".',
+    expectedRule: 'TEXT_LINE_BUDGET_EXCEEDED',
+    expectedClassification: 'detected-defect',
+    html: `
+      <style>
+        .nested-budget { width: 100px; line-height: 20px; font-family: sans-serif; }
+      </style>
+      <p class="nested-budget" data-anwc-key="nested-inline-budget-p" data-anwc-max-lines="1">
+        First part with <span>styled inline phrases</span> and <strong>important warnings</strong> wrapping.
+      </p>
+    `,
+    oracle: async (page) => {
+      const lines = await page.evaluate(() => {
+        const el = document.querySelector('[data-anwc-key="nested-inline-budget-p"]') as HTMLElement;
+        return Math.round(el.offsetHeight / 20);
+      });
+      return { pass: lines > 1, details: { observedLines: lines, maxLines: 1 } };
+    }
+  },
+  {
+    id: 'text-nested-inline-budget-healthy',
+    family: 'text',
+    role: 'healthy',
+    title: 'Nested Inline Text Within Line Budget',
+    description: 'Text containing nested inline tags fits within declared data-anwc-max-lines="4" without overflow or clipping.',
+    expectedRule: null,
+    expectedClassification: 'healthy-pass',
+    html: `
+      <style>
+        .healthy-nested { width: 280px; line-height: 20px; font-family: sans-serif; }
+      </style>
+      <p class="healthy-nested" data-anwc-key="nested-inline-healthy-p" data-anwc-max-lines="4">
+        Clean text containing <span>inline spans</span> and <em>formatted segments</em> fitting comfortably.
+      </p>
+    `,
+    oracle: async (page) => {
+      const fits = await page.evaluate(() => {
+        const el = document.querySelector('[data-anwc-key="nested-inline-healthy-p"]') as HTMLElement;
+        return Math.round(el.offsetHeight / 20) <= 4;
+      });
+      return { pass: fits, details: { fits } };
+    }
+  },
+  {
     id: 'text-delayed-font-boundary',
     family: 'text',
     role: 'boundary',
@@ -229,6 +277,58 @@ export const conformanceCases: ConformanceCase[] = [
         return window.getComputedStyle(el).overflowX === 'auto' && el.clientWidth > 0;
       });
       return { pass: scrollable, details: { scrollable } };
+    }
+  },
+  {
+    id: 'clip-sticky-overflow-defective',
+    family: 'clips-scroll',
+    role: 'defective',
+    title: 'Sticky Header Overflows Container Width',
+    description: 'Stickily positioned navigation bar inside an overflow-x: hidden scroll container is wider than the container and clipped.',
+    expectedRule: 'CLIPPED_BY_ANCESTOR',
+    expectedClassification: 'detected-defect',
+    html: `
+      <style>
+        .sticky-clip-wrap { width: 120px; height: 160px; overflow-x: hidden; overflow-y: auto; }
+        .sticky-clip-nav { position: sticky; top: 0; width: 260px; height: 36px; background: #eee; }
+      </style>
+      <div class="sticky-clip-wrap">
+        <nav class="sticky-clip-nav" data-anwc-key="sticky-clip-nav"><button>Action</button></nav>
+        <div style="height: 300px;">Scrollable area</div>
+      </div>
+    `,
+    oracle: async (page) => {
+      const clipped = await page.evaluate(() => {
+        const nav = document.querySelector('[data-anwc-key="sticky-clip-nav"]') as HTMLElement;
+        return nav.getBoundingClientRect().width > nav.parentElement!.getBoundingClientRect().width;
+      });
+      return { pass: clipped, details: { clipped } };
+    }
+  },
+  {
+    id: 'clip-sticky-healthy',
+    family: 'clips-scroll',
+    role: 'healthy',
+    title: 'Sticky Header Within Scroll Container',
+    description: 'Sticky navigation header inside a scroll container fits within the container and is not clipped.',
+    expectedRule: null,
+    expectedClassification: 'healthy-pass',
+    html: `
+      <style>
+        .sticky-pass-wrap { width: 320px; height: 200px; overflow-y: auto; }
+        .sticky-pass-nav { position: sticky; top: 0; width: 100%; height: 40px; background: white; }
+      </style>
+      <div class="sticky-pass-wrap" data-anwc-allow="vertical-scroll">
+        <nav class="sticky-pass-nav" data-anwc-key="sticky-pass-nav"><button>Sticky Menu</button></nav>
+        <div style="height: 150px;">Scroll content within container height</div>
+      </div>
+    `,
+    oracle: async (page) => {
+      const fits = await page.evaluate(() => {
+        const nav = document.querySelector('[data-anwc-key="sticky-pass-nav"]') as HTMLElement;
+        return nav.getBoundingClientRect().width <= nav.parentElement!.getBoundingClientRect().width;
+      });
+      return { pass: fits, details: { fits } };
     }
   },
   {
@@ -481,6 +581,36 @@ export const conformanceCases: ConformanceCase[] = [
         return Boolean(btn && btn.closest('[inert]'));
       });
       return { pass: isInert, details: { isInert } };
+    }
+  },
+  {
+    id: 'state-modal-dialog-healthy',
+    family: 'state-semantics',
+    role: 'healthy',
+    title: 'Background Control Inert While Modal Dialog Active',
+    description: 'Interactive candidate in background document is made inert by an active modal dialog and emits 0 false pointer blockage warnings.',
+    expectedRule: null,
+    expectedClassification: 'healthy-pass',
+    html: `
+      <div class="dialog-test-container" style="width: 300px; padding: 10px;">
+        <button data-anwc-key="bg-btn" style="width: 120px; height: 40px;">
+          Background Action
+        </button>
+        <dialog id="conformance-modal" style="width: 200px; height: 100px;">
+          <button data-anwc-key="modal-action-btn">Modal Confirm</button>
+        </dialog>
+      </div>
+    `,
+    oracle: async (page) => {
+      await page.evaluate(() => {
+        const dlg = document.getElementById('conformance-modal') as HTMLDialogElement;
+        if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
+      });
+      const isModal = await page.evaluate(() => {
+        const dlg = document.querySelector('dialog');
+        return Boolean(dlg && dlg.matches(':modal'));
+      });
+      return { pass: isModal, details: { isModal } };
     }
   },
   {

@@ -1,6 +1,6 @@
 # ANWC status
 
-Updated 2026-09-17. Phase 3 is underway: Q01 closes grade provenance, Q02 binds source expectations to stable targets across modules, Q03 introduces the unified report model, Q04 implements offline HTML and Markdown reports, Q05 builds the browser conformance corpus (29 paired cases across 6 families with zero false positives), Q06 implements the state reproduction runner (`anwc check`), and Q07 implements conservative repair comparison (`anwc diff`).
+Updated 2026-11-05. Phase 3 is underway: Batch A (Q01–Q03), Batch B (Q04–Q07), and Batch C (Q08–Q09) are complete. Q08 expands the browser conformance corpus to 34 cases across 6 families with 0 false positives (nested text, sticky scroll, modal dialog top layer). Q09 implements compact agent summary and detail drilldown queries with >= 50% character reduction (68% on summary, 51% on drilldown) while retaining 100% of repair-relevant facts. Next is Batch D (Q10 repeatable installed alpha & CI).
 
 ## What works today
 
@@ -20,7 +20,7 @@ The evaluator has 18 public broken/healthy pairs across shop, pricing and dashbo
 | Conservative repair comparison | `anwc diff BEFORE AFTER [--format html|markdown|text|json] [--output path]`, `DiffReport 0.1` schema, pure `compareRepairs` diff engine in `@anwc/report`, offline single-file HTML/Markdown/Text diff renderers. Retained-target and complete-coverage invariants enforced; deletion/unmounting never reports verified fix; ambiguous keys/nodes report ambiguous. 10 comprehensive invariant tests in `tests/unit/diff.test.ts`. | Q08 high-value browser fixes |
 | Rehearsal | Committed report: 18 grades, three apps, two conditions, broken/repaired/deletion states, two viewports each | Historical evidence at its recorded revisions, not a fresh gate for current HEAD |
 | Pilot ledger | Practice templates, receipt-hash command and provenance-bound `import-grade` | Q01 rejects substitution, incomplete evidence and unsafe output paths; Q11 finishes operator handoff and human results remain pending |
-| Everyday repair | Single-state JSON/text inspection and source-linked findings; Report 0.1; StateManifest 0.1; DiffReport 0.1 | Q08–Q09 add conformance-driven engine edge fixes and compact drill-down |
+| Everyday repair | Single-state JSON/text inspection and source-linked findings; Report 0.1; StateManifest 0.1; DiffReport 0.1; AgentSummary 0.1 and AgentFindingDetail 0.1 | Batch C complete; Q10 repeatable installed alpha and CI workflow |
 | Agent benefit | No real paired results recorded | Human sessions remain pending; no time/cost/success-rate claim |
 | Arbitrary sites | Experimental `--runtime-only` injection | Supported scope still requires installed runtime; R02–R06 remain deferred |
 
@@ -30,7 +30,9 @@ Q03 implemented the unified `Report 0.1` model in `packages/report`, with SHA-25
 Q04 implemented single-file offline HTML reports with interactive filters and SVG viewport diagram, compact Markdown summaries, and `anwc report` CLI command.
 Q05 implemented 29-case browser conformance corpus across 6 families with zero false positives.
 Q06 implemented `StateManifest 0.1`, checkpoint step execution (navigate, click, fill, scroll, wait-for-selector, capture), behavior assertions (visible, hidden, text-contains, attribute-equals), and `anwc check` CLI command. Verified in `tests/unit/cli.test.ts`. `tests/browser/check.spec.ts` is marked skipped for delegated runner execution.
-Q07 implemented `DiffReport 0.1` schema, pure `compareRepairs` comparison engine in `packages/report`, offline HTML/Markdown/Text renderers, and `anwc diff` CLI command. Verified with 10 unit tests in `tests/unit/diff.test.ts`. All 88 unit tests and package bundling passed on Windows. Batch C continues with Q08.
+Q07 implemented `DiffReport 0.1` schema, pure `compareRepairs` comparison engine in `packages/report`, offline HTML/Markdown/Text renderers, and `anwc diff` CLI command. Verified with 10 unit tests in `tests/unit/diff.test.ts`.
+Q08 resolved high-value browser edge cases: (1) nested/inline text node range client rect calculations; (2) sticky positioning inside scroll containers; (3) top-layer modal dialog clipping and inert boundaries. Conformance corpus expanded to 34 paired cases across 6 families, verified 34/34 passing (0 false positives, 0 false negatives) in `tests/browser/conformance.spec.ts`.
+Q09 implemented compact agent evidence queries: `AgentSummary 0.1` and `AgentFindingDetail 0.1`, offline query engine in `@anwc/report`, and CLI `anwc report --query summary|detail` with precise filters (`--code`, `--severity`, `--file`, `--node-id`, `--actionable-only`, `--limit`). Scope filtering invariant enforced (excluded input reported, 0 matches does not claim clean pass). Emits 68% fewer characters for summary (51% for summary + drilldown), exceeding the 50% reduction engineering target while retaining all repair-relevant evidence. Verified in `tests/unit/report-query.test.ts` (8/8 passed). Batch C exit gate passed: 96/96 unit tests, 27/27 active browser tests passed on Windows. Batch D continues with Q10.
 
 Historical results in [HISTORY](HISTORY.md) include Windows evaluator checks and a Linux integration pass (61 unit tests, 26 browser tests, three production builds). The committed [rehearsal report](../bench/rehearsals/rehearsal-report.json) records six broken failures, six repaired passes, and six deletion failures. Preserve those results with their revisions; do not represent them as a current pass.
 
