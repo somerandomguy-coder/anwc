@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,7 +83,8 @@ export async function packAndAuditPackages(options = {}) {
 
   await mkdir(destination, { recursive: true });
 
-  const rawNpm = process.env.npm_execpath;
+  const defaultNpmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+  const rawNpm = process.env.npm_execpath || (existsSync(defaultNpmCli) ? defaultNpmCli : undefined);
   const cmd = rawNpm ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
   const baseArgs = rawNpm ? [rawNpm.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm')] : [];
 
@@ -92,7 +94,8 @@ export async function packAndAuditPackages(options = {}) {
     const pkgDir = join(root, pkgRel);
     const { stdout } = await pExecFile(cmd, [...baseArgs, 'pack', '--pack-destination', destination], {
       cwd: pkgDir,
-      windowsHide: true
+      windowsHide: true,
+      shell: process.platform === 'win32' && !rawNpm
     });
 
     const tarballFileName = stdout.trim().split('\n').pop()?.trim();
