@@ -277,6 +277,7 @@ export function Header({
           <input
             type="text"
             data-testid="url-input"
+            aria-label="Inspect target URL"
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             onKeyDown={handleUrlKeyDown}

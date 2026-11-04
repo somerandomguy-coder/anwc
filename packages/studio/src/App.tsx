@@ -5,7 +5,7 @@ import { STUDIO_PRESETS } from './data/presets.js';
 import { VIEWPORT_PRESETS, type HoveredSampleInfo } from './types.js';
 import { Header } from './components/Header.js';
 import { SplitView } from './components/SplitView.js';
-import { GroundTruthPane } from './components/GroundTruthPane.js';
+import { GroundTruthPane, isValidTargetUrl } from './components/GroundTruthPane.js';
 import { XRayPane } from './components/XRayPane.js';
 import { FindingDrawer } from './components/FindingDrawer.js';
 import { computeFitZoom } from './components/split-utils.js';
@@ -218,7 +218,7 @@ export function App({
 
   // Node selection from XRay pane
   const handleSelectNode = (nodeId: string) => {
-    const matchingFinding = snapshot.findings.find(
+    const matchingFinding = snapshot.findings?.find(
       (f) => f.nodeId === nodeId || f.relatedNodeIds.includes(nodeId)
     );
     if (matchingFinding) {
@@ -229,10 +229,10 @@ export function App({
   // Live URL inspection via /api/inspect
   const handleInspect = async (inspectUrl: string) => {
     const trimmed = inspectUrl.trim();
-    if (!trimmed) {
+    if (!trimmed || !isValidTargetUrl(trimmed)) {
       setToast({
         id: String(Date.now()),
-        message: 'Please provide a valid URL to inspect.',
+        message: 'Please provide a valid http: or https: URL to inspect.',
         type: 'error'
       });
       return;
