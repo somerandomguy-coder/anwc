@@ -9,6 +9,7 @@
     { "path": "./packages/vite-plugin" },
     { "path": "./packages/report" },
     { "path": "./packages/cli" },
+    { "path": "./packages/studio" },
     { "path": "./examples/shop" },
     { "path": "./examples/landing" },
     { "path": "./examples/dashboard" }
