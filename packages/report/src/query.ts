@@ -122,12 +122,12 @@ export function queryReportSummary(input: Report | Snapshot, filter?: QueryFilte
 
   const isFiltered = Boolean(
     filter &&
-      (filter.code ||
-        filter.severity ||
-        filter.nodeId ||
-        filter.findingId ||
-        filter.file ||
-        filter.actionableOnly)
+    (filter.code ||
+      filter.severity ||
+      filter.nodeId ||
+      filter.findingId ||
+      filter.file ||
+      filter.actionableOnly)
   );
 
   const matched = allFindings.filter((f) => matchesFilter(f, filter));
@@ -260,14 +260,14 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
           node: aNode
             ? toAgentTargetFromMeasurement(aNode)
             : {
-                nodeId: a.nodeId,
-                tag: 'element',
-                label: '',
-                semanticKey: null,
-                role: null,
-                source: null,
-                box: a.box
-              },
+              nodeId: a.nodeId,
+              tag: 'element',
+              label: '',
+              semanticKey: null,
+              role: null,
+              source: null,
+              box: a.box
+            },
           axes: a.axes,
           box: a.box
         };

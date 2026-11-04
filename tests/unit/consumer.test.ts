@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { exec, execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import { snapshotSchema } from '../../packages/protocol/src/index.js';
 import { auditTarballEntries, listTarballFiles, packAndAuditPackages, PUBLIC_PACKAGES } from '../../scripts/pack.js';
 
 const pExecFile = promisify(execFile);
+const pExec = promisify(exec);
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 async function getAvailablePort(): Promise<number> {
@@ -101,7 +102,29 @@ describe('P06 package distribution and external consumer integration', () => {
   });
 
   test('external plain React/Vite consumer installs tarballs, typechecks, builds clean production bundle, and inspects via installed CLI binary', async () => {
-    const consumerRoot = await mkdtemp(join(tmpdir(), 'anwc-consumer-app-'));
+    const spaceParent = await mkdtemp(join(tmpdir(), 'anwc space app-'));
+    const consumerRoot = join(spaceParent, 'isolated consumer workspace');
+    await mkdir(consumerRoot, { recursive: true });
+
+    async function runInstalledCli(args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
+      const isWin = process.platform === 'win32';
+      const shim = isWin
+        ? join(cwd, 'node_modules', '.bin', 'anwc.cmd')
+        : join(cwd, 'node_modules', '.bin', 'anwc');
+
+      await access(shim);
+
+      if (isWin) {
+        const formattedArgs = args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ');
+        return pExec(`"${shim}" ${formattedArgs}`, {
+          cwd,
+          windowsHide: true
+        });
+      } else {
+        return pExecFile(shim, args, { cwd, windowsHide: true });
+      }
+    }
+
     let devProcess: ChildProcess | undefined;
 
     try {
@@ -309,13 +332,16 @@ if (rootElement) {
       const devUrl = `http://127.0.0.1:${devPort}/`;
       await waitForServer(devUrl, 15_000);
 
-      // Run the installed anwc CLI binary in JSON mode
-      const anwcCli = join(consumerRoot, 'node_modules', '@anwc', 'cli', 'dist', 'main.js');
+      // Validate anwc doctor via installed platform binary shim in path containing spaces
+      const { stdout: doctorOut } = await runInstalledCli(['doctor', '--json'], consumerRoot);
+      const doctorResult = JSON.parse(doctorOut);
+      expect(doctorResult.ok).toBe(true);
+      expect(doctorResult.checks.some((c: { id: string; status: string }) => c.id === 'chromium-browser' && c.status === 'passed')).toBe(true);
+      expect(doctorResult.checks.some((c: { id: string; status: string }) => c.id === 'project-config' && c.status === 'passed')).toBe(true);
+
+      // Run the installed anwc CLI binary shim in JSON mode
       const startJson = performance.now();
-      const { stdout: cliOutput } = await pExecFile(process.execPath, [anwcCli, 'inspect', devUrl, '--format', 'json'], {
-        cwd: consumerRoot,
-        windowsHide: true
-      });
+      const { stdout: cliOutput } = await runInstalledCli(['inspect', devUrl, '--format', 'json'], consumerRoot);
       const latencyJsonMs = Math.round(performance.now() - startJson);
 
       const snapshot = snapshotSchema.parse(JSON.parse(cliOutput));
@@ -361,10 +387,7 @@ if (rootElement) {
 
       // 9. Inspect clean state in text mode with latency & byte measurements
       const startText = performance.now();
-      const { stdout: textOutput } = await pExecFile(process.execPath, [anwcCli, 'inspect', devUrl, '--viewport', '1440x900', '--format', 'text'], {
-        cwd: consumerRoot,
-        windowsHide: true
-      });
+      const { stdout: textOutput } = await runInstalledCli(['inspect', devUrl, '--viewport', '1440x900', '--format', 'text'], consumerRoot);
       const latencyTextMs = Math.round(performance.now() - startText);
 
       expect(textOutput).toContain('ANWC 0.1 | 1440x900');
@@ -376,10 +399,7 @@ if (rootElement) {
       const blockedUrl = `http://127.0.0.1:${devPort}/?blocked=1`;
       let blockedText = '';
       try {
-        const res = await pExecFile(process.execPath, [anwcCli, 'inspect', blockedUrl, '--viewport', '390x844', '--format', 'text', '--fail-on', 'warning'], {
-          cwd: consumerRoot,
-          windowsHide: true
-        });
+        const res = await runInstalledCli(['inspect', blockedUrl, '--viewport', '390x844', '--format', 'text', '--fail-on', 'warning'], consumerRoot);
         blockedText = res.stdout;
       } catch (err: unknown) {
         const error = err as { stdout?: string; exitCode?: number; code?: number };
@@ -396,10 +416,7 @@ if (rootElement) {
 
       // 11. Title/label change invariance: verify renaming label leaves geometric findings unchanged
       const renamedUrl = `http://127.0.0.1:${devPort}/?blocked=1&label=Update+Settings`;
-      const { stdout: renamedJson } = await pExecFile(process.execPath, [anwcCli, 'inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], {
-        cwd: consumerRoot,
-        windowsHide: true
-      });
+      const { stdout: renamedJson } = await runInstalledCli(['inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], consumerRoot);
       const renamedSnapshot = snapshotSchema.parse(JSON.parse(renamedJson));
       const renamedFinding = renamedSnapshot.findings.find((f) => f.code === 'POINTER_BLOCKED_AT_SAMPLES');
       expect(renamedFinding).toBeDefined();
@@ -413,10 +430,7 @@ if (rootElement) {
       // 12. Actionable error recovery verification via installed CLI binary
       let mdUrlError = '';
       try {
-        await pExecFile(process.execPath, [anwcCli, 'inspect', `[App](${devUrl})`], {
-          cwd: consumerRoot,
-          windowsHide: true
-        });
+        await runInstalledCli(['inspect', `[App](${devUrl})`], consumerRoot);
       } catch (err: unknown) {
         const error = err as { stderr?: string; exitCode?: number; code?: number };
         expect(error.code ?? error.exitCode).toBe(2);
@@ -437,7 +451,7 @@ if (rootElement) {
 
     } finally {
       await stopOwnedProcess(devProcess);
-      await rm(consumerRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+      await rm(spaceParent, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
   }, 180_000);
 });

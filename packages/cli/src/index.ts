@@ -23,6 +23,7 @@ import {
 } from '@anwc/report';
 import { chromium, type Page } from 'playwright';
 import { stateManifestSchema, type StateManifest, type CheckRunResult } from './manifest.js';
+import { runDoctor, formatDoctorText, type DoctorResult, type DoctorCheck } from './doctor.js';
 import { runCheckSuite } from './runner.js';
 
 type RuntimeApi = { capture(options?: { textLimit?: number; timeoutMs?: number }): Promise<RawCapture> };
@@ -439,6 +440,17 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
   let inspectOptions: InspectOptions | undefined;
   let reportOptions: ReportCommandOptions | undefined;
   try {
+    if (arguments_[0] === 'doctor') {
+      const wantsJson = arguments_.includes('--json') || (arguments_.includes('--format') && arguments_[arguments_.indexOf('--format') + 1] === 'json');
+      const result = await runDoctor();
+      if (wantsJson) {
+        io.stdout(`${JSON.stringify(result, null, 2)}\n`);
+      } else {
+        io.stdout(`${formatDoctorText(result)}\n`);
+      }
+      return result.ok ? 0 : 1;
+    }
+
     if (arguments_[0] === 'report') {
       reportOptions = parseReportArguments(arguments_);
       let content: string;
@@ -616,3 +628,4 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
 
 export * from './manifest.js';
 export * from './runner.js';
+export * from './doctor.js';
