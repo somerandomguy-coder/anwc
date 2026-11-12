@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { envelopeSchema } from '@anwc/protocol';
 import {
   checkNodeVersion,
   checkChromium,
@@ -89,7 +90,9 @@ describe('Q10 anwc doctor and setup diagnostics', () => {
     const jsonIo = { stdout: (m: string) => jsonOut.push(m), stderr: () => {} };
     const exit2 = await run(['doctor', '--json'], jsonIo);
     expect(exit2).toBe(0);
-    const parsed = JSON.parse(jsonOut.join(''));
+    const envelope = JSON.parse(jsonOut.join(''));
+    expect(envelopeSchema.parse(envelope)).toMatchObject({ version: '0.1', ok: true, command: 'doctor' });
+    const parsed = envelope.data;
     expect(parsed.schemaVersion).toBe('0.1');
     expect(parsed.ok).toBe(true);
     expect(parsed.checks).toBeInstanceOf(Array);

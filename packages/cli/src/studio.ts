@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { readFile, stat } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { snapshotSchema, type Snapshot } from '@anwc/protocol';
+import { snapshotSchema, unwrapEnvelope, type Snapshot } from '@anwc/protocol';
 import { createReport, type Report } from '@anwc/report';
 import { inspect, type InspectOptions } from './index.js';
 import { STUDIO_PRESETS } from './studio-presets.js';
@@ -158,7 +158,9 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
   if (options.capturePath) {
     try {
       const raw = await readFile(options.capturePath, 'utf8');
-      preloadedSnapshot = snapshotSchema.parse(JSON.parse(raw));
+      // Saved captures may be bare Snapshots or Envelope 0.1 output redirected from stdout.
+      const unwrapped = unwrapEnvelope(JSON.parse(raw));
+      if ('value' in unwrapped) preloadedSnapshot = snapshotSchema.parse(unwrapped.value);
     } catch {
       // Ignored if invalid
     }
@@ -242,7 +244,8 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
     if (pathname === '/api/upload' && req.method === 'POST') {
       try {
         const body = await parseJsonBody(req);
-        const parsed = snapshotSchema.safeParse(body);
+        const unwrapped = unwrapEnvelope(body);
+        const parsed = snapshotSchema.safeParse('value' in unwrapped ? unwrapped.value : body);
         if (!parsed.success) {
           return sendJson(res, 400, { ok: false, error: 'Invalid snapshot format', details: parsed.error.issues });
         }

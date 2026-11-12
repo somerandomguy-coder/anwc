@@ -173,11 +173,6 @@ export const inspectOptionsSchema = z.object({
   runtimeOnly: z.boolean().default(false), failOn: z.enum(['error', 'warning', 'none']).default('none')
 }).strict();
 
-export const errorEnvelopeSchema = z.object({
-  schemaVersion: z.literal(SCHEMA_VERSION),
-  error: z.object({ code: z.enum(['INVALID_USAGE', 'NAVIGATION_FAILED', 'RUNTIME_MISSING', 'TIMEOUT', 'PARTIAL_CAPTURE', 'INTERNAL']), message: z.string().min(1), details: z.record(z.unknown()).nullable() }).strict()
-}).strict();
-
 export type Rect = z.infer<typeof rectSchema>;
 export type SourceRef = z.infer<typeof sourceRefSchema>;
 export type Assessment<T> =
@@ -191,7 +186,6 @@ export type RawCapture = z.infer<typeof rawCaptureSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;
 export type InstrumentResult = z.infer<typeof instrumentResultSchema>;
 export type InspectOptions = z.infer<typeof inspectOptionsSchema>;
-export type ErrorEnvelope = z.infer<typeof errorEnvelopeSchema>;
 
 export function parseRawCapture(input: unknown): RawCapture { return rawCaptureSchema.parse(input); }
 export function parseSnapshot(input: unknown): Snapshot { return snapshotSchema.parse(input); }

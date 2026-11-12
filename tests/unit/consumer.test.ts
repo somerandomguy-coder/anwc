@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { snapshotSchema } from '../../packages/protocol/src/index.js';
+import { envelopeOf, envelopeSchema, snapshotSchema } from '../../packages/protocol/src/index.js';
 import { auditTarballEntries, listTarballFiles, packAndAuditPackages, PUBLIC_PACKAGES } from '../../scripts/pack.js';
 
 const pExecFile = promisify(execFile);
@@ -334,7 +334,9 @@ if (rootElement) {
 
       // Validate anwc doctor via installed platform binary shim in path containing spaces
       const { stdout: doctorOut } = await runInstalledCli(['doctor', '--json'], consumerRoot);
-      const doctorResult = JSON.parse(doctorOut);
+      const doctorEnvelope = JSON.parse(doctorOut);
+      expect(envelopeSchema.parse(doctorEnvelope)).toMatchObject({ ok: true, command: 'doctor' });
+      const doctorResult = doctorEnvelope.data;
       expect(doctorResult.ok).toBe(true);
       expect(doctorResult.checks.some((c: { id: string; status: string }) => c.id === 'chromium-browser' && c.status === 'passed')).toBe(true);
       expect(doctorResult.checks.some((c: { id: string; status: string }) => c.id === 'project-config' && c.status === 'passed')).toBe(true);
@@ -344,7 +346,9 @@ if (rootElement) {
       const { stdout: cliOutput } = await runInstalledCli(['inspect', devUrl, '--format', 'json'], consumerRoot);
       const latencyJsonMs = Math.round(performance.now() - startJson);
 
-      const snapshot = snapshotSchema.parse(JSON.parse(cliOutput));
+      const inspectEnvelope = envelopeOf(snapshotSchema).parse(JSON.parse(cliOutput));
+      if (!inspectEnvelope.ok) throw new Error(`inspect failed: ${inspectEnvelope.error.code}`);
+      const snapshot = snapshotSchema.parse(inspectEnvelope.data);
       expect(snapshot.schemaVersion).toBe('0.1');
       expect(snapshot.coverage.complete).toBe(true);
 
@@ -417,7 +421,9 @@ if (rootElement) {
       // 11. Title/label change invariance: verify renaming label leaves geometric findings unchanged
       const renamedUrl = `http://127.0.0.1:${devPort}/?blocked=1&label=Update+Settings`;
       const { stdout: renamedJson } = await runInstalledCli(['inspect', renamedUrl, '--viewport', '390x844', '--format', 'json', '--fail-on', 'none'], consumerRoot);
-      const renamedSnapshot = snapshotSchema.parse(JSON.parse(renamedJson));
+      const renamedEnvelope = envelopeOf(snapshotSchema).parse(JSON.parse(renamedJson));
+      if (!renamedEnvelope.ok) throw new Error(`inspect failed: ${renamedEnvelope.error.code}`);
+      const renamedSnapshot = snapshotSchema.parse(renamedEnvelope.data);
       const renamedFinding = renamedSnapshot.findings.find((f) => f.code === 'POINTER_BLOCKED_AT_SAMPLES');
       expect(renamedFinding).toBeDefined();
       expect(renamedFinding?.evidence.kind).toBe('pointer-blocked');
