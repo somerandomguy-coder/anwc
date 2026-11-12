@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import type { Snapshot } from '@anwc/protocol';
+import { snapshotSchema, type Snapshot } from '@anwc/protocol';
 import { createReport } from './model.js';
-import type { Report, ReportFinding, ReportNodeRef } from './schema.js';
+import { reportSchema, type Report, type ReportNodeRef } from './schema.js';
 import {
   DIFF_SCHEMA_VERSION,
   type DiffCaptureInfo,
@@ -17,11 +17,47 @@ export interface DiffOptions {
   behaviorCheckPassed?: boolean;
 }
 
-function resolveReport(input: Snapshot | Report): Report {
-  if ('schemaVersion' in input && input.schemaVersion === '0.1' && 'groups' in input && 'summary' in input) {
-    return input as Report;
+export type DiffInput =
+  | { kind: 'snapshot'; snapshot: Snapshot; report: Report }
+  | { kind: 'report'; snapshot: null; report: Report };
+
+/** Thrown when a diff input matches neither the Snapshot 0.1 nor the Report 0.1 schema. */
+export class DiffInputError extends Error {
+  readonly issues: string[];
+  constructor(message: string, issues: string[]) {
+    super(message);
+    this.name = 'DiffInputError';
+    this.issues = issues;
   }
-  return createReport(input as Snapshot);
+}
+
+function formatIssues(issues: Array<{ path: Array<string | number>; message: string }>, limit = 5): string[] {
+  return issues.slice(0, limit).map((issue) => `${issue.path.length ? issue.path.join('.') : '(root)'}: ${issue.message}`);
+}
+
+/**
+ * Validates one diff input against the published schemas. Raw captures without findings,
+ * hand-written partial objects and other shapes are rejected instead of being coerced.
+ */
+export function parseDiffInput(input: unknown): DiffInput {
+  const snapshotResult = snapshotSchema.safeParse(input);
+  if (snapshotResult.success) {
+    return { kind: 'snapshot', snapshot: snapshotResult.data, report: createReport(snapshotResult.data) };
+  }
+  const reportResult = reportSchema.safeParse(input);
+  if (reportResult.success) {
+    return { kind: 'report', snapshot: null, report: reportResult.data };
+  }
+  const looksLikeReport = typeof input === 'object' && input !== null && 'groups' in input;
+  const issues = formatIssues(looksLikeReport ? reportResult.error.issues : snapshotResult.error.issues);
+  throw new DiffInputError(
+    `Input does not match Snapshot 0.1 or Report 0.1 schema (${looksLikeReport ? 'Report' : 'Snapshot'} issues: ${issues.join('; ')}).`,
+    issues
+  );
+}
+
+function isDiffInput(input: unknown): input is DiffInput {
+  return typeof input === 'object' && input !== null && 'kind' in input && 'report' in input && !('schemaVersion' in input);
 }
 
 function computeDiffId(beforeHash: string, afterHash: string): string {
@@ -30,12 +66,15 @@ function computeDiffId(beforeHash: string, afterHash: string): string {
 }
 
 export function compareRepairs(
-  beforeInput: Snapshot | Report,
-  afterInput: Snapshot | Report,
+  beforeInput: Snapshot | Report | DiffInput,
+  afterInput: Snapshot | Report | DiffInput,
   options: DiffOptions = {}
 ): DiffReport {
-  const before = resolveReport(beforeInput);
-  const after = resolveReport(afterInput);
+  // Re-validate even pre-parsed inputs: the pure API must not trust caller-built objects.
+  const beforeResolved = parseDiffInput(isDiffInput(beforeInput) ? beforeInput.snapshot ?? beforeInput.report : beforeInput);
+  const afterResolved = parseDiffInput(isDiffInput(afterInput) ? afterInput.snapshot ?? afterInput.report : afterInput);
+  const before = beforeResolved.report;
+  const after = afterResolved.report;
 
   const beforeUrl = new URL(before.page.url);
   const afterUrl = new URL(after.page.url);
@@ -114,25 +153,23 @@ export function compareRepairs(
     afterTargets.set(f.target.nodeId, f.target);
   }
 
-function toReportNodeRef(node: any): ReportNodeRef {
-  return {
+  // Snapshots carry every inspected node; Reports only carry finding targets.
+  const toReportNodeRef = (node: Snapshot['nodes'][number]): ReportNodeRef => ({
     nodeId: node.nodeId,
     tag: node.tag,
     label: node.label,
-    semanticKey: node.semanticKey ?? null,
-    role: node.role ?? null,
-    source: node.source ?? null,
-    box: node.box ?? null
-  };
-}
-
-  // Also collect all nodes from both captures if provided from raw snapshot
-  const beforeAllNodes = 'nodes' in (beforeInput as unknown as Record<string, unknown>)
-    ? ((beforeInput as unknown as { nodes: any[] }).nodes || []).map(toReportNodeRef)
+    semanticKey: node.semanticKey,
+    role: node.role,
+    source: node.source,
+    box: node.box
+  });
+  const beforeAllNodes = beforeResolved.snapshot
+    ? beforeResolved.snapshot.nodes.map(toReportNodeRef)
     : Array.from(beforeTargets.values());
-  const afterAllNodes = 'nodes' in (afterInput as unknown as Record<string, unknown>)
-    ? ((afterInput as unknown as { nodes: any[] }).nodes || []).map(toReportNodeRef)
+  const afterAllNodes = afterResolved.snapshot
+    ? afterResolved.snapshot.nodes.map(toReportNodeRef)
     : Array.from(afterTargets.values());
+  const afterHasNodeInventory = afterResolved.snapshot !== null;
 
   // Count key occurrences in before and after to detect duplicate keys
   const beforeKeyCounts = new Map<string, number>();
@@ -189,7 +226,9 @@ function toReportNodeRef(node: any): ReportNodeRef {
           confidence: 'none',
           beforeNode,
           afterNode: null,
-          notes: `Author key '${key}' not found in after capture (target removed or unmounted).`
+          notes: afterHasNodeInventory
+            ? `Author key '${key}' not found in after capture (target removed or unmounted).`
+            : `Author key '${key}' is not among the after report's finding targets. Reports omit healthy nodes, so retention is unknown.`
         });
         continue;
       }
@@ -238,7 +277,9 @@ function toReportNodeRef(node: any): ReportNodeRef {
       confidence: 'none',
       beforeNode,
       afterNode: null,
-      notes: 'No reliable author key or source identity found in after capture.'
+      notes: afterHasNodeInventory
+        ? 'No reliable author key or source identity found in after capture.'
+        : "No author key or source identity matched the after report's finding targets. Reports omit healthy nodes, so retention is unknown."
     });
   }
 
@@ -265,24 +306,9 @@ function toReportNodeRef(node: any): ReportNodeRef {
       continue;
     }
 
-    if (!targetMatch || targetMatch.strategy === 'unmatched' || !targetMatch.afterNode) {
-      // Target was removed or unmounted
-      findingComparisons.push({
-        comparisonId,
-        status: 'inconclusive',
-        targetKey: targetMatch?.targetKey || `node:${bFinding.target.nodeId}`,
-        ruleCode: bFinding.code,
-        target: bFinding.target,
-        beforeFinding: bFinding,
-        afterFinding: null,
-        explanation: 'Target element was removed or unmounted in after capture. Deletion cannot masquerade as a verified repair.',
-        targetRetained: false,
-        coverageAdequate: after.coverage.complete
-      });
-      continue;
-    }
-
-    if (targetMatch.strategy === 'ambiguous') {
+    // Ambiguity is checked before the missing-node branch: an ambiguous match also has no
+    // afterNode, but the element may still be present, so "removed" would be wrong.
+    if (targetMatch?.strategy === 'ambiguous') {
       findingComparisons.push({
         comparisonId,
         status: 'inconclusive',
@@ -291,8 +317,26 @@ function toReportNodeRef(node: any): ReportNodeRef {
         target: bFinding.target,
         beforeFinding: bFinding,
         afterFinding: null,
-        explanation: `Target match is ambiguous (${targetMatch.notes || 'multiple candidate elements'}). Cannot verify repair.`,
-        targetRetained: true,
+        explanation: `Target match is ambiguous: ${targetMatch.notes || 'multiple candidate elements.'} Which element corresponds to the original target is unknown, so the repair cannot be verified.`,
+        targetRetained: false,
+        coverageAdequate: after.coverage.complete
+      });
+      continue;
+    }
+
+    if (!targetMatch || targetMatch.strategy === 'unmatched' || !targetMatch.afterNode) {
+      findingComparisons.push({
+        comparisonId,
+        status: 'inconclusive',
+        targetKey: targetMatch?.targetKey || `node:${bFinding.target.nodeId}`,
+        ruleCode: bFinding.code,
+        target: bFinding.target,
+        beforeFinding: bFinding,
+        afterFinding: null,
+        explanation: afterHasNodeInventory
+          ? 'Target element was removed or unmounted in after capture. Deletion cannot masquerade as a verified repair.'
+          : "Target is not among the after report's finding targets, and Reports omit healthy nodes, so retention is unknown. Diff the after Snapshot to check whether the target still exists.",
+        targetRetained: false,
         coverageAdequate: after.coverage.complete
       });
       continue;
@@ -373,6 +417,21 @@ function toReportNodeRef(node: any): ReportNodeRef {
     // Check if this after finding was already matched to a before finding
     const alreadyCompared = findingComparisons.some((fc) => fc.afterFinding?.findingId === aFinding.findingId);
     if (!alreadyCompared) {
+      if (!comparable) {
+        findingComparisons.push({
+          comparisonId: `comp_new_${aFinding.findingId}`,
+          status: 'non-comparable',
+          targetKey: aFinding.target.semanticKey ? `key:${aFinding.target.semanticKey}` : `node:${aFinding.target.nodeId}`,
+          ruleCode: aFinding.code,
+          target: aFinding.target,
+          beforeFinding: null,
+          afterFinding: aFinding,
+          explanation: `Finding '${aFinding.code}' appears only in the after capture, but the captures are not comparable: ${incompatibilityReasons.join(' ')} This is not evidence of a regression.`,
+          targetRetained: false,
+          coverageAdequate: false
+        });
+        continue;
+      }
       findingComparisons.push({
         comparisonId: `comp_new_${aFinding.findingId}`,
         status: 'new-finding',
@@ -395,18 +454,28 @@ function toReportNodeRef(node: any): ReportNodeRef {
   const inconclusive = findingComparisons.filter((c) => c.status === 'inconclusive').length;
 
   let repairIntegrityVerdict: DiffSummary['repairIntegrityVerdict'];
+  let verdictReason: string;
   if (!comparable) {
     repairIntegrityVerdict = 'incompatible-comparison';
+    verdictReason = 'Captures are not comparable; neither repairs nor regressions can be inferred.';
   } else if (newFindings > 0) {
     repairIntegrityVerdict = 'regressions-introduced';
+    verdictReason = `${newFindings} finding(s) appear only in the after capture of the same reproduced state.`;
   } else if (persistent > 0) {
     repairIntegrityVerdict = 'unresolved-defects';
+    verdictReason = `${persistent} finding(s) are still measured on their retained targets.`;
   } else if (inconclusive > 0) {
     repairIntegrityVerdict = 'inconclusive-evidence';
-  } else if (beforeFindings.length === 0 || !before.coverage.complete || !after.coverage.complete || !before.readiness.settled || !after.readiness.settled) {
+    verdictReason = `${inconclusive} finding comparison(s) lack the evidence needed to verify a repair.`;
+  } else if (beforeFindings.length === 0) {
     repairIntegrityVerdict = 'inconclusive-evidence';
+    verdictReason = 'The before capture has no findings, so there is no repair to verify.';
+  } else if (!before.coverage.complete || !after.coverage.complete || !before.readiness.settled || !after.readiness.settled) {
+    repairIntegrityVerdict = 'inconclusive-evidence';
+    verdictReason = 'A capture had incomplete coverage or unsettled readiness.';
   } else {
     repairIntegrityVerdict = 'verified-repair';
+    verdictReason = `${verifiedFixed} finding(s) resolved on retained targets with a passing behavior check.`;
   }
 
   const summary: DiffSummary = {
@@ -416,7 +485,8 @@ function toReportNodeRef(node: any): ReportNodeRef {
     inconclusive,
     totalBefore: beforeFindings.length,
     totalAfter: afterFindings.length,
-    repairIntegrityVerdict
+    repairIntegrityVerdict,
+    verdictReason
   };
 
   return {

@@ -73,7 +73,9 @@ export const diffSummarySchema = z.object({
     'regressions-introduced',
     'inconclusive-evidence',
     'incompatible-comparison'
-  ])
+  ]),
+  /** Plain-language reason for the verdict, e.g. "no repair to verify" for an empty baseline. */
+  verdictReason: z.string().min(1).optional()
 }).strict();
 
 export type DiffSummary = z.infer<typeof diffSummarySchema>;

@@ -149,6 +149,8 @@ export function renderDiffHtml(diff: DiffReport): string {
       </div>
     </div>
 
+    ${diff.summary.verdictReason ? `<p class="verdict-reason">${escapeHtml(diff.summary.verdictReason)}</p>` : ''}
+
     ${compatibilityNotice}
 
     <div class="summary-grid">

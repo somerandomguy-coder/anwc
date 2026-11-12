@@ -15,6 +15,7 @@ export function renderDiffMarkdown(diff: DiffReport): string {
       : '**Incompatible Comparison**';
 
   lines.push(`# ANWC Repair Diff: ${verdictBadge}\n`);
+  if (diff.summary.verdictReason) lines.push(`> ${diff.summary.verdictReason}\n`);
   lines.push(`- **Diff ID**: \`${diff.diffId}\``);
   lines.push(`- **Generated**: ${diff.generatedAt}`);
   lines.push(`- **Before**: \`${diff.before.captureId}\` (${diff.before.actionableFindings} actionable findings)`);

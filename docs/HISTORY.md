@@ -6,6 +6,10 @@ Last updated: 2026-09-17, Australia/Sydney.
 
 **Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. Phase 3 Q01–Q07 implementations exist with acceptance gaps. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
+## 2026-11-12 L2: diff input validation and explanations (Q07 slice)
+
+`anwc diff` and `compareRepairs` validate inputs against Snapshot 0.1/Report 0.1 schemas and reject malformed objects (`INVALID_USAGE`, exit 2, issues in the error details). Explanation fixes: ambiguity is checked before the missing-after-node branch; empty clean baselines report "no repair to verify" via optional `DiffSummary.verdictReason`; after-only findings across incompatible captures are `non-comparable`; Report inputs no longer claim deletion for targets absent from finding lists. Hand-written diff mocks were replaced by schema-validated protocol fixtures. The 6bd4cc4 guards are unchanged and no verification flag was added. Windows: `npm run typecheck` passed; `tests/unit/diff.test.ts` + `tests/unit/cli.test.ts` 40/40 passed (27 diff, 13 CLI, 0 skipped). Full Vitest run: 211 passed, 2 failed in `studio-integration.test.ts` because this worktree had no `packages/cli/dist/studio` build; not rerun after a build.
+
 ## 2026-09-17 launch triage
 
 Pulled main from `27b4da4` to `947931b`. Corrected the CLI/report dependency lockfile (`467d612`). Added conservative comparison guards and eight regression cases (`6bd4cc4`): require matching URL/scenario/runtime/scale and settled, complete evidence; no repair success from empty baselines, heuristic identity or absent behavior checks. CLI comparison remains experimental and inconclusive without behavior binding.
