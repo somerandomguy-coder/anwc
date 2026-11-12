@@ -149,7 +149,7 @@ Build: a reusable GitHub Action that starts the app, runs committed state manife
 
 ### G-batch: the studio as the human trust surface
 
-#### P10 — Target health and honest sample labelling (S) — done 2026-11-12, Playwright test outstanding
+#### P10 — Target health and honest sample labelling (S) — done 2026-11-12, Playwright test added 2026-11-13
 
 **Own:** `packages/studio/src/components/{Header,GroundTruthPane}.tsx`, `packages/studio/src/data/presets.ts`, `packages/cli/src/studio*.ts`. **Depends:** none. Start here; it fixes the "127.0.0.1 refused to connect" experience from 2026-11-11.
 
