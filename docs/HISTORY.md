@@ -10,6 +10,14 @@ Last updated: 2026-09-17, Australia/Sydney.
 
 `anwc diff` and `compareRepairs` validate inputs against Snapshot 0.1/Report 0.1 schemas and reject malformed objects (`INVALID_USAGE`, exit 2, issues in the error details). Explanation fixes: ambiguity is checked before the missing-after-node branch; empty clean baselines report "no repair to verify" via optional `DiffSummary.verdictReason`; after-only findings across incompatible captures are `non-comparable`; Report inputs no longer claim deletion for targets absent from finding lists. Hand-written diff mocks were replaced by schema-validated protocol fixtures. The 6bd4cc4 guards are unchanged and no verification flag was added. Windows: `npm run typecheck` passed; `tests/unit/diff.test.ts` + `tests/unit/cli.test.ts` 40/40 passed (27 diff, 13 CLI, 0 skipped). Full Vitest run: 211 passed, 2 failed in `studio-integration.test.ts` because this worktree had no `packages/cli/dist/studio` build; not rerun after a build.
 
+## 2026-11-12 L3 conformance boundary checks (Q05)
+
+Replaced the boundary branch's all-node paint-unknown / static `unsupportedFeatures` fallback (true for every capture) with declared per-case `boundarySignal`s checked by `tests/conformance/boundary.ts`, plus a negative control that removes only that signal and must fail. Boundary cases whose old markup had no real boundary were made concrete: sticky header inside a `clip-path` scroller, non-modal fixed `<dialog>`, `display: contents` wrapper, a web font held loading by a routed request. Scripts in case HTML never ran under `innerHTML`; shadow-root, canvas and font preparation moved to `setup()`. Closed shadow root and canvas are known gaps (no runtime signal) and are not counted as passes.
+
+Each case now gets a fresh `page.goto('/')` with the shop's head stylesheets and root attributes removed; the runner records leaked stylesheets per case (0 observed). Report counts are by role, not pairs; `paintVisibility` is measured instead of hard-coded. False-positive notes already used `f.code`. The generated report moved from tracked `tests/conformance/conformance-matrix.json` to ignored `artifacts/conformance/`.
+
+Windows: `npx vitest run tests/unit/conformance.test.ts` 11/11 passed; `npx playwright test tests/browser/conformance.spec.ts` 1/1 passed: 34 cases (12 defective, 13 healthy, 9 boundary), 32 pass, 0 fail, 2 known gaps. Other suites and platforms were not rerun.
+
 ## 2026-09-17 launch triage
 
 Pulled main from `27b4da4` to `947931b`. Corrected the CLI/report dependency lockfile (`467d612`). Added conservative comparison guards and eight regression cases (`6bd4cc4`): require matching URL/scenario/runtime/scale and settled, complete evidence; no repair success from empty baselines, heuristic identity or absent behavior checks. CLI comparison remains experimental and inconclusive without behavior binding.
