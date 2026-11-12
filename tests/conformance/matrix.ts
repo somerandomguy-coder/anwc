@@ -179,22 +179,36 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'text',
     role: 'boundary',
     title: 'Delayed Web Font Boundary',
-    description: 'Elements styled with custom font names declare standard font readiness or fallback boundaries.',
+    description: 'A web font whose file is still downloading keeps document.fonts.ready pending. ANWC must not report settled text geometry; it must return readiness unsettled with the font-timeout reason.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'readiness-unsettled', reason: 'font readiness did not complete before timeout' },
+    captureOptions: { timeoutMs: 400 },
     html: `
       <style>
-        @font-face {
-          font-family: 'DelayedFont';
-          src: local('NonExistentCustomFont12345');
-        }
-        .custom-text { font-family: 'DelayedFont', sans-serif; font-size: 16px; }
+        .custom-text { font-family: 'AnwcDelayedFont', sans-serif; font-size: 16px; }
       </style>
-      <div class="custom-text" data-anwc-key="delayed-font">Text with fallback font</div>
+      <div class="custom-text" data-anwc-key="delayed-font">Text waiting for its web font</div>
     `,
+    setup: async (page) => {
+      // Hold the font response well past the capture timeout. The next case
+      // navigates away, which cancels the request; fulfilling then may throw.
+      await page.route('**/__anwc-conformance/delayed-font.woff2', async (route: any) => {
+        await new Promise((resolve) => setTimeout(resolve, 3_000));
+        await route.fulfill({ status: 404, body: '' }).catch(() => undefined);
+      });
+      await page.evaluate(() => {
+        const face = new FontFace('AnwcDelayedFont', 'url(/__anwc-conformance/delayed-font.woff2)');
+        document.fonts.add(face);
+        void face.load().catch(() => undefined);
+      });
+    },
     oracle: async (page) => {
-      const exists = await page.evaluate(() => Boolean(document.querySelector('[data-anwc-key="delayed-font"]')));
-      return { pass: exists, details: { exists } };
+      const details = await page.evaluate(() => ({
+        fontsStatus: document.fonts.status,
+        faceStatus: [...document.fonts].find((face) => face.family.replace(/["']/g, '') === 'AnwcDelayedFont')?.status ?? 'missing'
+      }));
+      return { pass: details.fontsStatus === 'loading' && details.faceStatus === 'loading', details };
     }
   },
 
@@ -335,13 +349,14 @@ export const conformanceCases: ConformanceCase[] = [
     id: 'clip-sticky-boundary',
     family: 'clips-scroll',
     role: 'boundary',
-    title: 'Sticky Header Boundary',
-    description: 'Sticky header positioning maintains bounded viewport presence.',
+    title: 'Sticky Header in a Rounded (clip-path) Scroller',
+    description: 'A sticky header inside a scroller clipped by clip-path: inset(... round ...). Non-rectangular clipping is outside the rectangular clip model, so the header clip must be unknown with the clip-path limitation.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'assessment-unknown', key: 'sticky-nav', field: 'clip', limitation: 'Clip paths are unsupported' },
     html: `
       <style>
-        .sticky-wrap { height: 200px; overflow-y: auto; }
+        .sticky-wrap { height: 200px; overflow-y: auto; clip-path: inset(0 round 16px); }
         .sticky-nav { position: sticky; top: 0; background: white; height: 40px; }
         .content { height: 400px; }
       </style>
@@ -351,11 +366,11 @@ export const conformanceCases: ConformanceCase[] = [
       </div>
     `,
     oracle: async (page) => {
-      const sticky = await page.evaluate(() => {
+      const details = await page.evaluate(() => {
         const nav = document.querySelector('[data-anwc-key="sticky-nav"]') as HTMLElement;
-        return window.getComputedStyle(nav).position === 'sticky';
+        return { position: getComputedStyle(nav).position, wrapClipPath: getComputedStyle(nav.parentElement!).clipPath };
       });
-      return { pass: sticky, details: { sticky } };
+      return { pass: details.position === 'sticky' && details.wrapClipPath.startsWith('inset('), details };
     }
   },
 
@@ -479,11 +494,12 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'pointer-layers',
     role: 'boundary',
     title: 'Thin Target Boundary',
-    description: 'Target with 1px height tests sample resolution and fractional geometry boundaries.',
+    description: 'A 1px-tall button collapses the 5x5 hit-test grid onto a few physical pixel rows. ANWC must report fewer samples than its budget rather than a full-resolution pointer result.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'pointer-sample-collapse', key: 'thin-btn', sampleBudget: 25 },
     html: `
-      <button data-anwc-key="thin-btn" style="width: 100px; height: 1px; padding: 0; border: 0; display: block;">
+      <button data-anwc-key="thin-btn" style="width: 100px; height: 1px; padding: 0; border: 0; display: block; overflow: hidden;">
         Line
       </button>
     `,
@@ -492,7 +508,7 @@ export const conformanceCases: ConformanceCase[] = [
         const btn = document.querySelector('[data-anwc-key="thin-btn"]') as HTMLElement;
         return btn.getBoundingClientRect().height;
       });
-      return { pass: height <= 1, details: { height } };
+      return { pass: height > 0 && height <= 1, details: { height } };
     }
   },
 
@@ -617,21 +633,22 @@ export const conformanceCases: ConformanceCase[] = [
     id: 'state-dialog-portal-boundary',
     family: 'state-semantics',
     role: 'boundary',
-    title: 'Dialog Backdrop Boundary',
-    description: 'Modal dialog element positioning and backdrop containment boundary.',
+    title: 'Non-modal Fixed Dialog Boundary',
+    description: 'A non-modal <dialog open> positioned fixed is outside the normal-flow clip model. ANWC must report its clip as unknown with the position:fixed limitation instead of a rectangular clip fraction.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'assessment-unknown', key: 'dialog-shell', field: 'clip', limitation: 'Position:fixed' },
     html: `
-      <dialog open style="position: fixed; inset: 0; width: 200px; height: 100px;">
+      <dialog open data-anwc-key="dialog-shell" style="position: fixed; inset: 0; width: 200px; height: 100px;">
         <button data-anwc-key="dialog-btn">Close</button>
       </dialog>
     `,
     oracle: async (page) => {
-      const isOpen = await page.evaluate(() => {
+      const details = await page.evaluate(() => {
         const d = document.querySelector('dialog') as HTMLDialogElement;
-        return d && d.open;
+        return { open: d.open, modal: d.matches(':modal'), position: getComputedStyle(d).position };
       });
-      return { pass: isOpen, details: { isOpen } };
+      return { pass: details.open && !details.modal && details.position === 'fixed', details };
     }
   },
 
@@ -685,22 +702,25 @@ export const conformanceCases: ConformanceCase[] = [
     id: 'identity-wrapper-boundary',
     family: 'identity-change',
     role: 'boundary',
-    title: 'Wrapper Insertion Boundary',
-    description: 'Element wrapped in an additional container element preserves its key identity.',
+    title: 'Boxless display:contents Wrapper Boundary',
+    description: 'A keyed wrapper with display: contents (as slot/provider components insert) has no box of its own. ANWC must capture it boxless rather than inventing geometry, while the wrapped button keeps its key.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'boxless-node', key: 'contents-wrapper' },
     html: `
       <div class="outer-wrap">
-        <div class="inner-wrap">
+        <div style="display: contents" data-anwc-key="contents-wrapper">
           <button data-anwc-key="wrapped-btn">Wrapped</button>
         </div>
       </div>
     `,
     oracle: async (page) => {
-      const hasKey = await page.evaluate(() => {
-        return Boolean(document.querySelector('[data-anwc-key="wrapped-btn"]'));
+      const details = await page.evaluate(() => {
+        const wrapper = document.querySelector('[data-anwc-key="contents-wrapper"]') as HTMLElement;
+        const button = document.querySelector('[data-anwc-key="wrapped-btn"]') as HTMLElement;
+        return { wrapperRects: wrapper.getClientRects().length, buttonHeight: button.getBoundingClientRect().height };
       });
-      return { pass: hasKey, details: { hasKey } };
+      return { pass: details.wrapperRects === 0 && details.buttonHeight > 0, details };
     }
   },
 
@@ -712,22 +732,29 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'unsupported-performance',
     role: 'boundary',
     title: 'Closed Shadow Root Boundary',
-    description: 'Content inside a closed shadow root cannot be inspected via standard light DOM traversal; ANWC reports boundary limitation.',
+    description: 'Content inside a closed shadow root is invisible to light-DOM traversal. The v0 runtime does not declare this in coverage, so the case is a known gap until it does.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: {
+      kind: 'known-gap',
+      reason: 'runtime traverses light DOM only and emits no shadow-root coverage reason or unsupported feature; needs a runtime change'
+    },
     html: `
       <div id="shadow-host" data-anwc-key="shadow-host"></div>
-      <script>
-        const host = document.getElementById('shadow-host');
-        if (host && !host.shadowRoot) {
-          const root = host.attachShadow({ mode: 'closed' });
-          root.innerHTML = '<button id="shadow-btn">Shadow Button</button>';
-        }
-      </script>
     `,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const host = document.getElementById('shadow-host')!;
+        const root = host.attachShadow({ mode: 'closed' });
+        root.innerHTML = '<button id="shadow-btn">Shadow Button</button>';
+      });
+    },
     oracle: async (page) => {
-      const hasHost = await page.evaluate(() => Boolean(document.getElementById('shadow-host')));
-      return { pass: hasHost, details: { hasHost } };
+      const details = await page.evaluate(() => {
+        const host = document.getElementById('shadow-host')!;
+        return { openShadowRoot: host.shadowRoot !== null, hostHeight: host.getBoundingClientRect().height };
+      });
+      return { pass: !details.openShadowRoot && details.hostHeight > 0, details };
     }
   },
   {
@@ -735,9 +762,10 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'unsupported-performance',
     role: 'boundary',
     title: 'CSS 3D Transform and Non-Affine Geometry',
-    description: 'Transformed geometry reports paintVisibility: unknown and unsupportedFeatures: transformed-geometry.',
+    description: 'A 3D-transformed container is outside the rectangular clip model. ANWC must report its clip as unknown with the transform limitation.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'assessment-unknown', key: 'transform-box', field: 'clip', limitation: 'Transforms are unsupported' },
     html: `
       <style>
         .transform-box { transform: rotateY(45deg) scale(0.8); transform-style: preserve-3d; }
@@ -759,23 +787,30 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'unsupported-performance',
     role: 'boundary',
     title: 'HTML Canvas Pixel Rendering Boundary',
-    description: 'Canvas pixel rendering has no DOM elements; ANWC explicitly labels paint visibility unknown and never counts zero findings as healthy.',
+    description: 'Canvas pixels have no DOM elements. The v0 runtime only has the global paint-visibility limitation, which holds for every node, so the case is a known gap until a canvas-specific signal exists.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: {
+      kind: 'known-gap',
+      reason: 'runtime emits no canvas-specific signal; only the all-node paint-visibility unknown, which is true by design; needs a runtime change'
+    },
     html: `
       <canvas id="custom-canvas" width="200" height="100" data-anwc-key="canvas-elem"></canvas>
-      <script>
-        const canvas = document.getElementById('custom-canvas');
-        if (canvas) {
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = 'blue';
-          ctx.fillRect(10, 10, 180, 80);
-        }
-      </script>
     `,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const canvas = document.getElementById('custom-canvas') as HTMLCanvasElement;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = 'rgb(0, 0, 255)';
+        ctx.fillRect(10, 10, 180, 80);
+      });
+    },
     oracle: async (page) => {
-      const isCanvas = await page.evaluate(() => Boolean(document.querySelector('canvas')));
-      return { pass: isCanvas, details: { isCanvas } };
+      const pixel = await page.evaluate(() => {
+        const canvas = document.getElementById('custom-canvas') as HTMLCanvasElement;
+        return [...canvas.getContext('2d')!.getImageData(100, 50, 1, 1).data];
+      });
+      return { pass: pixel[0] === 0 && pixel[1] === 0 && pixel[2] === 255, details: { pixel } };
     }
   },
   {
@@ -783,15 +818,16 @@ export const conformanceCases: ConformanceCase[] = [
     family: 'unsupported-performance',
     role: 'boundary',
     title: 'Capped Large DOM Performance Boundary',
-    description: 'A DOM with 2,000 nodes tested against maxNodes: 100 executes within bounded time (< 2000ms), sets complete: false, and reports node cap reached.',
+    description: 'About 900 elements captured with maxNodes: 100 finish within bounded time (< 2000ms), set complete: false, skip nodes, and report the node cap reason.',
     expectedRule: null,
     expectedClassification: 'unsupported',
+    boundarySignal: { kind: 'coverage-cap', reason: 'max node cap reached' },
     captureOptions: { maxNodes: 100, timeoutMs: 2_000 },
     html: '<div id="large-dom-root" data-anwc-key="large-root">' +
       Array.from({ length: 300 }, (_, i) => `<div><span>item ${i}</span><button>btn ${i}</button></div>`).join('') +
       '</div>',
     oracle: async (page) => {
-      const count = await page.evaluate(() => document.querySelectorAll('*').length);
+      const count = await page.evaluate(() => document.body.querySelectorAll('*').length);
       return { pass: count >= 300, details: { count } };
     }
   },

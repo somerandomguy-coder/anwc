@@ -6,6 +6,14 @@ Last updated: 2026-09-17, Australia/Sydney.
 
 **Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. Phase 3 Q01–Q07 implementations exist with acceptance gaps. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
+## 2026-11-12 L3 conformance boundary checks (Q05)
+
+Replaced the boundary branch's all-node paint-unknown / static `unsupportedFeatures` fallback (true for every capture) with declared per-case `boundarySignal`s checked by `tests/conformance/boundary.ts`, plus a negative control that removes only that signal and must fail. Boundary cases whose old markup had no real boundary were made concrete: sticky header inside a `clip-path` scroller, non-modal fixed `<dialog>`, `display: contents` wrapper, a web font held loading by a routed request. Scripts in case HTML never ran under `innerHTML`; shadow-root, canvas and font preparation moved to `setup()`. Closed shadow root and canvas are known gaps (no runtime signal) and are not counted as passes.
+
+Each case now gets a fresh `page.goto('/')` with the shop's head stylesheets and root attributes removed; the runner records leaked stylesheets per case (0 observed). Report counts are by role, not pairs; `paintVisibility` is measured instead of hard-coded. False-positive notes already used `f.code`. The generated report moved from tracked `tests/conformance/conformance-matrix.json` to ignored `artifacts/conformance/`.
+
+Windows: `npx vitest run tests/unit/conformance.test.ts` 11/11 passed; `npx playwright test tests/browser/conformance.spec.ts` 1/1 passed: 34 cases (12 defective, 13 healthy, 9 boundary), 32 pass, 0 fail, 2 known gaps. Other suites and platforms were not rerun.
+
 ## 2026-09-17 launch triage
 
 Pulled main from `27b4da4` to `947931b`. Corrected the CLI/report dependency lockfile (`467d612`). Added conservative comparison guards and eight regression cases (`6bd4cc4`): require matching URL/scenario/runtime/scale and settled, complete evidence; no repair success from empty baselines, heuristic identity or absent behavior checks. CLI comparison remains experimental and inconclusive without behavior binding.
