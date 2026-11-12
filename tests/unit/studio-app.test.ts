@@ -31,11 +31,14 @@ describe('Studio Header Component', () => {
     overlayMode: false
   };
 
-  test('renders ANWC Studio brand, logo, and offline badge', () => {
+  test('renders ANWC Studio brand, logo, and a data-source badge that says whether findings are sample or live', () => {
     const html = renderToStaticMarkup(React.createElement(Header, defaultProps));
 
     expect(html).toContain('ANWC Studio');
-    expect(html).toContain('Offline');
+    expect(html).toContain('Live capture');
+    const sampleHtml = renderToStaticMarkup(React.createElement(Header, { ...defaultProps, activePresetId: 'shop-blocked-checkout' }));
+    expect(sampleHtml).toContain('Sample data');
+    expect(sampleHtml).not.toContain('Live capture');
     expect(html).toContain('data-testid="header"');
   });
 
@@ -64,7 +67,7 @@ describe('Studio Header Component', () => {
 
     expect(html).toContain('data-testid="url-input"');
     expect(html).toContain('value="http://localhost:3000/shop"');
-    expect(html).toContain('placeholder="http://127.0.0.1:4173..."');
+    expect(html).toContain('placeholder="http://127.0.0.1:4175/..."');
   });
 
   test('renders Inspect button in idle state', () => {
@@ -326,7 +329,9 @@ describe('Studio App Coordinator', () => {
     // Default snapshot has 'POINTER_BLOCKED_AT_SAMPLES'
     expect(html).toContain('POINTER_BLOCKED_AT_SAMPLES');
     expect(html).toContain('Checkout button hit-test samples blocked');
-    expect(html).toContain('src/components/Checkout.tsx:42');
+    expect(html).toContain('examples/shop/src/main.tsx:44');
+    expect(html).toContain('data-testid="data-source-badge"');
+    expect(html).toContain('Sample data');
   });
 
   test('initializes with custom initialPresetId', () => {

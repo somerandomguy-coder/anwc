@@ -1,6 +1,32 @@
-import React, { useId } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import type { Finding, Rect, Snapshot } from '@anwc/protocol';
 import { computeXRayBoundingBoxes } from './xray-utils.js';
+import { exampleTargetFor } from '../data/targets.js';
+
+/**
+ * What the studio knows about whether the target URL is serving.
+ * `unknown` (no studio API, or not checked yet) still renders the iframe.
+ */
+export type TargetHealth =
+  | { state: 'unknown' }
+  | { state: 'checking' }
+  | { state: 'reachable' }
+  | { state: 'unreachable'; reason?: string };
+
+export type TargetStatusChecker = (url: string) => Promise<TargetHealth>;
+
+/** Asks the studio server whether anything answers at `url`. */
+export const fetchTargetStatus: TargetStatusChecker = async (url) => {
+  try {
+    const res = await fetch(`/api/target-status?url=${encodeURIComponent(url)}`);
+    if (!res.ok) return { state: 'unknown' };
+    const body = (await res.json()) as { ok?: boolean; reachable?: boolean; reason?: string };
+    if (body.ok !== true || typeof body.reachable !== 'boolean') return { state: 'unknown' };
+    return body.reachable ? { state: 'reachable' } : { state: 'unreachable', reason: body.reason };
+  } catch {
+    return { state: 'unknown' };
+  }
+};
 
 export interface GroundTruthPaneProps {
   url?: string | null;
@@ -13,6 +39,89 @@ export interface GroundTruthPaneProps {
   transformOrigin?: string;
   className?: string;
   style?: React.CSSProperties;
+  /** Health check used before loading the iframe. Defaults to the studio server API. */
+  checkTarget?: TargetStatusChecker;
+  /** Starting health state (tests and server rendering). */
+  initialTargetHealth?: TargetHealth;
+}
+
+export function TargetUnreachablePanel({ url, reason, onRetry }: { url: string; reason?: string; onRetry?: () => void }): React.JSX.Element {
+  const example = exampleTargetFor(url);
+  let origin = url;
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    // keep the raw URL
+  }
+  return (
+    <div
+      role="alert"
+      data-testid="target-unreachable"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: '12px',
+        padding: '24px',
+        backgroundColor: '#0f172a',
+        color: '#e2e8f0',
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '13px',
+        lineHeight: 1.5
+      }}
+    >
+      <strong style={{ fontSize: '15px', color: '#fbbf24' }}>Nothing is answering at {origin}</strong>
+      <span>
+        The live preview can't load because no server is running there
+        {reason === 'timeout' ? ' (the request timed out)' : ''}. The x-ray and findings still show the loaded capture.
+      </span>
+      {example ? (
+        <>
+          <span>Start the {example.name} from the repository root:</span>
+          <code
+            data-testid="target-start-command"
+            style={{
+              display: 'block',
+              padding: '8px 10px',
+              borderRadius: '6px',
+              backgroundColor: '#020617',
+              border: '1px solid #334155',
+              color: '#a5f3fc',
+              fontFamily: 'ui-monospace, monospace',
+              fontSize: '12px',
+              wordBreak: 'break-all',
+              userSelect: 'all'
+            }}
+          >
+            {example.startCommand}
+          </code>
+        </>
+      ) : (
+        <span>Start your app's dev server at that address, or change the URL above.</span>
+      )}
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{
+            alignSelf: 'flex-start',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            border: '1px solid #3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            color: '#93c5fd',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 600
+          }}
+        >
+          Retry
+        </button>
+      )}
+    </div>
+  );
 }
 
 const PULSE_KEYFRAMES = `
@@ -62,7 +171,9 @@ export function GroundTruthPane({
   zoom = 1,
   transformOrigin = 'top center',
   className = '',
-  style
+  style,
+  checkTarget = fetchTargetStatus,
+  initialTargetHealth = { state: 'unknown' }
 }: GroundTruthPaneProps): React.JSX.Element {
   const patternId = useId().replace(/:/g, '');
   const gridPatternId = `blueprint-grid-${patternId}`;
@@ -70,6 +181,23 @@ export function GroundTruthPane({
   const rawUrl = (url ?? targetUrl ?? '').trim();
   const hasLiveUrl = isValidTargetUrl(rawUrl);
   const effectiveUrl = hasLiveUrl ? rawUrl : '';
+
+  const [targetHealth, setTargetHealth] = useState<TargetHealth>(initialTargetHealth);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    if (!effectiveUrl) return;
+    let cancelled = false;
+    setTargetHealth({ state: 'checking' });
+    void checkTarget(effectiveUrl).then((health) => {
+      if (!cancelled) setTargetHealth(health);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveUrl, checkTarget, retryCount]);
+
+  const targetUnreachable = hasLiveUrl && targetHealth.state === 'unreachable';
 
   // Determine target bounding box for highlight overlay
   let targetBox: Rect | null = activeFindingBox ?? null;
@@ -116,7 +244,13 @@ export function GroundTruthPane({
           overflow: 'hidden'
         }}
       >
-        {hasLiveUrl ? (
+        {targetUnreachable ? (
+          <TargetUnreachablePanel
+            url={effectiveUrl}
+            reason={targetHealth.state === 'unreachable' ? targetHealth.reason : undefined}
+            onRetry={() => setRetryCount((count) => count + 1)}
+          />
+        ) : hasLiveUrl ? (
           <iframe
             src={effectiveUrl}
             sandbox="allow-scripts allow-same-origin allow-forms"
@@ -230,7 +364,7 @@ export function GroundTruthPane({
         )}
 
         {/* Synchronized target element highlight box */}
-        {targetBox && (
+        {targetBox && !targetUnreachable && (
           <div
             className="anwc-ground-truth-highlight"
             data-testid="ground-truth-highlight"

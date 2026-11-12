@@ -600,3 +600,9 @@ Keep raw captures/logs out of routine Git commits. Commit small sanitized exampl
 - Evidence on Windows: 10 report unit tests, 9 CLI tests, 2 external consumer tests, and typecheck/build all pass. Next: Q05 (browser conformance corpus).
 
 
+
+## 2026-11-12 — Merge of the launch triage line, and Phase 4 P10
+
+- Merged the 2026-09-17 launch triage (`467d612`, `6bd4cc4`, `1fef919`) into `main` as `f2ffb45`. Code merged cleanly; docs were reconciled by hand (see STATUS). README/LAUNCH corrected: `inspect` exits 0 by default (`--fail-on none`). Evidence on Windows: typecheck passed; Vitest 202 passed, 2 skipped (`tests/unit/consumer.test.ts` fails under Git Bash because GNU tar reads `C:` as a remote host, and passes under PowerShell); `npm run build` passed; seeded `blocked-checkout` inspect reported the blocker and exited 0.
+- P10 (studio target health): new `GET /api/target-status` probe (`probeTarget` in `packages/cli/src/studio.ts`; any HTTP status counts as reachable). The ground-truth pane shows "Nothing is answering at …" with the example's start command and a Retry button instead of the browser's "refused to connect". New `packages/studio/src/data/targets.ts` catalog (4175/4176/4177); studio presets derive their URLs from it. Header badge now reads "Sample data" for built-in presets and "Live capture" otherwise, replacing the hard-coded "Offline". Preset source references now point at real JSX sites (`examples/shop/src/main.tsx:44:54`, `examples/landing/src/main.tsx:33:21`, `examples/dashboard/src/main.tsx:19:16`) and a test checks each against the file.
+- Evidence on Windows: typecheck passed; studio unit tests 96/96 (new `tests/unit/studio-target-health.test.ts`, 10 tests). Manual browser-pane check: shop preset with the shop running showed the iframe; pricing preset with port 4176 stopped showed the start command; after starting the pricing app, Retry loaded the iframe. Not done: the Playwright test the card asks for.

@@ -54,7 +54,7 @@ Historical results in [HISTORY](HISTORY.md) include Windows evaluator checks and
 
 ## How to continue
 
-**Next phase (proposed, 2026-11-12):** [PHASE_4](PHASE_4.md) holds P01–P20 task cards, parallel lanes and the founder decisions they need. A read-only reference clone of vercel-labs/agent-desktop is documented in [reference/AGENT_DESKTOP](reference/AGENT_DESKTOP.md). Nothing in Phase 4 is implemented yet.
+**Next phase (proposed, 2026-11-12):** [PHASE_4](PHASE_4.md) holds P01–P20 task cards, parallel lanes and the founder decisions they need. A read-only reference clone of vercel-labs/agent-desktop is documented in [reference/AGENT_DESKTOP](reference/AGENT_DESKTOP.md). Phase 4 started 2026-11-12: **P10 (studio target health and honest sample labelling) is done** on branch `phase4/p10-studio-target-health` (studio unit tests 96/96, manual browser check; the card's Playwright test is not written yet). D0 cards L1–L3 are proposed as separate sessions; everything else is not started.
 
 Use the Q cards and dependency/batch table in ROADMAP. Batch A is Q01–Q03: result integrity, target-bound intent, and one shared report model. Q01/Q02 are committed; run relevant focused checks as needed and the full integration gate once at the Batch A boundary. Record final exit codes, failures and limitations before pushing. Do not mark a task complete because its command started or a process disappeared.
 

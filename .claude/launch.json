@@ -8,6 +8,18 @@
       "port": 4175
     },
     {
+      "name": "anwc-pricing",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace=@anwc/landing", "--", "--host", "127.0.0.1", "--port", "4176", "--strictPort"],
+      "port": 4176
+    },
+    {
+      "name": "anwc-dashboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace=@anwc/dashboard", "--", "--host", "127.0.0.1", "--port", "4177", "--strictPort"],
+      "port": 4177
+    },
+    {
       "name": "anwc-studio",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "anwc", "--", "studio", "--port", "4180", "--no-open"],

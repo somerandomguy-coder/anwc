@@ -203,19 +203,25 @@ export function Header({
               ANWC Studio
             </span>
             <span
+              data-testid="data-source-badge"
+              title={
+                activePresetId
+                  ? 'Findings come from a built-in sample capture, not from the page shown. Click Inspect to measure the live page.'
+                  : 'Findings come from a capture of the target URL.'
+              }
               style={{
                 fontSize: '10px',
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 padding: '2px 5px',
                 borderRadius: '4px',
-                backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                color: '#60a5fa',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                backgroundColor: activePresetId ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                color: activePresetId ? '#fbbf24' : '#34d399',
+                border: activePresetId ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)',
                 letterSpacing: '0.04em'
               }}
             >
-              Offline
+              {activePresetId ? 'Sample data' : 'Live capture'}
             </span>
           </div>
         </div>
@@ -281,7 +287,7 @@ export function Header({
             value={url}
             onChange={(e) => onUrlChange(e.target.value)}
             onKeyDown={handleUrlKeyDown}
-            placeholder="http://127.0.0.1:4173..."
+            placeholder="http://127.0.0.1:4175/..."
             disabled={isInspecting}
             style={{
               width: '100%',

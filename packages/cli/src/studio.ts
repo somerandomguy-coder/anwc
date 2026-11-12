@@ -14,6 +14,8 @@ export interface StudioServerOptions {
   openBrowser?: boolean;
   capturePath?: string;
   inspectFn?: (options: InspectOptions) => Promise<Snapshot>;
+  /** Injectable fetch for target health probes (tests). */
+  fetchFn?: typeof fetch;
 }
 
 export interface StudioServerHandle {
@@ -108,6 +110,37 @@ function validateTargetUrl(raw: string): string {
   return trimmed;
 }
 
+export interface TargetProbeResult {
+  reachable: boolean;
+  /** HTTP status when the target answered (any status counts as reachable). */
+  status?: number;
+  /** Short machine-readable reason when unreachable. */
+  reason?: 'connection_refused' | 'timeout' | 'network_error';
+}
+
+/**
+ * Checks whether anything answers at a target URL, so the studio can explain
+ * "start your dev server" instead of showing the browser's own connection error.
+ * Any HTTP response, including 4xx/5xx, counts as reachable.
+ */
+export async function probeTarget(
+  url: string,
+  fetchFn: typeof fetch = fetch,
+  timeoutMs = 2500
+): Promise<TargetProbeResult> {
+  try {
+    const response = await fetchFn(url, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) });
+    await response.body?.cancel().catch(() => undefined);
+    return { reachable: true, status: response.status };
+  } catch (err) {
+    const name = err instanceof Error ? err.name : '';
+    if (name === 'TimeoutError' || name === 'AbortError') return { reachable: false, reason: 'timeout' };
+    const cause = err instanceof Error ? (err as Error & { cause?: { code?: string } }).cause : undefined;
+    if (cause?.code === 'ECONNREFUSED') return { reachable: false, reason: 'connection_refused' };
+    return { reachable: false, reason: 'network_error' };
+  }
+}
+
 export async function startStudioServer(options: StudioServerOptions = {}): Promise<StudioServerHandle> {
   if (options.host && options.host !== '127.0.0.1' && options.host !== 'localhost') {
     throw new Error(`ANWC Studio server must bind to loopback (127.0.0.1). Binding to '${options.host}' is prohibited.`);
@@ -116,6 +149,7 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
   const host = options.host ?? '127.0.0.1';
   const requestedPort = options.port ?? 4180;
   const inspectHandler = options.inspectFn ?? inspect;
+  const probeFetch = options.fetchFn ?? fetch;
 
   const defaultStaticDir = fileURLToPath(new URL('../dist/studio', import.meta.url));
   const staticDir = resolve(options.staticDir ?? defaultStaticDir);
@@ -153,6 +187,16 @@ export async function startStudioServer(options: StudioServerOptions = {}): Prom
         service: 'anwc-studio',
         preloadedCapture: Boolean(preloadedSnapshot)
       });
+    }
+
+    if (pathname === '/api/target-status' && req.method === 'GET') {
+      let targetUrl: string;
+      try {
+        targetUrl = validateTargetUrl(parsedUrl.searchParams.get('url') ?? '');
+      } catch (err) {
+        return sendJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+      }
+      return sendJson(res, 200, { ok: true, url: targetUrl, ...(await probeTarget(targetUrl, probeFetch)) });
     }
 
     if (pathname === '/api/presets' && req.method === 'GET') {

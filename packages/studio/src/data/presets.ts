@@ -1,5 +1,6 @@
 import { snapshotSchema, type Snapshot, type RawCapture } from '@anwc/protocol';
 import type { StudioPreset } from '../types.js';
+import { EXAMPLE_TARGETS } from './targets.js';
 
 const known = <T>(value: T) => ({ status: 'known' as const, value, method: 'computed', limitations: [] as string[] });
 const unknown = (limitations: string[] = ['not evaluated']) => ({ status: 'unknown' as const, value: null, method: 'none', limitations });
@@ -37,7 +38,7 @@ export const shopBlockedSnapshot: Snapshot = {
   captureId: 'capture-shop-blocked-checkout',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4175/?case=blocked-checkout&variant=broken',
+    url: `${EXAMPLE_TARGETS.shop.origin}/?case=blocked-checkout&variant=broken`,
     title: 'Shop: Blocked Checkout',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
@@ -91,7 +92,7 @@ export const shopBlockedSnapshot: Snapshot = {
       label: 'Checkout ($48.00)',
       labelMethod: 'text',
       box: { x: 20, y: 500, width: 350, height: 48 },
-      source: { siteId: 's-checkout', file: 'src/components/Checkout.tsx', line: 42, column: 9, tag: 'button' },
+      source: { siteId: 's-checkout', file: 'examples/shop/src/main.tsx', line: 44, column: 54, tag: 'button' },
       pointer: known({
         samples: [
           { x: 107, y: 524, result: 'blocked', blockerNodeId: 'n-promo-modal' },
@@ -123,7 +124,7 @@ export const shopBlockedSnapshot: Snapshot = {
       code: 'POINTER_BLOCKED_AT_SAMPLES',
       severity: 'error',
       nodeId: 'n-checkout-btn',
-      source: { siteId: 's-checkout', file: 'src/components/Checkout.tsx', line: 42, column: 9, tag: 'button' },
+      source: { siteId: 's-checkout', file: 'examples/shop/src/main.tsx', line: 44, column: 54, tag: 'button' },
       message: 'Checkout button hit-test samples blocked by Promo Discount Modal Overlay',
       evidence: { kind: 'pointer-blocked', tested: 4, blocked: 4, blockerNodeIds: ['n-promo-modal'] },
       relatedNodeIds: ['n-promo-modal'],
@@ -140,7 +141,7 @@ export const pricingAncestorClipSnapshot: Snapshot = {
   captureId: 'capture-pricing-ancestor-clip',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4176/?case=description-crop&variant=broken',
+    url: `${EXAMPLE_TARGETS.pricing.origin}/?case=description-crop&variant=broken`,
     title: 'Pricing: Ancestor Clip',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
@@ -203,7 +204,7 @@ export const pricingAncestorClipSnapshot: Snapshot = {
       label: 'Select Growth Plan',
       labelMethod: 'text',
       box: { x: 300, y: 380, width: 220, height: 44 },
-      source: { siteId: 's-pricing-cta', file: 'src/components/PricingTier.tsx', line: 78, column: 7, tag: 'button' },
+      source: { siteId: 's-pricing-cta', file: 'examples/landing/src/main.tsx', line: 33, column: 21, tag: 'button' },
       clip: known({
         intersection: { x: 300, y: 380, width: 90, height: 44 },
         boxFraction: 0.41,
@@ -219,7 +220,7 @@ export const pricingAncestorClipSnapshot: Snapshot = {
       code: 'CLIPPED_BY_ANCESTOR',
       severity: 'error',
       nodeId: 'n-growth-action',
-      source: { siteId: 's-pricing-cta', file: 'src/components/PricingTier.tsx', line: 78, column: 7, tag: 'button' },
+      source: { siteId: 's-pricing-cta', file: 'examples/landing/src/main.tsx', line: 33, column: 21, tag: 'button' },
       message: 'Select Growth Plan button is 59% clipped by ancestor n-pricing-slider',
       evidence: { kind: 'clipped-by-ancestor', boxFraction: 0.41, ancestorNodeIds: ['n-pricing-slider'] },
       relatedNodeIds: ['n-pricing-slider'],
@@ -236,7 +237,7 @@ export const dashboardOutsideViewportSnapshot: Snapshot = {
   captureId: 'capture-dashboard-outside-viewport',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4177/?case=outside-save&variant=broken',
+    url: `${EXAMPLE_TARGETS.dashboard.origin}/?case=outside-save&variant=broken`,
     title: 'Dashboard: Outside Viewport',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
@@ -290,7 +291,7 @@ export const dashboardOutsideViewportSnapshot: Snapshot = {
       label: 'Save Changes',
       labelMethod: 'text',
       box: { x: 20, y: 920, width: 350, height: 48 },
-      source: { siteId: 's-save', file: 'src/views/Settings.tsx', line: 112, column: 5, tag: 'button' },
+      source: { siteId: 's-save', file: 'examples/dashboard/src/main.tsx', line: 19, column: 16, tag: 'button' },
       viewport: known({ intersection: null, boxFraction: 0 }),
       interaction: { candidate: true, disabled: false, inert: false, pointerEvents: 'auto' },
       intent: { expectedCurrent: 'interactive', maxLines: null, allow: [] }
@@ -302,7 +303,7 @@ export const dashboardOutsideViewportSnapshot: Snapshot = {
       code: 'OUTSIDE_VIEWPORT',
       severity: 'error',
       nodeId: 'n-dashboard-save',
-      source: { siteId: 's-save', file: 'src/views/Settings.tsx', line: 112, column: 5, tag: 'button' },
+      source: { siteId: 's-save', file: 'examples/dashboard/src/main.tsx', line: 19, column: 16, tag: 'button' },
       message: 'Save Changes is expected to be interactive but is outside the viewport.',
       evidence: { kind: 'generic', details: { boxFraction: 0, method: 'bounding-box' } },
       relatedNodeIds: [],
@@ -319,7 +320,7 @@ export const cleanShopSnapshot: Snapshot = {
   captureId: 'capture-clean-shop',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4175/?variant=healthy',
+    url: `${EXAMPLE_TARGETS.shop.origin}/?variant=healthy`,
     title: 'Shop: Healthy Mobile Layout',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
@@ -381,7 +382,7 @@ export const cleanShopSnapshot: Snapshot = {
       label: 'Pay Now ($48.00)',
       labelMethod: 'text',
       box: { x: 20, y: 420, width: 350, height: 48 },
-      source: { siteId: 's-checkout', file: 'src/components/Checkout.tsx', line: 42, column: 9, tag: 'button' },
+      source: { siteId: 's-checkout', file: 'examples/shop/src/main.tsx', line: 44, column: 54, tag: 'button' },
       pointer: known({
         samples: [
           { x: 195, y: 444, result: 'target-or-descendant', blockerNodeId: null }
