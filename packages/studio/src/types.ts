@@ -48,6 +48,8 @@ export interface HoveredSampleInfo {
   blockerTag?: string | null;
   blockerLabel?: string | null;
   targetNodeId?: string | null;
+  /** Encoded sample class (reachable / blocked / clipped / no-hit), derived in the x-ray. */
+  sampleClass?: 'reachable' | 'blocked' | 'clipped' | 'no-hit';
   screenX?: number;
   screenY?: number;
 }

@@ -11,6 +11,8 @@ import { FindingDrawer } from './components/FindingDrawer.js';
 import { computeFitZoom } from './components/split-utils.js';
 import { computeXRayBoundingBoxes } from './components/xray-utils.js';
 import { extractFindings } from './components/drawer-utils.js';
+import { checkViewportAlignment } from './components/encoding.js';
+import { useFindingView } from './components/useFindingView.js';
 
 export interface AppProps {
   /** Optional initial snapshot override */
@@ -105,6 +107,13 @@ export function App({
 
   // State: inspection URL
   const [url, setUrl] = useState<string>(snapshot.page.url);
+
+  // Viewport the page frame shows. It starts at the capture's viewport and is
+  // changed by the viewport picker; the capture itself is never rewritten, so
+  // the x-ray can refuse to draw when the two differ (P11).
+  // A picker choice belongs to the snapshot it was made on; a new snapshot starts aligned.
+  const [frameOverride, setFrameOverride] = useState<{ snapshot: Snapshot; viewport: { width: number; height: number } } | null>(null);
+  const frameViewport = frameOverride && frameOverride.snapshot === snapshot ? frameOverride.viewport : snapshot.page.viewport;
   const [isInspecting, setIsInspecting] = useState<boolean>(false);
 
   // State: selected finding
@@ -158,25 +167,38 @@ export function App({
     return snapshot.findings.find((f) => f.findingId === selectedFindingId) ?? null;
   }, [snapshot, selectedFindingId]);
 
-  // Compute target box for ground truth highlight
+  // Ordered findings shared by the x-ray and the drawer (report order when available).
+  const orderedFindings = useMemo(
+    () => (report ? extractFindings(report) : snapshot.findings ?? []),
+    [report, snapshot]
+  );
+  const findingView = useFindingView({
+    findings: orderedFindings,
+    selectedFindingId,
+    onSelectFinding: setSelectedFindingId,
+    keyboard: true
+  });
+  const viewportAligned = checkViewportAlignment(snapshot.page.viewport, frameViewport).aligned;
+
+  // Compute target box for ground truth highlight (none when the frame and capture viewports differ)
   const selectedFindingBox = useMemo<Rect | null>(() => {
-    if (!selectedFinding || !snapshot) return null;
+    if (!selectedFinding || !snapshot || !viewportAligned) return null;
     const boxes = computeXRayBoundingBoxes(snapshot, selectedFinding);
     return boxes.target ?? null;
-  }, [snapshot, selectedFinding]);
+  }, [snapshot, selectedFinding, viewportAligned]);
 
   // Compute effective zoom scale ratio
   const effectiveZoom = useMemo<number>(() => {
     if (zoomMode === 'fit' && containerDimensions) {
       const availableWidth = overlayMode ? containerDimensions.width : containerDimensions.width * splitRatio;
       return computeFitZoom(
-        snapshot.page.viewport,
+        frameViewport,
         { width: availableWidth, height: containerDimensions.height },
         32
       );
     }
     return typeof zoom === 'number' ? zoom : 1;
-  }, [zoom, zoomMode, containerDimensions, overlayMode, splitRatio, snapshot.page.viewport]);
+  }, [zoom, zoomMode, containerDimensions, overlayMode, splitRatio, frameViewport]);
 
   // Preset quick picker handler
   const handleSelectPreset = (presetId: string) => {
@@ -190,15 +212,10 @@ export function App({
     }
   };
 
-  // Viewport change handler
+  // Viewport change handler: resizes the page frame only. The capture keeps its
+  // own viewport; inspecting again captures at the new size.
   const handleSelectViewport = (newViewport: { width: number; height: number; id?: string }) => {
-    setSnapshot((prev) => ({
-      ...prev,
-      page: {
-        ...prev.page,
-        viewport: { width: newViewport.width, height: newViewport.height }
-      }
-    }));
+    setFrameOverride({ snapshot, viewport: { width: newViewport.width, height: newViewport.height } });
   };
 
   // Zoom change handler
@@ -247,7 +264,7 @@ export function App({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url: trimmed,
-          viewport: snapshot.page.viewport
+          viewport: frameViewport
         })
       });
 
@@ -361,8 +378,8 @@ export function App({
         height: '100vh',
         overflow: 'hidden',
         position: 'relative',
-        backgroundColor: '#020617',
-        color: '#f8fafc',
+        backgroundColor: 'var(--anwc-bg)',
+        color: 'var(--anwc-fg)',
         ...style
       }}
     >
@@ -374,7 +391,7 @@ export function App({
         onUrlChange={setUrl}
         onInspect={handleInspect}
         isInspecting={isInspecting}
-        viewport={snapshot.page.viewport}
+        viewport={frameViewport}
         onSelectViewport={handleSelectViewport}
         viewportPresets={VIEWPORT_PRESETS}
         zoom={effectiveZoom}
@@ -395,7 +412,7 @@ export function App({
           flex: '1 1 0%',
           position: 'relative',
           overflow: 'hidden',
-          backgroundColor: '#090d16'
+          backgroundColor: 'var(--anwc-xray-bg)'
         }}
       >
         <SplitView
@@ -408,8 +425,8 @@ export function App({
             <GroundTruthPane
               url={url}
               targetUrl={url}
-              viewport={snapshot.page.viewport}
-              activeFinding={selectedFinding}
+              viewport={frameViewport}
+              activeFinding={viewportAligned ? selectedFinding : null}
               activeFindingBox={selectedFindingBox}
               snapshot={snapshot}
               zoom={effectiveZoom}
@@ -423,6 +440,8 @@ export function App({
               selectedNodeId={selectedFinding?.nodeId ?? null}
               onSelectNode={handleSelectNode}
               onHoverSample={setHoveredSample}
+              view={findingView}
+              frameViewport={frameViewport}
               zoom={effectiveZoom}
               overlayMode={overlayMode}
             />
@@ -436,6 +455,7 @@ export function App({
         report={report}
         selectedFindingId={selectedFindingId}
         onSelectFinding={setSelectedFindingId}
+        view={findingView}
       />
 
       {/* Synchronized Hovered Raycast Sample Tooltip Status Pill */}

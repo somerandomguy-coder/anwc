@@ -1,5 +1,7 @@
 import React from 'react';
 import type { HoveredSampleInfo } from '../types.js';
+import { SAMPLE_ENCODING, type SampleClass } from './encoding.js';
+import { SampleGlyph } from './XRayLegend.js';
 
 export interface SampleTooltipProps {
   sample: HoveredSampleInfo | null;
@@ -7,16 +9,19 @@ export interface SampleTooltipProps {
   style?: React.CSSProperties;
 }
 
+function classOf(sample: HoveredSampleInfo): SampleClass {
+  if (sample.sampleClass) return sample.sampleClass;
+  if (sample.result === 'target-or-descendant') return 'reachable';
+  if (sample.result === 'blocked') return 'blocked';
+  return 'no-hit';
+}
+
 export function SampleTooltip({ sample, className = '', style }: SampleTooltipProps): React.JSX.Element | null {
   if (!sample) return null;
 
+  const cls = classOf(sample);
+  const enc = SAMPLE_ENCODING[cls];
   const isBlocked = sample.result === 'blocked';
-  const isTargetHit = sample.result === 'target-or-descendant';
-
-  const badgeColor = isTargetHit ? '#22c55e' : isBlocked ? '#ef4444' : '#f59e0b';
-  const badgeBg = isTargetHit ? 'rgba(34, 197, 94, 0.15)' : isBlocked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)';
-  const badgeBorder = isTargetHit ? 'rgba(34, 197, 94, 0.4)' : isBlocked ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)';
-  const badgeText = isTargetHit ? 'Target Hit' : isBlocked ? 'Blocked' : 'No Target';
 
   const positionStyle: React.CSSProperties =
     sample.screenX !== undefined && sample.screenY !== undefined
@@ -32,101 +37,36 @@ export function SampleTooltip({ sample, className = '', style }: SampleTooltipPr
   return (
     <div
       className={`anwc-sample-tooltip ${className}`.trim()}
-      style={{
-        ...positionStyle,
-        minWidth: 220,
-        maxWidth: 320,
-        background: 'rgba(15, 23, 42, 0.94)',
-        border: '1px solid #334155',
-        borderRadius: 8,
-        padding: '10px 12px',
-        color: '#f8fafc',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-        fontSize: 12,
-        lineHeight: 1.5,
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(8px)',
-        transition: 'opacity 0.1s ease',
-        ...style
-      }}
+      data-sample-class={cls}
+      style={{ ...positionStyle, ...style }}
       role="tooltip"
       aria-label="Raycast Sample Details"
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontWeight: 600, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Raycast Sample
-        </span>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 6px',
-            borderRadius: 4,
-            fontSize: 11,
-            fontWeight: 600,
-            background: badgeBg,
-            color: badgeColor,
-            border: `1px solid ${badgeBorder}`
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              backgroundColor: badgeColor
-            }}
-          />
-          {badgeText}
+      <div className="anwc-tooltip-head">
+        <span className="anwc-eyebrow">Raycast Sample</span>
+        <span className="anwc-sample-badge" style={{ color: `var(${enc.colorVar})` }}>
+          <svg width="12" height="12" aria-hidden="true"><SampleGlyph cls={cls} x={6} y={6} size={3.5} /></svg>
+          {enc.label}
         </span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: '#64748b' }}>Coordinates:</span>
-          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-            ({sample.x}, {sample.y})
-          </span>
-        </div>
-
+      <dl className="anwc-tooltip-rows">
+        <div><dt>Coordinates:</dt><dd>({sample.x}, {sample.y})</dd></div>
+        <div><dt>Hit test:</dt><dd>{sample.result}</dd></div>
         {sample.targetNodeId && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Target Node:</span>
-            <span
-              style={{ color: '#38bdf8', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              title={sample.targetNodeId}
-            >
-              {sample.targetNodeId}
-            </span>
-          </div>
+          <div><dt>Target Node:</dt><dd title={sample.targetNodeId}>{sample.targetNodeId}</dd></div>
         )}
+      </dl>
+      <p className="anwc-tooltip-meaning">{enc.meaning}.</p>
 
-        {isBlocked && (
-          <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #1e293b' }}>
-            <div style={{ color: '#f87171', fontWeight: 600, marginBottom: 2 }}>
-              Blocked by:
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingLeft: 6, borderLeft: '2px solid #ef4444' }}>
-              {sample.blockerTag && (
-                <div style={{ color: '#fca5a5' }}>
-                  Tag: &lt;{sample.blockerTag}&gt;
-                </div>
-              )}
-              {sample.blockerLabel && (
-                <div style={{ color: '#cbd5e1', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  "{sample.blockerLabel}"
-                </div>
-              )}
-              {sample.blockerNodeId && (
-                <div style={{ color: '#94a3b8', fontSize: 10 }}>
-                  ID: {sample.blockerNodeId}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      {isBlocked && (
+        <div className="anwc-tooltip-blocker">
+          <div className="anwc-tooltip-blocker-title">Blocked by:</div>
+          {sample.blockerTag && <div>Tag: &lt;{sample.blockerTag}&gt;</div>}
+          {sample.blockerLabel && <div className="anwc-tooltip-blocker-label">"{sample.blockerLabel}"</div>}
+          {sample.blockerNodeId ? <div className="anwc-muted">ID: {sample.blockerNodeId}</div> : <div className="anwc-muted">The hit element is outside the captured set.</div>}
+        </div>
+      )}
     </div>
   );
 }

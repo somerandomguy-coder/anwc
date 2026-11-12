@@ -242,7 +242,8 @@ describe('FindingCard Component', () => {
       })
     );
     expect(selectedHtml).toContain('data-selected="true"');
-    expect(selectedHtml).toContain('ring-');
+    // P11: Tailwind ring classes (never loaded) replaced by the token-styled is-selected class.
+    expect(selectedHtml).toContain('is-selected');
 
     const unselectedHtml = renderToStaticMarkup(
       React.createElement(FindingCard, {
@@ -269,12 +270,13 @@ describe('FindingDrawer Component', () => {
     // Header counter and tabs
     expect(html).toContain('Diagnostic Findings');
     expect(html).toContain('Agent Payload (0.1 JSON)');
-    // Filter chips
-    expect(html).toContain('All');
-    expect(html).toContain('Critical');
-    expect(html).toContain('Pointer Blocked');
-    expect(html).toContain('Clipped');
-    expect(html).toContain('Actionable');
+    // P11: filter chips replaced by rule-category checkboxes, a text filter and "Show all"
+    for (const label of ['Pointer', 'Clipping', 'Overflow', 'Text', 'Visibility', 'Other']) {
+      expect(html).toContain(label);
+    }
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('data-testid="finding-filter"');
+    expect(html).toContain('Show all');
     // FindingCard rendered
     expect(html).toContain('POINTER_BLOCKED_AT_SAMPLES');
     expect(html).toContain('examples/shop/src/Card.tsx:10');
@@ -290,9 +292,9 @@ describe('FindingDrawer Component', () => {
       })
     );
 
-    // Shows Expand toggle button and minimal height class
+    // Shows Expand toggle button and the collapsed state (P11: data attribute instead of a Tailwind height class)
     expect(html).toContain('Expand');
-    expect(html).toContain('h-11');
+    expect(html).toContain('data-expanded="false"');
   });
 
   test('renders empty state when no findings match the filter', () => {
@@ -301,7 +303,7 @@ describe('FindingDrawer Component', () => {
         report: baseReport,
         selectedFindingId: null,
         onSelectFinding: () => {},
-        defaultFilter: 'clipped' // No clipped findings in validSnapshotFixture
+        defaultCategories: ['clipping'] // No clipping findings in validSnapshotFixture (P11: categories replace filter chips)
       })
     );
 

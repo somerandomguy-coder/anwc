@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import type { Finding, Snapshot } from '@anwc/protocol';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Snapshot } from '@anwc/protocol';
 import {
   createReport,
   queryFindingDetail,
@@ -8,13 +8,11 @@ import {
   type AgentSummary,
   type Report
 } from '@anwc/report';
-import {
-  type AnyFinding,
-  extractFindings,
-  filterFindings,
-  type FindingFilterType
-} from './drawer-utils.js';
+import { type AnyFinding, extractFindings } from './drawer-utils.js';
 import { FindingCard } from './FindingCard.js';
+import { RULE_CATEGORIES, countByCategory, nodeLookupFromSnapshot, type RuleCategory } from './encoding.js';
+import { useFindingView, type FindingView } from './useFindingView.js';
+import { nextTheme, useTheme } from './theme.js';
 
 export interface FindingDrawerProps {
   report?: Report | null;
@@ -22,9 +20,13 @@ export interface FindingDrawerProps {
   findings?: AnyFinding[];
   selectedFindingId: string | null;
   onSelectFinding: (id: string) => void;
+  /** Shared view state from useFindingView; when omitted the drawer keeps its own. */
+  view?: FindingView;
   defaultExpanded?: boolean;
   defaultTab?: 'findings' | 'agent-json';
-  defaultFilter?: FindingFilterType;
+  /** Initial categories for a drawer that keeps its own view state. */
+  defaultCategories?: RuleCategory[];
+  defaultQuery?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -35,56 +37,57 @@ export function FindingDrawer({
   findings: directFindings,
   selectedFindingId,
   onSelectFinding,
+  view: sharedView,
   defaultExpanded = true,
   defaultTab = 'findings',
-  defaultFilter = 'all',
+  defaultCategories,
+  defaultQuery,
   className = '',
   style
 }: FindingDrawerProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [activeTab, setActiveTab] = useState<'findings' | 'agent-json'>(defaultTab);
-  const [activeFilter, setActiveFilter] = useState<FindingFilterType>(defaultFilter);
   const [agentJsonSubTab, setAgentJsonSubTab] = useState<'summary' | 'detail'>('summary');
   const [copied, setCopied] = useState(false);
+  const [theme, setTheme] = useTheme();
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  // Extract all findings from direct prop, report, or snapshot
   const allFindings = useMemo<AnyFinding[]>(() => {
-    if (directFindings && directFindings.length > 0) {
-      return directFindings;
-    }
-    if (report) {
-      return extractFindings(report);
-    }
-    if (snapshot) {
-      return extractFindings(snapshot);
-    }
+    if (directFindings && directFindings.length > 0) return directFindings;
+    if (report) return extractFindings(report);
+    if (snapshot) return extractFindings(snapshot);
     return [];
   }, [directFindings, report, snapshot]);
 
-  // Filter findings according to active filter chip
-  const filteredFindings = useMemo(() => {
-    return filterFindings(allFindings, activeFilter);
-  }, [allFindings, activeFilter]);
+  const ownView = useFindingView({
+    findings: allFindings,
+    selectedFindingId,
+    onSelectFinding,
+    initialCategories: defaultCategories,
+    initialQuery: defaultQuery
+  });
+  const view = sharedView ?? ownView;
 
-  // Compute counts for filter chips
-  const filterCounts = useMemo(() => {
-    return {
-      all: allFindings.length,
-      critical: filterFindings(allFindings, 'critical').length,
-      pointer: filterFindings(allFindings, 'pointer').length,
-      clipped: filterFindings(allFindings, 'clipped').length,
-      actionable: filterFindings(allFindings, 'actionable').length
-    };
-  }, [allFindings]);
+  const categoryCounts = useMemo(() => countByCategory(allFindings), [allFindings]);
+  const criticalCount = allFindings.filter((f) => f.severity === 'error').length;
+  const actionableCount = allFindings.filter((f) => !f.acknowledged && (f.severity === 'error' || f.severity === 'warning')).length;
+  const nodeLookup = useMemo(() => nodeLookupFromSnapshot(snapshot), [snapshot]);
+  const filtersActive = view.query.trim() !== '' || view.isolatedFindingId !== null ||
+    RULE_CATEGORIES.some((c) => !view.categories.has(c.id));
 
-  // Ensure effective report for agent queries
+  // Keep the selected card in view when j/k or the x-ray changes the selection.
+  useEffect(() => {
+    if (!selectedFindingId || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-finding-id="${CSS.escape(selectedFindingId)}"]`);
+    el?.scrollIntoView?.({ block: 'nearest' });
+  }, [selectedFindingId]);
+
   const effectiveReport = useMemo(() => {
     if (report) return report;
     if (snapshot) return createReport(snapshot);
     return null;
   }, [report, snapshot]);
 
-  // Agent summary JSON payload
   const agentSummary = useMemo<AgentSummary | null>(() => {
     if (!effectiveReport) return null;
     try {
@@ -94,7 +97,6 @@ export function FindingDrawer({
     }
   }, [effectiveReport]);
 
-  // Agent finding detail JSON payload for selected finding
   const agentFindingDetail = useMemo<AgentFindingDetail | null>(() => {
     if (!effectiveReport || !selectedFindingId) return null;
     try {
@@ -104,11 +106,8 @@ export function FindingDrawer({
     }
   }, [effectiveReport, selectedFindingId]);
 
-  // Active JSON payload text to display / copy
   const activeJsonText = useMemo(() => {
-    if (agentJsonSubTab === 'summary') {
-      return agentSummary ? JSON.stringify(agentSummary, null, 2) : '{}';
-    }
+    if (agentJsonSubTab === 'summary') return agentSummary ? JSON.stringify(agentSummary, null, 2) : '{}';
     return agentFindingDetail
       ? JSON.stringify(agentFindingDetail, null, 2)
       : JSON.stringify({ message: 'Select a finding to inspect its AgentFindingDetail payload.' }, null, 2);
@@ -119,203 +118,168 @@ export function FindingDrawer({
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(activeJsonText);
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Clipboard can be unavailable; still acknowledge the click.
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
-
-  const filterChips: { id: FindingFilterType; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: filterCounts.all },
-    { id: 'critical', label: 'Critical', count: filterCounts.critical },
-    { id: 'pointer', label: 'Pointer Blocked', count: filterCounts.pointer },
-    { id: 'clipped', label: 'Clipped', count: filterCounts.clipped },
-    { id: 'actionable', label: 'Actionable', count: filterCounts.actionable }
-  ];
 
   return (
     <aside
       aria-label="Finding Drawer"
-      className={`border-t border-gray-800 bg-gray-950/95 backdrop-blur-md flex flex-col transition-all duration-200 select-none ${
-        isExpanded ? 'h-72 max-h-80' : 'h-11'
-      } ${className}`}
+      className={`anwc-drawer ${className}`.trim()}
+      data-expanded={isExpanded ? 'true' : 'false'}
       style={style}
     >
-      {/* Top Header Bar / Collapsible Toggle Bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800/80 bg-gray-900/60 shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Drawer collapse / expand button */}
+      <div className="anwc-drawer-bar">
+        <div className="anwc-row">
           <button
             type="button"
+            className="anwc-btn"
             onClick={() => setIsExpanded((prev) => !prev)}
             aria-label={isExpanded ? 'Collapse finding drawer' : 'Expand finding drawer'}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-300 hover:text-white px-2 py-1 rounded bg-gray-800/80 hover:bg-gray-700/80 transition-colors"
           >
-            <span>{isExpanded ? '▼' : '▲'}</span>
-            <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
+            {isExpanded ? 'Collapse' : 'Expand'}
           </button>
-
-          {/* Primary Tab Switcher */}
-          <div className="flex items-center rounded-lg bg-gray-800/80 p-0.5 border border-gray-700/50">
+          <div className="anwc-tabs" role="tablist">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'findings'}
+              className={`anwc-tab ${activeTab === 'findings' ? 'is-active' : ''}`}
               onClick={() => {
                 setActiveTab('findings');
                 if (!isExpanded) setIsExpanded(true);
               }}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                activeTab === 'findings'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200'
-              }`}
             >
               Diagnostic Findings ({allFindings.length})
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'agent-json'}
+              className={`anwc-tab ${activeTab === 'agent-json' ? 'is-active' : ''}`}
               onClick={() => {
                 setActiveTab('agent-json');
                 if (!isExpanded) setIsExpanded(true);
               }}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                activeTab === 'agent-json'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200'
-              }`}
             >
               Agent Payload (0.1 JSON)
             </button>
           </div>
         </div>
-
-        {/* Quick summary counts in header */}
-        <div className="flex items-center gap-3 text-xs font-mono">
-          {filterCounts.critical > 0 && (
-            <span className="text-red-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-              {filterCounts.critical} critical
-            </span>
-          )}
-          {filterCounts.actionable > 0 && (
-            <span className="text-amber-400 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-              {filterCounts.actionable} actionable
-            </span>
-          )}
+        <div className="anwc-row anwc-mono">
+          {criticalCount > 0 && <span className="anwc-count anwc-count-error">{criticalCount} critical</span>}
+          {actionableCount > 0 && <span className="anwc-count anwc-count-warn">{actionableCount} actionable</span>}
+          <button
+            type="button"
+            className="anwc-btn anwc-btn-ghost"
+            data-testid="theme-toggle"
+            title="Switch colour theme (auto follows the system)"
+            onClick={() => setTheme(nextTheme(theme))}
+          >
+            Theme: {theme}
+          </button>
         </div>
       </div>
 
-      {/* Main Drawer Body (visible when expanded) */}
-      {isExpanded && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* TAB 1: DIAGNOSTIC FINDINGS */}
-          {activeTab === 'findings' && (
-            <div className="flex-1 flex flex-col min-h-0">
-              {/* Filter Chips Bar */}
-              <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800/60 bg-gray-900/30 overflow-x-auto shrink-0">
-                <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
-                {filterChips.map((chip) => {
-                  const isActive = activeFilter === chip.id;
-                  return (
-                    <button
-                      key={chip.id}
-                      type="button"
-                      onClick={() => setActiveFilter(chip.id)}
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5 shrink-0 ${
-                        isActive
-                          ? 'bg-blue-600/20 text-blue-300 border-blue-500 shadow-sm'
-                          : 'bg-gray-800/60 text-gray-400 border-gray-700/60 hover:text-gray-200 hover:bg-gray-750'
-                      }`}
-                    >
-                      <span>{chip.label}</span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                          isActive ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'
-                        }`}
-                      >
-                        {chip.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Finding Cards List */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-                {filteredFindings.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <p className="text-sm font-medium">No findings match the active filter.</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {allFindings.length === 0
-                        ? 'Capture settled with zero detected defects.'
-                        : `Switch filter or choose "All" to inspect ${allFindings.length} findings.`}
-                    </p>
-                  </div>
-                ) : (
-                  filteredFindings.map((finding) => (
-                    <FindingCard
-                      key={finding.findingId}
-                      finding={finding}
-                      selected={finding.findingId === selectedFindingId}
-                      onSelectFinding={onSelectFinding}
+      {isExpanded && activeTab === 'findings' && (
+        <div className="anwc-drawer-body">
+          <div className="anwc-filter-bar" role="group" aria-label="Filter findings">
+            <fieldset className="anwc-cats">
+              <legend className="anwc-sr-only">Rule categories</legend>
+              {RULE_CATEGORIES.map((c) => {
+                const count = categoryCounts[c.id];
+                return (
+                  <label key={c.id} className={`anwc-cat ${count === 0 ? 'is-empty' : ''}`} data-category={c.id}>
+                    <input
+                      type="checkbox"
+                      checked={view.categories.has(c.id)}
+                      onChange={() => view.toggleCategory(c.id)}
+                      disabled={count === 0}
                     />
-                  ))
-                )}
+                    <span>{c.label}</span>
+                    <span className="anwc-cat-count">{count}</span>
+                  </label>
+                );
+              })}
+            </fieldset>
+            <input
+              ref={view.filterInputRef}
+              type="search"
+              className="anwc-filter-input"
+              data-testid="finding-filter"
+              placeholder="Filter findings (press /)"
+              aria-label="Filter findings by code, message or source"
+              value={view.query}
+              onChange={(e) => view.setQuery(e.target.value)}
+            />
+            <button type="button" className="anwc-btn" data-testid="show-all" onClick={view.showAll} disabled={!filtersActive}>
+              Show all
+            </button>
+            <span className="anwc-keys" aria-hidden="true">
+              <kbd>j</kbd>/<kbd>k</kbd> move · <kbd>/</kbd> filter · <kbd>Esc</kbd> clear
+            </span>
+          </div>
+
+          <div className="anwc-card-list" ref={listRef} data-testid="finding-list">
+            {view.visibleFindings.length === 0 ? (
+              <div className="anwc-empty">
+                <p>No findings match the active filter.</p>
+                <p className="anwc-muted">
+                  {allFindings.length === 0
+                    ? 'Capture settled with zero detected defects.'
+                    : `Use "Show all" to inspect all ${allFindings.length} findings.`}
+                </p>
               </div>
+            ) : (
+              view.visibleFindings.map((finding) => (
+                <FindingCard
+                  key={finding.findingId}
+                  finding={finding}
+                  number={view.numbering.get(finding.findingId)}
+                  selected={finding.findingId === selectedFindingId}
+                  hovered={finding.findingId === view.hoveredFindingId}
+                  isolated={finding.findingId === view.isolatedFindingId}
+                  onSelectFinding={view.activateFinding}
+                  onHover={view.setHoveredFindingId}
+                  nodeLookup={nodeLookup}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {isExpanded && activeTab === 'agent-json' && (
+        <div className="anwc-drawer-body">
+          <div className="anwc-filter-bar">
+            <div className="anwc-row">
+              <button
+                type="button"
+                className={`anwc-tab ${agentJsonSubTab === 'summary' ? 'is-active' : ''}`}
+                onClick={() => setAgentJsonSubTab('summary')}
+              >
+                Agent Summary (0.1)
+              </button>
+              <button
+                type="button"
+                className={`anwc-tab ${agentJsonSubTab === 'detail' ? 'is-active' : ''}`}
+                onClick={() => setAgentJsonSubTab('detail')}
+              >
+                Agent Finding Detail {selectedFindingId ? `(${selectedFindingId})` : ''}
+              </button>
             </div>
-          )}
-
-          {/* TAB 2: AGENT PAYLOAD (0.1 JSON) INSPECTOR */}
-          {activeTab === 'agent-json' && (
-            <div className="flex-1 flex flex-col min-h-0 bg-gray-950">
-              {/* Agent Sub-tabs & Copy Toolbar */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-900/40 shrink-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAgentJsonSubTab('summary')}
-                    className={`text-xs font-mono font-medium px-2.5 py-1 rounded border transition-colors ${
-                      agentJsonSubTab === 'summary'
-                        ? 'bg-blue-900/30 text-blue-400 border-blue-600'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Agent Summary (0.1)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAgentJsonSubTab('detail')}
-                    className={`text-xs font-mono font-medium px-2.5 py-1 rounded border transition-colors ${
-                      agentJsonSubTab === 'detail'
-                        ? 'bg-blue-900/30 text-blue-400 border-blue-600'
-                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-200'
-                    }`}
-                  >
-                    Agent Finding Detail {selectedFindingId ? `(${selectedFindingId})` : ''}
-                  </button>
-                </div>
-
-                {/* Copy JSON Button */}
-                <button
-                  type="button"
-                  onClick={handleCopyJson}
-                  className="flex items-center gap-1.5 text-xs font-mono bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded font-medium transition-colors shadow-sm"
-                >
-                  <span>📋</span>
-                  <span>{copied ? '✓ Copied!' : 'Copy JSON'}</span>
-                </button>
-              </div>
-
-              {/* JSON Pre block */}
-              <div className="flex-1 overflow-y-auto p-4 font-mono text-xs text-emerald-400/90 leading-relaxed bg-black/60 selection:bg-blue-500/30">
-                <pre tabIndex={0} className="whitespace-pre-wrap break-all">
-                  <code>{activeJsonText}</code>
-                </pre>
-              </div>
-            </div>
-          )}
+            <button type="button" className="anwc-btn" onClick={handleCopyJson}>
+              {copied ? 'Copied' : 'Copy JSON'}
+            </button>
+          </div>
+          <div className="anwc-json">
+            <pre tabIndex={0}>
+              <code>{activeJsonText}</code>
+            </pre>
+          </div>
         </div>
       )}
     </aside>

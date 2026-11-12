@@ -6,6 +6,7 @@ import {
   formatBox,
   formatSourceReference
 } from './drawer-utils.js';
+import { RULE_CATEGORIES, categorizeFinding, whyReported, type NodeLookup } from './encoding.js';
 
 export interface FindingCardProps {
   finding: AnyFinding;
@@ -13,9 +14,20 @@ export interface FindingCardProps {
   onSelectFinding?: (id: string) => void;
   targetBox?: Rect | null;
   blockerBoxes?: Rect[];
+  /** Number shared with the x-ray box badge. */
+  number?: number;
+  /** True while this finding's boxes are hovered in the x-ray (or the card itself). */
+  hovered?: boolean;
+  /** True while the overlay shows only this finding. */
+  isolated?: boolean;
+  onHover?: (id: string | null) => void;
+  /** Resolves node ids named by the evidence to tag, label and source. */
+  nodeLookup?: NodeLookup;
   className?: string;
   style?: React.CSSProperties;
 }
+
+const SEVERITY_LABEL: Record<AnyFinding['severity'], string> = { error: 'CRITICAL', warning: 'WARNING', info: 'INFO' };
 
 export function FindingCard({
   finding,
@@ -23,57 +35,30 @@ export function FindingCard({
   onSelectFinding,
   targetBox,
   blockerBoxes,
+  number,
+  hovered = false,
+  isolated = false,
+  onHover,
+  nodeLookup,
   className = '',
   style
 }: FindingCardProps): React.JSX.Element {
   const [copied, setCopied] = useState(false);
 
-  // Resolve source reference (finding.source or finding.target.source)
   const sourceRef = ('target' in finding && finding.target && 'source' in finding.target && finding.target.source)
     ? finding.target.source
     : ('source' in finding ? finding.source : null);
-
   const formattedSource = formatSourceReference(sourceRef);
 
-  // Resolve target & blocker bounding boxes
-  const effectiveTargetBox = targetBox ?? (
-    'target' in finding && finding.target && 'box' in finding.target
-      ? finding.target.box
-      : null
-  );
-
+  const effectiveTargetBox = targetBox ?? ('target' in finding && finding.target && 'box' in finding.target ? finding.target.box : null);
   const effectiveBlockerBox = (blockerBoxes && blockerBoxes.length > 0)
     ? blockerBoxes[0]
-    : ('blockers' in finding && Array.isArray(finding.blockers) && finding.blockers[0]?.box
-      ? finding.blockers[0].box
-      : null);
+    : ('blockers' in finding && Array.isArray(finding.blockers) && finding.blockers[0]?.box ? finding.blockers[0].box : null);
 
   const reachability = computeReachabilityMetric(finding);
-
-  // Severity styling
-  const severity = finding.severity;
-  let severityLabel = 'INFO';
-  let severityBadgeStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    color: '#60a5fa',
-    borderColor: 'rgba(59, 130, 246, 0.3)'
-  };
-
-  if (severity === 'error') {
-    severityLabel = 'CRITICAL';
-    severityBadgeStyle = {
-      backgroundColor: 'rgba(239, 68, 68, 0.15)',
-      color: '#f87171',
-      borderColor: 'rgba(239, 68, 68, 0.3)'
-    };
-  } else if (severity === 'warning') {
-    severityLabel = 'WARNING';
-    severityBadgeStyle = {
-      backgroundColor: 'rgba(245, 158, 11, 0.15)',
-      color: '#fbbf24',
-      borderColor: 'rgba(245, 158, 11, 0.3)'
-    };
-  }
+  const category = categorizeFinding(finding);
+  const categoryLabel = RULE_CATEGORIES.find((c) => c.id === category)?.label ?? category;
+  const why = whyReported(finding, nodeLookup);
 
   const handleCopySource = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,122 +67,95 @@ export function FindingCard({
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(formattedSource);
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Clipboard can be unavailable (insecure context); still acknowledge the click.
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       onSelectFinding?.(finding.findingId);
     }
   };
 
+  const classes = ['anwc-card', selected ? 'is-selected' : '', hovered ? 'is-hovered' : '', className].filter(Boolean).join(' ');
+
   return (
     <div
       role="button"
       tabIndex={0}
+      aria-pressed={selected}
+      aria-label={`${number !== undefined ? `Finding ${number}: ` : ''}${finding.code}`}
       data-selected={selected ? 'true' : 'false'}
+      data-hovered={hovered ? 'true' : 'false'}
+      data-isolated={isolated ? 'true' : 'false'}
       data-finding-id={finding.findingId}
+      data-finding-number={number}
+      data-category={category}
       onClick={() => onSelectFinding?.(finding.findingId)}
+      onMouseEnter={() => onHover?.(finding.findingId)}
+      onMouseLeave={() => onHover?.(null)}
+      onFocus={() => onHover?.(finding.findingId)}
+      onBlur={() => onHover?.(null)}
       onKeyDown={handleKeyDown}
-      className={`group relative text-left transition-all duration-150 rounded-lg p-3 cursor-pointer select-none border ${
-        selected
-          ? 'bg-blue-950/30 border-blue-500 ring-2 ring-blue-500/40 shadow-lg shadow-blue-500/10'
-          : 'bg-gray-900/90 border-gray-800 hover:border-gray-700 hover:bg-gray-850'
-      } ${className}`}
-      style={{
-        outline: 'none',
-        ...style
-      }}
+      className={classes}
+      style={style}
     >
-      {/* Header row: Severity badge, Code pill, findingId */}
-      <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Severity Badge */}
-          <span
-            className="text-[11px] font-bold tracking-wider px-2 py-0.5 rounded border uppercase"
-            style={severityBadgeStyle}
-          >
-            {severityLabel}
-          </span>
-
-          {/* Code pill */}
-          <span className="font-mono text-xs font-semibold text-gray-200 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
-            {finding.code}
-          </span>
+      <div className="anwc-card-head">
+        <div className="anwc-card-tags">
+          {number !== undefined && (
+            <span className="anwc-num-badge" data-testid="finding-number" aria-hidden="true">{number}</span>
+          )}
+          <span className={`anwc-sev anwc-sev-${finding.severity}`}>{SEVERITY_LABEL[finding.severity]}</span>
+          <span className="anwc-code-pill">{finding.code}</span>
+          <span className="anwc-cat-pill">{categoryLabel}</span>
+          {isolated && <span className="anwc-cat-pill anwc-isolated-pill">isolated</span>}
         </div>
 
-        {/* Source link badge with copy-to-clipboard */}
         {formattedSource ? (
-          <button
-            type="button"
-            title="Click to copy source path"
-            onClick={handleCopySource}
-            className="flex items-center gap-1.5 text-xs font-mono text-gray-400 hover:text-white bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700 px-2 py-0.5 rounded transition-colors"
-          >
-            <span className="text-gray-500">📍</span>
+          <button type="button" title="Click to copy source path" onClick={handleCopySource} className="anwc-source-btn">
             <span>{formattedSource}</span>
-            <span className="text-[10px] text-blue-400 ml-1">
-              {copied ? '✓ Copied' : 'copy'}
-            </span>
+            <span className="anwc-source-copy">{copied ? 'Copied' : 'copy'}</span>
           </button>
         ) : (
-          <span className="text-[11px] text-gray-500 italic">
-            uninstrumented
-          </span>
+          <span className="anwc-muted anwc-italic">uninstrumented</span>
         )}
       </div>
 
-      {/* Human explanation sentence */}
-      <p className="text-sm text-gray-300 leading-snug mb-2 font-normal">
-        {finding.message}
+      <p className="anwc-card-message">{finding.message}</p>
+
+      <p className="anwc-card-why" data-testid="finding-why">
+        <span className="anwc-card-why-label">Why this is reported:</span> {why}
       </p>
 
-      {/* Measured vs Expected if present */}
       {'measuredVsExpected' in finding && finding.measuredVsExpected && (
-        <div className="text-xs text-gray-400 font-mono mb-2 bg-black/30 p-1.5 rounded border border-gray-800/80">
-          <div><span className="text-amber-400/90 font-medium">measured:</span> {finding.measuredVsExpected.measured}</div>
+        <div className="anwc-card-measured">
+          <div><span className="anwc-measured-key">measured:</span> {finding.measuredVsExpected.measured}</div>
           {finding.measuredVsExpected.expected && (
-            <div className="text-gray-500"><span className="text-emerald-400/80 font-medium">expected:</span> {finding.measuredVsExpected.expected}</div>
+            <div><span className="anwc-expected-key">expected:</span> {finding.measuredVsExpected.expected}</div>
           )}
         </div>
       )}
 
-      {/* Metric pills row */}
-      <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono mt-1 text-gray-400">
-        {/* Reachability Ratio Pill */}
+      <div className="anwc-card-limits" data-testid="finding-limitations">
+        <span className="anwc-card-why-label">Limitations:</span>{' '}
+        {finding.limitations.length > 0
+          ? finding.limitations.join(' ')
+          : 'none recorded by the rule for this measurement.'}
+      </div>
+
+      <div className="anwc-card-metrics">
         {reachability && (
-          <span
-            className={`px-2 py-0.5 rounded border font-medium ${
-              reachability.percent === 0
-                ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                : reachability.percent < 50
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            }`}
-          >
-            🎯 {reachability.label}
+          <span className={`anwc-metric ${reachability.percent === 0 ? 'is-bad' : reachability.percent < 50 ? 'is-warn' : 'is-ok'}`}>
+            {reachability.label}
           </span>
         )}
-
-        {/* Target Box Pill */}
-        {effectiveTargetBox && (
-          <span className="px-2 py-0.5 rounded bg-gray-800/90 border border-gray-700 text-gray-300">
-            Target: {formatBox(effectiveTargetBox)}
-          </span>
-        )}
-
-        {/* Blocker Box Pill */}
-        {effectiveBlockerBox && (
-          <span className="px-2 py-0.5 rounded bg-red-950/40 border border-red-900/50 text-red-300">
-            Blocker: {formatBox(effectiveBlockerBox)}
-          </span>
-        )}
+        {effectiveTargetBox && <span className="anwc-metric">Target: {formatBox(effectiveTargetBox)}</span>}
+        {effectiveBlockerBox && <span className="anwc-metric is-bad">Blocker: {formatBox(effectiveBlockerBox)}</span>}
       </div>
     </div>
   );
