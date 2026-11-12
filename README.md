@@ -10,6 +10,7 @@ Status, 2026-09-17: React/Vite inspection, local alpha packages and cross-app ev
 
 - [STATUS](docs/STATUS.md): current capability, evidence and next task.
 - [ROADMAP](docs/ROADMAP.md): active Phase 3 Q01–Q11, ordered batches and bounded implementation briefs.
+- [PHASE_4](docs/PHASE_4.md): proposed next phase (P01–P20 task cards for subagents) and lessons from [agent-desktop](docs/reference/AGENT_DESKTOP.md). Not started.
 - [TESTING](docs/TESTING.md): try the public demos.
 - [EVALUATOR_SETUP](docs/EVALUATOR_SETUP.md): existing practice export/grade commands and limits.
 - [BENCHMARK](docs/BENCHMARK.md): fair comparison and scoring policy.
