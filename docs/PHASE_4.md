@@ -189,7 +189,7 @@ Build: a timeline grouped by state/step with status stripe, ✓/✗/○ badge an
 
 ### H-batch: trust, knowledge and proof
 
-#### P14 — Knowledge base for contributing agents (S)
+#### P14 — Knowledge base for contributing agents (S) — done 2026-11-13
 
 **Own:** new `AGENTS.md`, `docs/CONCEPTS.md`, `docs/solutions/README.md` + first entries. **Depends:** none. Do early; every other card benefits.
 

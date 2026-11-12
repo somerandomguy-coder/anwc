@@ -17,6 +17,7 @@ Status, 2026-11-12: working React/Vite inspection alpha with source-linked text/
 - [BENCHMARK](docs/BENCHMARK.md): fair comparison and scoring policy.
 - [PROTOCOL](docs/PROTOCOL.md): snapshot/CLI contract.
 - [HISTORY](docs/HISTORY.md) and [DECISIONS](docs/DECISIONS.md): evidence and rationale.
+- Contributing agents: [AGENTS.md](AGENTS.md) (where the truth lives, commands, definition of done) and the [CONCEPTS](docs/CONCEPTS.md) glossary.
 
 Original W cards and [Phase 2](docs/archive/PHASE_2.md) are archived. Arbitrary-site inspection remains in [the deferred inspector plan](docs/ARBITRARY_URL_PLAN.md).
 
