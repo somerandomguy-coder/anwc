@@ -39,7 +39,7 @@ npm run anwc -- inspect "http://127.0.0.1:4175/" --viewport 1440x900 --format te
 npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format text
 ```
 
-Build once before running the demo: workspace packages resolve their compiled `dist` files. After pulling changes, run `npm install` and `npm run build` again. `inspect` exits 0 when it completes, even if it reports defects (the default is `--fail-on none`); pass `--fail-on error` or `--fail-on warning` to exit 1 on findings, for example in CI. Status 2 means an execution/usage error; status 3 means incomplete or unsettled evidence.
+Build once before running the demo: workspace packages resolve their compiled `dist` files. After pulling changes, run `npm install` and `npm run build` again. `inspect` exits 0 when it completes, even if it reports defects (the default is `--fail-on none`); pass `--fail-on error` or `--fail-on warning` to exit 1 on findings, for example in CI. Status 1 also means a structured error (runtime missing, target unreachable, timeout); status 2 means a usage error; status 3 means incomplete or unsettled evidence. `--format json` prints one result envelope, `{ version, ok, command, data | error }`, on stdout; files written with `--output` keep the bare snapshot or report ([PROTOCOL §7](docs/PROTOCOL.md)).
 
 Save a capture and open a human-readable report:
 

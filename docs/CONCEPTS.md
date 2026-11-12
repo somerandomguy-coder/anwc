@@ -8,7 +8,7 @@ Terms marked **(planned)** are named in [PHASE_4](PHASE_4.md) but not built. Do 
 
 **Capture.** One read-only measurement of the current page at one viewport and state. The browser side produces a `RawCapture` (page, readiness, coverage, nodes, timings; no rule output). Lives in `packages/runtime/src/index.ts` (`capture`), shape in `packages/protocol/src/schema.ts` (`rawCaptureSchema`, `RawCapture`). A capture never clicks, fills, scrolls or takes screenshots ([PROTOCOL §5](PROTOCOL.md)). Each has a `captureId`; `sessionId` changes after navigation.
 
-**Snapshot.** A capture plus the findings computed from it and rule timing. This is what `anwc inspect --format json` writes. `snapshotSchema` / `Snapshot` in `packages/protocol/src/schema.ts`; produced by `inspect` in `packages/cli/src/index.ts`. Contract version `0.1` (`SCHEMA_VERSION`).
+**Snapshot.** A capture plus the findings computed from it and rule timing. This is what `anwc inspect --format json --output FILE` writes, and the `data` of the result envelope `inspect --format json` prints on stdout (`envelopeSchema` in `packages/protocol/src/envelope.ts`, [PROTOCOL §7](PROTOCOL.md)). `snapshotSchema` / `Snapshot` in `packages/protocol/src/schema.ts`; produced by `inspect` in `packages/cli/src/index.ts`. Contract version `0.1` (`SCHEMA_VERSION`).
 
 **Measurement (node).** One measured element inside a capture: box, render state, viewport and clip intersection, overflow, text fragments, pointer samples, paint visibility, intent. `measurementSchema` / `Measurement` in `packages/protocol/src/schema.ts`.
 

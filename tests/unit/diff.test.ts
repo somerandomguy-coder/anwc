@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { errorEnvelopeSchema, snapshotSchema } from '@anwc/protocol';
+import { envelopeOf, errorEnvelopeSchema, snapshotSchema } from '@anwc/protocol';
 import type { Finding, Measurement, Snapshot, SourceRef } from '@anwc/protocol';
 import {
   compareRepairs,
@@ -434,17 +434,22 @@ describe('L2 diff input validation and honest explanations', () => {
     const result = await runDiff(snapshot(), legacyMock, 'json');
     expect(result.exit).toBe(2);
     const envelope = errorEnvelopeSchema.parse(JSON.parse(result.stdout));
+    expect(envelope).toMatchObject({ version: '0.1', ok: false, command: 'diff' });
     expect(envelope.error.code).toBe('INVALID_USAGE');
+    expect(envelope.error.retry).toBe('safe');
     expect(envelope.error.message).toMatch(/^After capture file '.*after\.json' does not match Snapshot 0\.1 or Report 0\.1 schema\./);
-    const details = envelope.error.details as { issues: string[]; recovery: string };
+    const details = envelope.error.details as { kind: string; issues: string[] };
+    expect(details.kind).toBe('INPUT_SCHEMA_MISMATCH');
     expect(details.issues.length).toBeGreaterThan(0);
-    expect(details.recovery).toContain('anwc inspect');
+    expect(envelope.error.recovery?.hint).toContain('anwc inspect');
   });
 
   test('CLI accepts schema-valid Report inputs and never verifies without behavior evidence', async () => {
     const result = await runDiff(createReport(snapshot()), createReport(repaired()), 'json');
     expect(result.exit).toBe(1);
-    const diff = diffReportSchema.parse(JSON.parse(result.stdout));
+    const envelope = envelopeOf(diffReportSchema).parse(JSON.parse(result.stdout));
+    if (!envelope.ok) throw new Error(`diff failed: ${envelope.error.code}`);
+    const diff = diffReportSchema.parse(envelope.data);
     expect(diff.summary.verifiedFixed).toBe(0);
     expect(diff.summary.repairIntegrityVerdict).toBe('inconclusive-evidence');
     // Reports omit healthy nodes: absence from the after report is not proof of deletion.

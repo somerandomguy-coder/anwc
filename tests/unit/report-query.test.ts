@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Finding, Measurement, Snapshot } from '@anwc/protocol';
+import { envelopeSchema, type Finding, type Measurement, type Snapshot } from '@anwc/protocol';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 import {
   createReport,
@@ -380,7 +380,9 @@ describe('Q09 Compact Agent Evidence and Drilldown Queries', () => {
       const jsonIo = { stdout: (m: string) => jsonOut.push(m), stderr: () => {} };
       const code1 = await run(['report', snapFile, '--query', 'summary', '--format', 'json'], jsonIo);
       expect(code1).toBe(0);
-      const parsedSummary = JSON.parse(jsonOut.join(''));
+      const summaryEnvelope = JSON.parse(jsonOut.join(''));
+      expect(envelopeSchema.parse(summaryEnvelope)).toMatchObject({ version: '0.1', ok: true, command: 'report' });
+      const parsedSummary = summaryEnvelope.data;
       expect(parsedSummary.schemaVersion).toBe('0.1');
       expect(parsedSummary.summary.totalFindings).toBe(4);
       expect(parsedSummary.findings).toHaveLength(4);
@@ -399,7 +401,9 @@ describe('Q09 Compact Agent Evidence and Drilldown Queries', () => {
       const detailJsonIo = { stdout: (m: string) => detailJsonOut.push(m), stderr: () => {} };
       const code3 = await run(['report', snapFile, '--query', 'detail', '--finding-id', 'f-overlay', '--format', 'json'], detailJsonIo);
       expect(code3).toBe(0);
-      const parsedDetail = JSON.parse(detailJsonOut.join(''));
+      const detailEnvelope = JSON.parse(detailJsonOut.join(''));
+      expect(envelopeSchema.parse(detailEnvelope)).toMatchObject({ ok: true, command: 'report' });
+      const parsedDetail = detailEnvelope.data;
       expect(parsedDetail.finding.findingId).toBe('f-overlay');
       expect(parsedDetail.repairContext.file).toBe('examples/shop/src/Card.tsx');
 

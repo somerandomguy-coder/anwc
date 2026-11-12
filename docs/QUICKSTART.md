@@ -84,9 +84,11 @@ npx anwc inspect "http://127.0.0.1:5173/" --viewport 1440x900 --format json --ou
 
 Options:
 - `--viewport WIDTHxHEIGHT`: Browser viewport (default `1440x900`).
-- `--fail-on error|warning|none`: Control exit code (exits `1` on matching finding severity).
+- `--fail-on error|warning|none`: Control exit code (exits `1` on matching finding severity; the result is still `ok:true`).
 - `--limit <N>`: Maximum findings to report.
-- `--output <path>`: Write snapshot to disk.
+- `--output <path>`: Write the bare snapshot to disk (stdout stays empty on success).
+
+Without `--output`, JSON stdout is a result envelope: `{"version":"0.1","ok":true,"command":"inspect","data":<snapshot>}`, or `{"version":"0.1","ok":false,"command":"inspect","error":{"code":"RUNTIME_MISSING",...}}` on failure. Exit codes: `0` ok, `1` error or `--fail-on` match, `2` usage error, `3` incomplete or unsettled capture. See [PROTOCOL §7](PROTOCOL.md).
 
 ---
 

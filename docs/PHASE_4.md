@@ -66,7 +66,7 @@ The 2026-09-17 launch triage ([LAUNCH](LAUNCH.md), merged 2026-11-12) found gaps
 
 ### E-batch: agent contract
 
-#### P01 — One result envelope and error taxonomy (M)
+#### P01 — One result envelope and error taxonomy (M) — done 2026-11-13
 
 **Own:** `packages/protocol` (new `envelope` schema), `packages/cli/src/index.ts` output paths, `tests/unit/cli.test.ts`, PROTOCOL. **Depends:** none.
 

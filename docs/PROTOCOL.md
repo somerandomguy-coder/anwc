@@ -216,7 +216,7 @@ npm run anwc -- inspect http://127.0.0.1:5173 --fail-on error
 | --- | --- | --- |
 | `--viewport WxH` | `1440x900` | Positive integers; reject malformed/out-of-budget dimensions |
 | `--format text\|json` | `text` | JSON preserves full structured evidence |
-| `--output path` | stdout | Write report to file when supplied; diagnostics go to stderr |
+| `--output path` | stdout | Write the bare payload (or text) to file when supplied; errors still go to stdout (JSON) or stderr (text); see §7 |
 | `--limit N` | 40 | Text findings cap; JSON findings remain complete within capture budget |
 | `--max-chars N` | 12000 | Text cap with explicit truncation marker and counts |
 | `--timeout-ms N` | 15000 | Navigation/readiness/capture overall bound with cleanup |
@@ -224,7 +224,7 @@ npm run anwc -- inspect http://127.0.0.1:5173 --fail-on error
 | `--runtime-only` | false | Inject collector without requiring compiler metadata |
 | `--fail-on error\|warning\|none` | `none` | Controls CI failure threshold |
 
-Exit codes: `0` successful complete capture with no selected threshold violation; `1` successful complete capture with selected threshold violation; `2` invalid usage/navigation/runtime/tool failure; `3` partial coverage or unsettled capture. Incomplete capture takes precedence over defect threshold. No-findings with code `0` means no findings within stated capabilities, never universal proof of correct appearance.
+Exit codes (all commands, since P01; see §7): `0` ok; `1` structured error (`ok:false`, any code except `INVALID_USAGE`) **or** `ok:true` with a failed verdict gate — for `inspect` that is a `--fail-on` threshold match; `2` usage/parse error (`INVALID_USAGE`), with the envelope still printed in JSON mode; `3` (`inspect` only) `ok:true` but partial coverage or an unsettled capture. Incomplete capture takes precedence over the defect threshold. No-findings with code `0` means no findings within stated capabilities, never universal proof of correct appearance. Exit 1 is ambiguous on purpose for CI compatibility; agents branch on the envelope's `ok`, not the exit code.
 
 JSON output must remain parseable when there are warnings, timers, or browser console logs. Text output ends with omitted finding count and capture completeness. A CLI-owned browser is always closed, including error paths. The read-only inspection operation never clicks, fills, changes CSS, or scrolls; a separate trusted runner performs scenario setup.
 
@@ -272,3 +272,100 @@ ERROR TEXT_LINE_BUDGET_EXCEEDED n8 "Product name"
 ```
 
 Do not remove uncertainty to shorten the report. Give details only for affected elements by default; allow full JSON drill-down. Reporting zero screenshots requires that the inspection path actually does not invoke screenshot APIs; it does not describe what the evaluating human or another tool may have done.
+
+## 7. Result envelope 0.1 (P01)
+
+Every JSON result a CLI command prints on stdout is one `Envelope 0.1`. Executable schemas: `packages/protocol/src/envelope.ts` (`envelopeSchema`, `successEnvelopeSchema`, `errorEnvelopeSchema`, `envelopeOf(payloadSchema)`, `unwrapEnvelope`). Builders: `packages/cli/src/output.ts`.
+
+```ts
+type Envelope<T> =
+  | { version: '0.1'; ok: true; command: Command; data: T }
+  | { version: '0.1'; ok: false; command: Command; error: EnvelopeError };
+
+type Command = 'inspect' | 'check' | 'diff' | 'report' | 'doctor' | 'studio' | 'unknown'; // 'unknown': first argument is not a command
+
+type EnvelopeError = {
+  code: ErrorCode;
+  message: string;
+  details?: { kind: string; [key: string]: unknown }; // kind: precise original failure, UPPER_SNAKE_CASE
+  recovery?: {
+    strategy: 'fix_input' | 'start_target' | 'instrument_target' | 'adjust_csp' | 'wait_and_retry'
+      | 'increase_budget' | 'recapture' | 'disambiguate_target' | 'fix_environment' | 'report_bug';
+    retryable: boolean;            // re-running the identical command may succeed
+    requiresFreshCapture: boolean; // evidence from the failed attempt must not be reused; capture again
+    hint?: string;                 // human-readable next step (was details.recovery)
+  };
+  retry: 'safe' | 'unsafe' | 'unknown'; // can a re-run duplicate an effect?
+};
+```
+
+Empty optional fields are omitted, never `null`. `data` is always present when `ok` is true and is the unchanged payload:
+
+| Command and mode | `data` |
+| --- | --- |
+| `inspect --format json` | Snapshot 0.1 |
+| `report --format json` | Report 0.1 |
+| `report --query summary --format json` | AgentSummary 0.1 |
+| `report --query detail --format json` | AgentFindingDetail 0.1 |
+| `diff --format json` | DiffReport 0.1 |
+| `check` (always JSON) | CheckRunResult 0.1 |
+| `doctor --json` / `doctor --format json` | DoctorResult 0.1 |
+
+**Findings and verdicts are data.** A capture with findings, a `check` with failed checkpoints, a `diff` that is not `verified-repair` and an unhealthy `doctor` are all `ok:true`; only the exit code reports the gate (§5 and below).
+
+### Error codes
+
+The list is closed; adding a code is a protocol change. Each code has a default recovery; `details.kind` keeps the precise failure.
+
+| Code | Exit | Default recovery (`strategy`, retryable, requiresFreshCapture) | Produced today by (`details.kind`) |
+| --- | --- | --- | --- |
+| `INVALID_USAGE` | 2 | `fix_input`, no, no | `USAGE`, `UNKNOWN_COMMAND`, `UNKNOWN_OPTION`, `MISSING_OPTION`, `MISSING_OPTION_VALUE`, `INVALID_OPTION_VALUE`, `INVALID_OPTIONS`, `INVALID_URL`, `MARKDOWN_URL`, `INPUT_UNREADABLE`, `INPUT_NOT_JSON`, `INPUT_SCHEMA_MISMATCH`, `INPUT_IS_ERROR_ENVELOPE`, `FINDING_NOT_FOUND` |
+| `TARGET_UNREACHABLE` | 1 | `start_target`, yes, no | `NAVIGATION_FAILED` (inspect `page.goto` failed) |
+| `RUNTIME_MISSING` | 1 | `instrument_target`, no, no | `RUNTIME_MISSING` (no `window.__ANWC__` within the wait) |
+| `CSP_BLOCKED` | 1 | `adjust_csp`, no, no | `RUNTIME_SCRIPT_BLOCKED_BY_CSP` (`--runtime-only` injection refused, or the runtime is missing after a browser CSP violation for a script) |
+| `NOT_SETTLED` | 1 | `wait_and_retry`, yes, yes | `READY_SELECTOR_TIMEOUT` (`--ready-selector` never attached) |
+| `CAPTURE_STALE` | 1 | `recapture`, yes, yes | `DOCUMENT_REPLACED_DURING_CAPTURE` (the document navigated mid-capture and the one retry on the new document also failed) |
+| `AMBIGUOUS_TARGET` | 1 | `disambiguate_target`, no, no | none yet: `check` reports an ambiguous selector as a failed checkpoint inside `data`, not as a command error. Reserved for P02 node references. |
+| `SOURCE_UNMAPPED` | 1 | `instrument_target`, no, no | none yet: an unmapped node is `source: null` data. Reserved for P02/P03. |
+| `BUDGET_EXCEEDED` | 1 | `increase_budget`, yes, yes | `CAPTURE_TIMEOUT` (runtime capture exceeded `--timeout-ms`) |
+| `INTERNAL` | 1 | `report_bug` (or `fix_environment`), no, no | `RUNTIME_CAPTURE_FAILED`, `BROWSER_MISSING`, `BROWSER_LAUNCH_FAILED` (both `fix_environment`), `UNCAUGHT_EXCEPTION` |
+
+An unsettled or incomplete Snapshot is **not** `NOT_SETTLED`: it is `ok:true` data with `readiness.settled:false` or `coverage.complete:false` and `inspect` exit 3 (P05 refines partial results).
+
+### Retry safety
+
+`retry:"safe"` appears only where re-running cannot duplicate an effect: every `INVALID_USAGE` (nothing ran), and every error from `inspect`, `report`, `diff`, `doctor` and `studio` (read-only; `--output` rewrites the same path). `check` replays declared clicks and fills against a live app, so its non-usage errors are `retry:"unknown"`. Nothing is `unsafe` today. `retry` answers "is it safe to re-run?"; `recovery.retryable` answers "may an unchanged re-run succeed?".
+
+### Exit codes
+
+| Exit | Meaning |
+| --- | --- |
+| 0 | `ok:true`, no gate failed |
+| 1 | `ok:false` with a code other than `INVALID_USAGE`; or `ok:true` with a failed gate: `inspect --fail-on` threshold met, `check` `passedAll:false`, `diff` verdict other than `verified-repair`, `doctor` `ok:false` |
+| 2 | `ok:false`, `INVALID_USAGE` (envelope still printed in JSON mode) |
+| 3 | `inspect` only: `ok:true`, but coverage incomplete or readiness unsettled (takes precedence over `--fail-on`) |
+
+Exit 3 is kept from Phase 3 so CI cannot read unsettled evidence as a clean pass. `--fail-on` keeps working: it changes only the exit code, never `ok`.
+
+### Where JSON goes
+
+- **JSON mode** is chosen by `--format json` (any command), `doctor --json`, or `check` (JSON-only; `check --format json` is accepted). It is decided from the raw arguments, so parse errors also print an envelope. In JSON mode stdout holds exactly one envelope and stderr stays empty for CLI errors.
+- **Text, Markdown and HTML** formats are unchanged; errors in those modes still print `ANWC CODE: message` and `  Recovery: hint` on stderr.
+- **`--output FILE` writes the bare payload**, not an envelope (Snapshot, Report, AgentSummary, AgentFindingDetail, DiffReport). Saved files are durable artifacts that `report`, `diff`, the studio and earlier tooling read; the envelope describes one invocation. On success stdout is then empty; on error the envelope still goes to stdout and no file is written. `check --output DIR` artifacts (`*.json` captures, `check-summary.json`) also stay bare.
+- **Readers accept both.** `report`, `diff`, `studio --capture` and the studio `/api/upload` route unwrap an `ok:true` envelope (for example `inspect --format json > before.json`). A saved `ok:false` envelope is rejected as `INVALID_USAGE` / `INPUT_IS_ERROR_ENVELOPE`. The studio's in-browser file loader (`packages/studio/src/App.tsx`) still expects bare payloads.
+
+## 8. Migration from bare payloads (consumer impact)
+
+Before P01, `--format json` stdout was the bare payload and errors were `{ schemaVersion: '0.1', error: { code, message, details } }`.
+
+| Consumer | Before | After | Change needed |
+| --- | --- | --- | --- |
+| Parses `inspect`/`report`/`diff --format json` stdout | Snapshot / Report / DiffReport at the root | Same object under `data` | Read `.data`; check `.ok` first. `envelopeOf(schema)` validates both layers. |
+| Parses `check` stdout | CheckRunResult at the root; errors as text on stderr | Under `data`; errors as an `ok:false` envelope on stdout | Read `.data`; read errors from stdout. |
+| Parses `doctor --json` | DoctorResult at the root (`ok` meant "healthy") | Envelope `ok` = command succeeded; health is `data.ok` | Read `.data.ok`; do not confuse the two `ok`s. |
+| Reads files written with `--output` | Bare payload | Bare payload | None. |
+| Redirects stdout to a file and feeds it to `report`/`diff`/studio server | Bare payload | Envelope | None: readers unwrap envelopes. |
+| Parses error JSON | `schemaVersion`, `error.details.recovery` (string), `details: null` allowed | `version`, `ok:false`, `command`; hint at `error.recovery.hint`; `details` omitted or `{ kind, ... }`; new `retry` | Switch on `error.code`; read `error.recovery`. |
+| Old error codes | `NAVIGATION_FAILED`, `TIMEOUT`, `PARTIAL_CAPTURE` | `TARGET_UNREACHABLE` (kind `NAVIGATION_FAILED`); `TIMEOUT` split into `NOT_SETTLED` (kind `READY_SELECTOR_TIMEOUT`) and `BUDGET_EXCEEDED` (kind `CAPTURE_TIMEOUT`); `PARTIAL_CAPTURE` removed (it had no producer; partial captures are `ok:true` data with exit 3) | Map codes; use `details.kind` for the precise case. |
+| Relies on exit 2 for runtime/navigation failures | 2 for every error | 1 for structured errors; 2 only for `INVALID_USAGE` | CI scripts that treated 2 as "tool failed" should treat 1 or 2 with `ok:false` as failure. |
+| `@anwc/protocol` `errorEnvelopeSchema` / `ErrorEnvelope` | Old error shape | Same names, new `ok:false` envelope shape | Recompile; old-shape fixtures fail validation. |

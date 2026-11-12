@@ -39,7 +39,7 @@ Focused runs: `npx vitest run tests/unit/diff.test.ts`, `npx playwright test tes
 npx vite build --config packages/studio/vite.config.ts packages/studio
 ```
 
-`inspect` exits 0 when a capture completes, even with findings, because `--fail-on` defaults to `none`; 1 only when `--fail-on error|warning` matches a finding; 2 for usage/navigation/runtime errors; 3 for incomplete or unsettled evidence (`exitCode` in `packages/cli/src/index.ts`).
+Every `--format json` result (and all `check` output) is one `Envelope 0.1` on stdout: `{ version, ok:true, command, data }` or `{ version, ok:false, command, error }` ([PROTOCOL §7](docs/PROTOCOL.md)); branch on `ok` and `error.code`, not on the exit code. Files written with `--output` stay bare payloads. Exit codes: 0 ok; 1 structured error (`ok:false`) or a failed gate with `ok:true` (`inspect --fail-on` match, `check` not `passedAll`, `diff` not `verified-repair`, unhealthy `doctor`); 2 usage error (`INVALID_USAGE`); 3 `inspect` only, incomplete or unsettled evidence (`exitCode` and `run` in `packages/cli/src/index.ts`).
 
 ### Ports
 

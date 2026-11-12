@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
 import { formatText, inspect, parseArguments, parseReportArguments, parseCheckArguments, parseStudioArguments, run } from '../../packages/cli/src/index.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
+import { envelopeOf, envelopeSchema, errorEnvelopeSchema, snapshotSchema, type ErrorCode } from '@anwc/protocol';
+import { reportSchema } from '@anwc/report';
 
 let server: ViteDevServer;
 const url = 'http://127.0.0.1:4174';
@@ -38,18 +40,24 @@ describe('ANWC CLI', () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
     const io = { stdout: (message: string) => stdout.push(message), stderr: (message: string) => stderr.push(message) };
+    // --fail-on: findings are data (ok:true), the threshold only sets exit 1.
     const findingExit = await run(['inspect', 'data:text/html,<button data-anwc-expect="interactive" style="display:none">Hidden</button>', '--runtime-only', '--format', 'json', '--fail-on', 'error'], io);
     expect(findingExit).toBe(1);
-    expect(JSON.parse(stdout.pop()!)).toMatchObject({ schemaVersion: '0.1' });
+    const findingEnvelope = envelopeOf(snapshotSchema).parse(JSON.parse(stdout.pop()!));
+    expect(findingEnvelope).toMatchObject({ version: '0.1', ok: true, command: 'inspect', data: { schemaVersion: '0.1' } });
     expect(stderr).toEqual([]);
 
+    const passingExit = await run(['inspect', 'data:text/html,<button data-anwc-expect="interactive" style="display:none">Hidden</button>', '--runtime-only', '--format', 'json', '--fail-on', 'none'], io);
+    expect(passingExit).toBe(0);
+    expect(envelopeSchema.parse(JSON.parse(stdout.pop()!))).toMatchObject({ ok: true, command: 'inspect' });
+
     const missingExit = await run(['inspect', 'data:text/html,<button>Missing runtime</button>', '--format', 'json'], io);
-    expect(missingExit).toBe(2);
-    expect(JSON.parse(stdout.pop()!)).toMatchObject({ error: { code: 'RUNTIME_MISSING' } });
+    expect(missingExit).toBe(1);
+    expect(errorEnvelopeSchema.parse(JSON.parse(stdout.pop()!))).toMatchObject({ ok: false, command: 'inspect', error: { code: 'RUNTIME_MISSING', details: { kind: 'RUNTIME_MISSING' }, retry: 'safe', recovery: { strategy: 'instrument_target' } } });
 
     const exceptionExit = await run(['inspect', 'data:text/html,<script>window.__ANWC__={capture(){throw new Error("capture broke")}}</script>', '--format', 'json'], io);
-    expect(exceptionExit).toBe(2);
-    expect(JSON.parse(stdout.pop()!)).toMatchObject({ error: { code: 'INTERNAL', message: expect.stringContaining('capture broke') } });
+    expect(exceptionExit).toBe(1);
+    expect(errorEnvelopeSchema.parse(JSON.parse(stdout.pop()!))).toMatchObject({ error: { code: 'INTERNAL', message: expect.stringContaining('capture broke'), details: { kind: 'RUNTIME_CAPTURE_FAILED' } } });
   }, 20_000);
 
   test('reports each public shop defect through the CLI inspection path', async () => {
@@ -80,9 +88,12 @@ describe('ANWC CLI', () => {
 
     const exit2 = await run(['inspect', '<http://127.0.0.1:4174/>', '--format', 'json'], jsonIo);
     expect(exit2).toBe(2);
-    const jsonReport = JSON.parse(jsonStdout.join(''));
+    const jsonReport = errorEnvelopeSchema.parse(JSON.parse(jsonStdout.join('')));
     expect(jsonReport.error.code).toBe('INVALID_USAGE');
-    expect(jsonReport.error.details.recovery).toContain('Strip Markdown formatting');
+    expect(jsonReport.error.details?.kind).toBe('MARKDOWN_URL');
+    expect(jsonReport.error.recovery?.hint).toContain('Strip Markdown formatting');
+    expect(jsonReport.error.retry).toBe('safe');
+    expect(jsonStderr).toEqual([]);
   });
 
   test('provides actionable recovery guidance when runtime is missing in text and JSON modes', async () => {
@@ -91,19 +102,108 @@ describe('ANWC CLI', () => {
     const textIo = { stdout: (m: string) => textStdout.push(m), stderr: (m: string) => textStderr.push(m) };
 
     const exit = await run(['inspect', 'data:text/html,<button>Plain button</button>', '--format', 'text'], textIo);
-    expect(exit).toBe(2);
+    expect(exit).toBe(1);
     const textOut = textStderr.join('\n');
     expect(textOut).toContain('ANWC RUNTIME_MISSING: ANWC runtime is not present on this page.');
     expect(textOut).toContain("Recovery: Ensure '@anwc/vite-plugin' is added to plugins in vite.config.ts");
+    expect(textStdout).toEqual([]);
 
     const jsonStdout: string[] = [];
     const jsonStderr: string[] = [];
     const jsonIo = { stdout: (m: string) => jsonStdout.push(m), stderr: (m: string) => jsonStderr.push(m) };
 
-    await run(['inspect', 'data:text/html,<button>Plain button</button>', '--format', 'json'], jsonIo);
-    const jsonReport = JSON.parse(jsonStdout.join(''));
-    expect(jsonReport.error.details.recovery).toContain("Ensure '@anwc/vite-plugin' is added");
+    expect(await run(['inspect', 'data:text/html,<button>Plain button</button>', '--format', 'json'], jsonIo)).toBe(1);
+    const jsonReport = errorEnvelopeSchema.parse(JSON.parse(jsonStdout.join('')));
+    expect(jsonReport.error.recovery?.hint).toContain("Ensure '@anwc/vite-plugin' is added");
   }, 20_000);
+
+  test('produces each error code that has a real producer, with exit 1 and a valid envelope', async () => {
+    async function inspectJson(args: string[]): Promise<{ exit: number; envelope: ReturnType<typeof errorEnvelopeSchema.parse> }> {
+      const stdout: string[] = [];
+      const stderr: string[] = [];
+      const exit = await run(['inspect', ...args, '--format', 'json'], { stdout: (m) => stdout.push(m), stderr: (m) => stderr.push(m) });
+      expect(stderr).toEqual([]);
+      expect(stdout).toHaveLength(1);
+      return { exit, envelope: errorEnvelopeSchema.parse(JSON.parse(stdout[0]!)) };
+    }
+    const cases: Array<[ErrorCode, string, string[], { retryable: boolean; requiresFreshCapture: boolean }]> = [
+      // Nothing listens on port 9; navigation is refused.
+      ['TARGET_UNREACHABLE', 'NAVIGATION_FAILED', ['http://127.0.0.1:9/', '--timeout-ms', '3000'], { retryable: true, requiresFreshCapture: false }],
+      ['NOT_SETTLED', 'READY_SELECTOR_TIMEOUT', ['data:text/html,<p>never ready</p>', '--runtime-only', '--ready-selector', '#never', '--timeout-ms', '300'], { retryable: true, requiresFreshCapture: true }],
+      ['BUDGET_EXCEEDED', 'CAPTURE_TIMEOUT', ['data:text/html,<script>window.__ANWC__={capture(){return new Promise(()=>{})}}</script>', '--timeout-ms', '500'], { retryable: true, requiresFreshCapture: true }],
+      // Injected collector refused by CSP (--runtime-only).
+      ['CSP_BLOCKED', 'RUNTIME_SCRIPT_BLOCKED_BY_CSP', [`data:text/html,<meta http-equiv="Content-Security-Policy" content="script-src 'none'"><button>CSP page</button>`, '--runtime-only'], { retryable: false, requiresFreshCapture: false }],
+      // Page's own runtime script refused by CSP: detected from the browser's CSP violation report.
+      ['CSP_BLOCKED', 'RUNTIME_SCRIPT_BLOCKED_BY_CSP', [`data:text/html,<meta http-equiv="Content-Security-Policy" content="script-src 'none'"><script>window.__ANWC__={capture(){}}</script><button>CSP page</button>`], { retryable: false, requiresFreshCapture: false }],
+      // The page navigates away mid-capture and the new document has no runtime (retry wait is capped at 5 s).
+      ['CAPTURE_STALE', 'DOCUMENT_REPLACED_DURING_CAPTURE', [`data:text/html,<script>window.__ANWC__={capture(){location.href='about:blank';return new Promise(()=>{})}}</script>`, '--timeout-ms', '8000'], { retryable: true, requiresFreshCapture: true }]
+    ];
+    for (const [code, kind, args, recovery] of cases) {
+      const { exit, envelope } = await inspectJson(args);
+      expect(envelope.error.code, kind).toBe(code);
+      expect(envelope.error.details?.kind, code).toBe(kind);
+      expect(envelope.error.recovery, code).toMatchObject(recovery);
+      // inspect is read-only, so re-running cannot duplicate an effect.
+      expect(envelope.error.retry, code).toBe('safe');
+      expect(envelope.command).toBe('inspect');
+      expect(exit, code).toBe(1);
+    }
+  }, 60_000);
+
+  test('prints a usage envelope with exit 2 for parse errors and unknown commands in JSON mode', async () => {
+    for (const args of [['inspect', '--format', 'json'], ['inspect', url, '--viewport', 'bad', '--format', 'json'], ['bogus', '--format', 'json'], ['report', '--format', 'json'], ['diff', 'only-one.json', '--format', 'json'], ['check']]) {
+      const stdout: string[] = [];
+      const stderr: string[] = [];
+      const exit = await run(args, { stdout: (m) => stdout.push(m), stderr: (m) => stderr.push(m) });
+      expect(exit, args.join(' ')).toBe(2);
+      expect(stderr, args.join(' ')).toEqual([]);
+      const envelope = errorEnvelopeSchema.parse(JSON.parse(stdout.join('')));
+      expect(envelope.error).toMatchObject({ code: 'INVALID_USAGE', retry: 'safe', recovery: { strategy: 'fix_input', retryable: false } });
+      expect(envelope.command).toBe(args[0] === 'bogus' ? 'unknown' : args[0]);
+    }
+  });
+
+  test('keeps bare payloads in --output files and accepts envelope-wrapped saved input', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-cli-envelope-'));
+    try {
+      const silent = { stdout: () => {}, stderr: () => {} };
+      // inspect --format json --output writes the bare Snapshot; stdout stays empty on success.
+      const snapPath = join(tmp, 'snap.json');
+      const stdout: string[] = [];
+      const exit = await run(['inspect', 'data:text/html,<button>Saved</button>', '--runtime-only', '--format', 'json', '--output', snapPath], { stdout: (m) => stdout.push(m), stderr: () => {} });
+      expect(exit).toBe(0);
+      expect(stdout).toEqual([]);
+      const saved = JSON.parse(await readFile(snapPath, 'utf8'));
+      expect(snapshotSchema.parse(saved).schemaVersion).toBe('0.1');
+      expect(saved).not.toHaveProperty('ok');
+
+      // stdout redirected to a file is an envelope; report and diff accept it.
+      const wrappedPath = join(tmp, 'wrapped.json');
+      await writeFile(wrappedPath, JSON.stringify({ version: '0.1', ok: true, command: 'inspect', data: validSnapshotFixture }), 'utf8');
+      const reportOut: string[] = [];
+      expect(await run(['report', wrappedPath, '--format', 'json'], { stdout: (m) => reportOut.push(m), stderr: () => {} })).toBe(0);
+      const reportEnvelope = envelopeOf(reportSchema).parse(JSON.parse(reportOut.join('')));
+      expect(reportEnvelope.ok).toBe(true);
+
+      const reportFile = join(tmp, 'report.json');
+      expect(await run(['report', wrappedPath, '--format', 'json', '--output', reportFile], silent)).toBe(0);
+      expect(reportSchema.parse(JSON.parse(await readFile(reportFile, 'utf8'))).schemaVersion).toBe('0.1');
+
+      const diffOut: string[] = [];
+      const diffExit = await run(['diff', wrappedPath, snapPath, '--format', 'json'], { stdout: (m) => diffOut.push(m), stderr: () => {} });
+      expect(diffExit).toBe(1); // not a verified repair: data, not an error
+      expect(envelopeSchema.parse(JSON.parse(diffOut.join('')))).toMatchObject({ ok: true, command: 'diff', data: { schemaVersion: '0.1' } });
+
+      // A saved error envelope is not evidence.
+      const errorPath = join(tmp, 'error.json');
+      await writeFile(errorPath, JSON.stringify({ version: '0.1', ok: false, command: 'inspect', error: { code: 'RUNTIME_MISSING', message: 'missing', retry: 'safe' } }), 'utf8');
+      const errOut: string[] = [];
+      expect(await run(['report', errorPath, '--format', 'json'], { stdout: (m) => errOut.push(m), stderr: () => {} })).toBe(2);
+      expect(errorEnvelopeSchema.parse(JSON.parse(errOut.join(''))).error.details?.kind).toBe('INPUT_IS_ERROR_ENVELOPE');
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }, 30_000);
 
   test('formats understandable CLI text output with target names, measured evidence, blocker details, and drilldown', async () => {
     // Inspect blocked checkout scenario
@@ -174,7 +274,9 @@ describe('ANWC CLI', () => {
       const jsonIo = { stdout: (m: string) => jsonBuf.push(m), stderr: () => {} };
       const jsonExit = await run(['report', capturePath, '--format', 'json'], jsonIo);
       expect(jsonExit).toBe(0);
-      const parsedReport = JSON.parse(jsonBuf.join(''));
+      const reportEnvelope = envelopeOf(reportSchema).parse(JSON.parse(jsonBuf.join('')));
+      expect(reportEnvelope).toMatchObject({ version: '0.1', ok: true, command: 'report' });
+      const parsedReport = (reportEnvelope as { data: { schemaVersion: string; summary: { totalFindings: number } } }).data;
       expect(parsedReport.schemaVersion).toBe('0.1');
       expect(parsedReport.summary.totalFindings).toBe(1);
 
@@ -259,7 +361,9 @@ describe('ANWC CLI', () => {
       }
       expect(exitCode).toBe(0);
 
-      const runResult = JSON.parse(stdout.join(''));
+      const checkEnvelope = envelopeSchema.parse(JSON.parse(stdout.join('')));
+      expect(checkEnvelope).toMatchObject({ version: '0.1', ok: true, command: 'check' });
+      const runResult = (checkEnvelope as { data: Record<string, any> }).data;
       expect(runResult.schemaVersion).toBe('0.1');
       expect(runResult.totalScenarios).toBe(1);
       expect(runResult.passedScenarios).toBe(1);
