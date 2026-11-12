@@ -197,7 +197,7 @@ Build: AGENTS.md with where the truth lives (STATUS, PROTOCOL, PHASE_4), command
 
 **Acceptance:** links resolve; no statement contradicts STATUS. **Evidence:** a doc link check.
 
-#### P15 — Independent oracles, drift tests and gates that cannot silently die (M)
+#### P15 — Independent oracles, drift tests and gates that cannot silently die (M) — done 2026-11-13, 4 oracle disagreements recorded as findings
 
 **Own:** `tests/conformance` oracle helpers, new `tests/unit/doc-drift.test.ts`, gate script. **Depends:** none.
 
