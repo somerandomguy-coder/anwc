@@ -12,6 +12,9 @@ import {
   renderReportHtml,
   renderReportMarkdown,
   compareRepairs,
+  parseDiffInput,
+  DiffInputError,
+  type DiffInput,
   formatDiffText,
   renderDiffHtml,
   renderDiffMarkdown,
@@ -623,7 +626,26 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
         throw new CliError('INVALID_USAGE', `After capture file '${diffOptions.afterFile}' is not valid JSON.`);
       }
 
-      const diffResult = compareRepairs(beforeJson as Snapshot, afterJson as Snapshot);
+      const parseSide = (json: unknown, side: 'Before' | 'After', file: string): DiffInput => {
+        try {
+          return parseDiffInput(json);
+        } catch (error) {
+          if (!(error instanceof DiffInputError)) throw error;
+          throw new CliError(
+            'INVALID_USAGE',
+            `${side} capture file '${file}' does not match Snapshot 0.1 or Report 0.1 schema.${error.issues[0] ? ` First issue: ${error.issues[0]}` : ''}`,
+            {
+              issues: error.issues,
+              recovery: "Pass a Snapshot written by 'anwc inspect --format json' or a Report 0.1 JSON file."
+            }
+          );
+        }
+      };
+      const beforeInput = parseSide(beforeJson, 'Before', diffOptions.beforeFile);
+      const afterInput = parseSide(afterJson, 'After', diffOptions.afterFile);
+
+      // No behavior evidence is accepted on the CLI: disappeared findings stay inconclusive.
+      const diffResult = compareRepairs(beforeInput, afterInput);
       let diffOutput: string;
       if (diffOptions.format === 'html') {
         diffOutput = renderDiffHtml(diffResult);

@@ -6,6 +6,7 @@ export function formatDiffText(diff: DiffReport): string {
   lines.push(`ANWC Repair Comparison: ${diff.diffId}`);
   lines.push(`Generated: ${diff.generatedAt}`);
   lines.push(`Verdict: ${diff.summary.repairIntegrityVerdict.toUpperCase()}`);
+  if (diff.summary.verdictReason) lines.push(`Reason: ${diff.summary.verdictReason}`);
   lines.push('----------------------------------------');
   lines.push(`Before Capture: ${diff.before.captureId} (${diff.before.viewport.width}x${diff.before.viewport.height}) - ${diff.before.actionableFindings} finding(s)`);
   lines.push(`After Capture:  ${diff.after.captureId} (${diff.after.viewport.width}x${diff.after.viewport.height}) - ${diff.after.actionableFindings} finding(s)`);
