@@ -75,6 +75,11 @@ export function cliModel(sources: string[]): CliModel {
       commands.add(command);
       if (match[1] === '=') add(command, source.slice(match.index!, blockEnd(source, match.index!)));
     }
+    // Main dispatch after P01: `if (command === 'doctor') { ... }` on the parsed first argument.
+    for (const match of source.matchAll(/\bif \(command === '([a-z][a-z-]*)'\) \{/g)) {
+      commands.add(match[1]!);
+      add(match[1]!, source.slice(match.index!, blockEnd(source, match.index!)));
+    }
     for (const match of source.matchAll(/Usage: anwc ([a-z][a-z-]*)/g)) {
       const start = enclosingFunctionStart(source, match.index!);
       add(match[1]!, source.slice(start, blockEnd(source, start)));
