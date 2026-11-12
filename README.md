@@ -4,12 +4,13 @@
 
 ANWC adds a development-only JSX transform and browser collector to a React/Vite app. It reports overflow, supported clipping, text layout and sampled pointer blockers with source locations. Existing React and CSS remain your application; Chromium still performs layout.
 
-Status, 2026-09-17: React/Vite inspection, local alpha packages and cross-app evaluation tooling exist. Phase 3 is planned: trustworthy repair results, human reports, reproducible UI states and honest before/after comparison. Start with Q01's result-integrity corrections; current verification gaps are recorded in STATUS. No verified agent time/cost savings or general paint-visibility claims are made.
+Status, 2026-11-12: working React/Vite inspection alpha with source-linked text/JSON, offline HTML/Markdown reports, `anwc doctor` and an interactive studio. State replay and before/after comparison are experimental; remaining validation work is recorded in STATUS. No measured agent time/cost savings or general paint-visibility claims are made.
 
 ## Start here
 
+- [Launch handoff](docs/LAUNCH.md): tonight's scope, demo, founder checklist and bounded tasks for a cheaper model.
 - [STATUS](docs/STATUS.md): current capability, evidence and next task.
-- [ROADMAP](docs/ROADMAP.md): active Phase 3 Q01–Q11, ordered batches and bounded implementation briefs.
+- [ROADMAP](docs/ROADMAP.md): Phase 3 Q01–Q11 cards (implemented; see STATUS for open acceptance gaps).
 - [PHASE_4](docs/PHASE_4.md): proposed next phase (P01–P20 task cards for subagents) and lessons from [agent-desktop](docs/reference/AGENT_DESKTOP.md). Not started.
 - [TESTING](docs/TESTING.md): try the public demos.
 - [EVALUATOR_SETUP](docs/EVALUATOR_SETUP.md): existing practice export/grade commands and limits.
@@ -22,9 +23,12 @@ Original W cards and [Phase 2](docs/archive/PHASE_2.md) are archived. Arbitrary-
 ## Run the repository demo
 
 ```powershell
+git clone https://github.com/somerandomguy-coder/anwc.git
+cd anwc
 npm install
+npm run build
 npx playwright install chromium
-npm run dev -- --host 127.0.0.1 --port 4175
+npm run dev -- --host 127.0.0.1 --port 4175 --strictPort
 ```
 
 In a second terminal:
@@ -33,6 +37,17 @@ In a second terminal:
 npm run anwc -- inspect "http://127.0.0.1:4175/" --viewport 1440x900 --format text
 npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format text
 ```
+
+Build once before running the demo: workspace packages resolve their compiled `dist` files. After pulling changes, run `npm install` and `npm run build` again. `inspect` exits 0 when it completes, even if it reports defects (the default is `--fail-on none`); pass `--fail-on error` or `--fail-on warning` to exit 1 on findings, for example in CI. Status 2 means an execution/usage error; status 3 means incomplete or unsettled evidence.
+
+Save a capture and open a human-readable report:
+
+```powershell
+npm run anwc -- inspect "http://127.0.0.1:4175/lab?case=blocked-checkout" --viewport 390x844 --format json --fail-on none --output artifacts/launch/blocked.json
+npm run anwc -- report artifacts/launch/blocked.json --format html --output artifacts/launch/blocked.html
+```
+
+Open `artifacts/launch/blocked.html` in your browser. The report works offline and includes source locations, measured blocker geometry and severity filters. `--fail-on none` lets this intentional-defect capture exit successfully; it does not remove findings. `--output` chooses a path; `--format` chooses its contents.
 
 The root storefront is healthy; the lab intentionally contains defects and revealing labels. It is for learning and regression checks, not blinded evaluation. Plain terminal URLs must not use Markdown's `[label](URL)` syntax.
 
@@ -43,9 +58,9 @@ npm run bench -- validate bench/pilot.example.json
 
 The integration command covers TypeScript, unit/CLI tests, Chromium tests and production builds. Current and historical evidence live in STATUS rather than duplicated test counts here.
 
-## Developer quickstart (5-minute walkthrough)
+## Use ANWC in your own React/Vite app
 
-ANWC provides source-linked browser layout and pointer evidence directly to developers and AI repair agents. Here is how to install and inspect any React/Vite project in five minutes:
+ANWC provides source-linked browser layout and pointer evidence directly to developers and AI repair agents. Distribution currently uses local alpha tarballs; public npm publication is not part of this quickstart.
 
 ### 1. Build and install local alpha packages
 From the ANWC repository, build and pack the local alpha tarballs (`0.1.0-alpha.0`):
@@ -96,7 +111,7 @@ ERROR POINTER_BLOCKED_AT_SAMPLES <button> "Save Profile" (node n-12)
   evidence: tested 25 sample points, 25 blocked
   blocker: <div className="announcement-banner"> (node n-15) at src/ProfileSection.tsx:21:9
 1 findings | 0 omitted | complete capture, settled | paint visibility unknown | no screenshots captured
-Drilldown: re-run with --format json or --output report.json for full raw layout, hit samples, and DOM tree.
+Drilldown: re-run with --format json --output report.json for full raw layout, hit samples, and DOM tree.
 ```
 
 - **Target and JSX source**: `src/ProfileSection.tsx:14:9` points directly to the exact `<button>` in your code.
@@ -112,13 +127,13 @@ Output:
 ```text
 ANWC 0.1 | 390x844 | capture c_3d4e | complete, settled
 0 actionable findings for inspected rules (note: paint visibility unknown, no screenshots captured)
-Drilldown: re-run with --format json or --output report.json for full raw layout, hit samples, and DOM tree.
+Drilldown: re-run with --format json --output report.json for full raw layout, hit samples, and DOM tree.
 ```
 
 ### 7. Custom components, repeated items, and JSON drilldown
 - **Custom components**: Nested components (e.g. `<ProfileSection />`) are resolved to their JSX host elements.
 - **Repeated list items**: Instances inside `.map()` map to the same JSX source site with distinct live runtime node IDs.
-- **Drilldown**: Pass `--format json` or `--output report.json` to inspect authoritative raw layout rectangles, clip chains, hit sample coordinates, and font readiness timings.
+- **Drilldown**: Pass `--format json --output report.json` to save authoritative raw layout rectangles, clip chains, hit sample coordinates, and font readiness timings.
 
 ### Common error recovery
 - **Pasted Markdown link**: Plain URLs must not use Markdown syntax (e.g. `[url](url)` or `<url>`). If provided, the CLI suggests the exact plain URL to run.
@@ -143,4 +158,4 @@ Current support requires installed ANWC integration. `--runtime-only` is an expe
 
 ## Collaboration
 
-Start with Q01 in ROADMAP. Commit each completed card, use focused checks during work, and run full integration once per coherent batch before updating STATUS/HISTORY and pushing to `git@github.com:somerandomguy-coder/anwc.git`. Record actual outcomes, including failures. Paid agent runs and public package publication are separate decisions. A fresh repair agent receives its subject folder and local URL, not this evaluator repository.
+For the launch window, start with LAUNCH and STATUS. ROADMAP remains the Phase 3 backlog; Q05–Q07 have acceptance gaps and Q08–Q11 remain pending. Commit each completed task and batch relevant checks before pushing. Record actual outcomes, including failures. Paid agent runs and public package publication are separate decisions. A fresh evaluation agent receives its subject folder and local URL, not this evaluator repository.

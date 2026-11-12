@@ -55,6 +55,15 @@ Reach (Next.js, arbitrary URLs, public release) comes last and only after P17 sh
 
 Size: S ≈ under a day for one agent, M ≈ 1–3 days, L ≈ a week or more.
 
+### D0-batch: close Phase 3 acceptance gaps first
+
+The 2026-09-17 launch triage ([LAUNCH](LAUNCH.md), merged 2026-11-12) found gaps that make `check` and `diff` untrustworthy as a verifier. A verifier that is wrong is worse than none, so these come before new contract work. The full briefs are LAUNCH **L1–L3**; follow them as written, with these Phase 4 notes:
+
+- **L1 (Q06 replay acceptance)** — owns `packages/cli/src/{manifest,runner}.ts`, `tests/browser/check.spec.ts`. Prerequisite for P03 and P08.
+- **L2 (Q07 diff input validation and explanations)** — owns `packages/cli/src/index.ts` diff path, `packages/report/src/diff.ts`, `tests/unit/diff.test.ts`. Overlaps P01/P03 files: finish L2 before starting either.
+- **L3 (Q05 boundary checks)** — owns `tests/conformance/*`, `tests/browser/conformance.spec.ts`. Note the matrix now has 34 cases (12 defective, 13 healthy, 9 boundary) after Q08, not the 29 LAUNCH mentions. Overlaps P15: finish L3 first.
+- **L0 (fresh-clone launch gate)** belongs to whoever runs the launch, not to Phase 4.
+
 ### E-batch: agent contract
 
 #### P01 — One result envelope and error taxonomy (M)
@@ -230,6 +239,7 @@ npm publication of the packages, a docs site with per-page Markdown and `llms.tx
 
 | Lane | Cards in order | Notes |
 | --- | --- | --- |
+| Gaps (D0) | L1, L2, L3 | Independent of each other; L2 before P01/P03, L3 before P15, L1 before P03/P08 |
 | Contract | P01 → P02 → P04; P01 → P03; P01 → P05 | P01 first; P02, P03 and P05 can run in parallel after it (disjoint files except PROTOCOL: merge PROTOCOL edits last) |
 | Studio | P10 → P11 → P12 → P13 | P10 and P11 can start immediately; P12 waits for P03 |
 | Knowledge and trust | P14, P15, P16 | Independent; P14 first if only one agent is free |
@@ -237,7 +247,7 @@ npm publication of the packages, a docs site with per-page Markdown and `llms.tx
 | Proof | P17 (founder) | Can start with the current CLI arm any time; add the MCP arm after P07 |
 | Reach | P18, P19, P20 | Blocked on P17 results |
 
-Suggested first wave for three parallel subagents: **P01**, **P10 → P11**, **P14 → P15**. Batch boundary gates: after E (P01–P05), after F+G, after H.
+Suggested first wave: **P10 → P11** (studio, no overlap with D0), plus **L1**, **L2**, **L3** and **P14** in parallel. Then P01 and P15. Batch boundary gates: after D0, after E (P01–P05), after F+G, after H.
 
 ## 5. Decisions the founder needs to make
 
@@ -246,4 +256,4 @@ Suggested first wave for three parallel subagents: **P01**, **P10 → P11**, **P
 3. Whether CI comments (P09) may run on the real repository's pull requests.
 4. Public npm publication and a docs site (P20).
 
-Until then, P01–P06, P09–P16 can proceed without human input.
+Until then, L1–L3, P01–P06 and P09–P16 can proceed without human input.

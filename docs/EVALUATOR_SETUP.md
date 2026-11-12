@@ -109,4 +109,6 @@ The committed rehearsal covers Shop, Pricing, and Dashboard in ordinary and ANWC
 
 ## Pilot decision gate
 
-Q11 completes the engineering acceptance of the operator kit. Founder choices for actual model providers, reasoning budgets, and session execution remain pending. Follow [BENCHMARK](BENCHMARK.md) for scoring policy and [TESTING](TESTING.md) for pilot walkthroughs.
+Phase 2 implemented the foundation, packaging and pilot helpers. Q01/Q02 added benchmark receipt/grade contract `0.4` and target-bound source intent; their presence alone does not certify the full scored workflow. Q11 delivered the operator kit and a synthetic six-run dry run (`practice-setup`, `practice-dryrun`). Founder choices for actual model providers, reasoning budgets and session execution remain pending. Freeze app/detector/fixture/task/grader/settings per pair and keep earlier outcomes bound to their original versions. Independently authored private variants are needed for holdout claims; public development cases remain public. Human results are still pending. See STATUS for current evidence and LAUNCH for the narrower launch demonstration.
+
+See [TESTING](TESTING.md) for demo steps and [BENCHMARK](BENCHMARK.md) for scoring policy.

@@ -1,6 +1,6 @@
 # Testing ANWC
 
-Updated 2026-11-05. Start with [STATUS](STATUS.md) for current evidence and [ROADMAP](ROADMAP.md) for Phase 3 tasks. Existing inspection demos, single-file HTML reports, scenario reproduction, conservative diffing, and evaluator grading are fully functional. Q11 completes the **Operator Kit and Synthetic Six-Run Practice Harness**.
+Updated 2026-11-12. For a short demonstration, start with [LAUNCH](LAUNCH.md). [STATUS](STATUS.md) records current evidence; [ROADMAP](ROADMAP.md) holds the finished Phase 3 cards and [PHASE_4](PHASE_4.md) the proposed next ones. Inspection demos, single-file HTML/Markdown reports and evaluator grading work. State replay (`check`) and comparison (`diff`) exist but have acceptance gaps: CLI diff cannot certify repairs without behavior-evidence binding. Q11 adds the **Operator Kit and Synthetic Six-Run Practice Harness**. This guide covers practice and eventual agent evaluation, not proof of measured agent benefit.
 
 ## 1. Verify and start the shop
 
@@ -9,6 +9,7 @@ From the evaluator repository:
 ```powershell
 git pull --ff-only
 npm install
+npm run build
 npx playwright install chromium
 npm run test:unit
 npm run dev -- --host 127.0.0.1 --port 4175

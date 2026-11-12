@@ -1,6 +1,18 @@
 # ANWC status
 
-Updated 2026-11-05. Phase 3 is in its final milestone: Batch A (Q01–Q03), Batch B (Q04–Q07), Batch C (Q08–Q09), and Batch D (Q10) are complete. Q10 implemented `anwc doctor` setup diagnostics, verified installed package execution from paths with spaces via platform shims (`.cmd`/Linux), added multi-OS GitHub Actions CI workflow, and published the Quickstart guide. Next and final task is Q11 (Operator kit, synthetic six-run practice manifest generator, and pilot execution procedure).
+Updated 2026-11-12. Phase 3 engineering (Q01–Q11) and the interactive studio are implemented on `main`. Q10 implemented `anwc doctor` setup diagnostics, verified installed package execution from paths with spaces via platform shims (`.cmd`/Linux), added multi-OS GitHub Actions CI workflow, and published the Quickstart guide. Q11 delivered the operator kit. The launch triage below was done on a parallel line and merged on 2026-11-12; its open acceptance gaps still apply.
+
+## Launch triage line (2026-09-17, merged 2026-11-12)
+
+A launch pass branched from `947931b` (before Q08–Q11 and the studio) and added [LAUNCH](LAUNCH.md), `467d612` (lockfile sync) and `6bd4cc4` (conservative diff guards: URL/scenario, runtime and scale mismatches, unsettled/incomplete evidence, empty baselines and heuristic-only identity are rejected as repair proof; disappearing findings without a passing behavior check are inconclusive). Both lines merged cleanly in code; the 34-case conformance matrix from Q08 supersedes the triage's 29-case refresh.
+
+Its verification table (typecheck, 42 focused Vitest tests, consumer test, 4 Playwright tests, documented CLI demo, offline HTML smoke, documented CSS repair) is recorded at `1fef919` and in [HISTORY](HISTORY.md); it is historical evidence for that revision, not for current `main`. Gaps it found that remain open, now tracked as LAUNCH L1–L3 and folded into [PHASE_4](PHASE_4.md) batch D0:
+
+- `tests/browser/check.spec.ts` is still skipped; `check`'s `passedAll` means replay/assertion success, not a clean UI (L1).
+- CLI `diff` casts input JSON without schema validation and cannot consume behavior evidence, so it cannot certify a repair (L2).
+- The conformance boundary oracle accepts an all-node paint-unknown fallback and does not prove feature-specific unsupported detection (L3).
+
+Public npm publication, a license choice and the Product Hunt submission had not been performed by that pass.
 
 ## What works today
 

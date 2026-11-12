@@ -115,7 +115,7 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
       findings: []
     });
 
-    const diff = compareRepairs(before, after);
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
     diffReportSchema.parse(diff);
 
     expect(diff.compatibility.comparable).toBe(true);
@@ -147,7 +147,7 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
       ]
     });
 
-    const diff = compareRepairs(before, after);
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
     expect(diff.summary.verifiedFixed).toBe(1);
     expect(diff.findings[0]!.status).toBe('verified-fixed');
     expect(diff.targetMatches[0]!.strategy).toBe('author-key');
@@ -197,10 +197,51 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
       findings: []
     });
 
-    const diff = compareRepairs(before, after);
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
     expect(diff.summary.verifiedFixed).toBe(1);
     expect(diff.findings[0]!.targetKey).toBe('key:item-beta');
     expect(diff.findings[0]!.status).toBe('verified-fixed');
+  });
+
+  test.each([undefined, false])('does not certify disappeared findings without passing behavior evidence (%s)', (behaviorCheckPassed) => {
+    const diff = compareRepairs(createMockSnapshot(), createMockSnapshot({ findings: [] }), { behaviorCheckPassed });
+    expect(diff.summary.verifiedFixed).toBe(0);
+    expect(diff.summary.repairIntegrityVerdict).toBe('inconclusive-evidence');
+    expect(diff.findings[0]!.explanation).toMatch(/behavior/);
+  });
+
+  test.each(['url', 'scenario', 'runtime', 'scale'])('rejects mismatched capture context: %s', (field) => {
+    const before = createMockSnapshot();
+    const after = createMockSnapshot({ findings: [] });
+    if (field === 'url') after.page.url = `${before.page.url}?healthy=1`;
+    if (field === 'scenario') after.page.scenario = 'different-state';
+    if (field === 'runtime') after.environment.runtimeVersion = 'different-runtime';
+    if (field === 'scale') after.page.visualViewportScale = 2;
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
+    expect(diff.compatibility.comparable).toBe(false);
+    expect(diff.summary.verifiedFixed).toBe(0);
+    expect(diff.summary.repairIntegrityVerdict).toBe('incompatible-comparison');
+  });
+
+  test('does not certify a repair from an empty or incomplete baseline', () => {
+    const empty = createMockSnapshot({ findings: [] });
+    expect(compareRepairs(empty, empty, { behaviorCheckPassed: true }).summary.repairIntegrityVerdict).toBe('inconclusive-evidence');
+    const before = createMockSnapshot();
+    before.coverage.complete = false;
+    expect(compareRepairs(before, empty, { behaviorCheckPassed: true }).summary.verifiedFixed).toBe(0);
+  });
+
+  test('does not certify an unsettled capture or a heuristic target match', () => {
+    const before = createMockSnapshot();
+    const after = createMockSnapshot({ findings: [] });
+    after.readiness.settled = false;
+    expect(compareRepairs(before, after, { behaviorCheckPassed: true }).summary.verifiedFixed).toBe(0);
+    after.readiness.settled = true;
+    before.nodes[0]!.semanticKey = null;
+    after.nodes[0]!.semanticKey = null;
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
+    expect(diff.targetMatches[0]!.confidence).toBe('heuristic');
+    expect(diff.summary.verifiedFixed).toBe(0);
   });
 
   test('refuses to certify repair if target was deleted or unmounted (deletion cannot masquerade as fix)', () => {
@@ -320,7 +361,7 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
       ]
     });
 
-    const diff = compareRepairs(before, after);
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
     expect(diff.summary.verifiedFixed).toBe(1);
     expect(diff.summary.newFindings).toBe(1);
     expect(diff.summary.repairIntegrityVerdict).toBe('regressions-introduced');
@@ -329,7 +370,7 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
   test('renders offline HTML, compact Markdown, and formatted Text', () => {
     const before = createMockSnapshot();
     const after = createMockSnapshot({ findings: [] });
-    const diff = compareRepairs(before, after);
+    const diff = compareRepairs(before, after, { behaviorCheckPassed: true });
 
     const html = renderDiffHtml(diff);
     expect(html).toContain('<!DOCTYPE html>');
@@ -373,14 +414,13 @@ describe('Q07 Pure Diff Module and Repair Comparison', () => {
       const io = { stdout: (m: string) => stdout.push(m), stderr: (m: string) => stderr.push(m) };
 
       const exit = await run(['diff', bPath, aPath, '--format', 'html', '--output', outHtml], io);
-      if (exit !== 0) {
-        console.error('CLI diff failed with stderr:', stderr.join(''), 'stdout:', stdout.join(''));
-      }
-      expect(exit).toBe(0);
+      // CLI snapshots carry no independent behavior assertion result.
+      expect(exit).toBe(1);
+      expect(stderr).toEqual([]);
 
       const savedHtml = await readFile(outHtml, 'utf8');
       expect(savedHtml).toContain('ANWC Repair Comparison');
-      expect(savedHtml).toContain('Verified Repair');
+      expect(savedHtml).toContain('Inconclusive');
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
