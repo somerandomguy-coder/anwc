@@ -37,7 +37,7 @@ export const shopBlockedSnapshot: Snapshot = {
   captureId: 'capture-shop-blocked-checkout',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4173/?case=blocked-checkout&variant=broken',
+    url: 'http://127.0.0.1:4175/?case=blocked-checkout&variant=broken',
     title: 'Shop: Blocked Checkout',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
@@ -319,7 +319,7 @@ export const cleanShopSnapshot: Snapshot = {
   captureId: 'capture-clean-shop',
   capturedAt: '2026-11-05T00:00:00.000Z',
   page: {
-    url: 'http://127.0.0.1:4173/?variant=healthy',
+    url: 'http://127.0.0.1:4175/?variant=healthy',
     title: 'Shop: Healthy Mobile Layout',
     viewport: { width: 390, height: 844 },
     scroll: { x: 0, y: 0 },
