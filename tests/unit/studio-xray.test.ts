@@ -105,7 +105,8 @@ describe('SampleTooltip Component', () => {
       })
     );
     expect(html).toContain('Raycast Sample');
-    expect(html).toContain('Target Hit');
+    // P11: tooltip uses the legend's sample class names
+    expect(html).toContain('Reachable');
     expect(html).toContain('(120, 80)');
     expect(html).toContain('n-btn');
   });
@@ -155,8 +156,8 @@ describe('XRayPane Component', () => {
     expect(html).toContain('BLOCKER: &lt;div&gt;');
     // Renders samples group
     expect(html).toContain('xray-samples');
-    // Circle sample with color green (#22c55e)
-    expect(html).toContain('fill="#22c55e"');
+    // P11: samples are encoded by class (colour token + shape) instead of a fixed hex fill
+    expect(html).toContain('data-sample-class="reachable"');
   });
 
   test('respects overlayMode and zoom level', () => {

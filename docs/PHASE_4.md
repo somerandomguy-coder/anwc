@@ -157,7 +157,7 @@ Build: before loading the iframe, the studio server checks the target URL and sh
 
 **Acceptance:** each preset opened with its app stopped shows the guidance; with it running shows the page. **Evidence:** studio unit tests plus one Playwright test.
 
-#### P11 — Studio encoding, legend and isolation (M)
+#### P11 — Studio encoding, legend and isolation (M) — done 2026-11-13, hallway test outstanding
 
 **Own:** `packages/studio/src/components/{XRayPane,FindingDrawer,FindingCard,SampleTooltip}.tsx`, `index.css`. **Depends:** P10.
 

@@ -1,14 +1,33 @@
-import React, { useState, useId } from 'react';
-import type { Finding, Snapshot } from '@anwc/protocol';
+import React, { useMemo, useState, useId } from 'react';
+import type { Finding, Measurement, Snapshot } from '@anwc/protocol';
 import type { HitSample, HoveredSampleInfo } from '../types.js';
+import { buildHoveredSampleInfo, getAllPointerSamples, type SampleWithNode } from './xray-utils.js';
 import {
-  buildHoveredSampleInfo,
-  computeXRayBoundingBoxes,
-  getAllPointerSamples,
-  mapSampleColor,
-  type SampleWithNode
-} from './xray-utils.js';
+  ROLE_ENCODING,
+  checkViewportAlignment,
+  classifySample,
+  findingRoleBoxes,
+  legendSentence,
+  numberFindings,
+  type BoxRole,
+  type RoleBox,
+  type ViewportSize
+} from './encoding.js';
 import { SampleTooltip } from './SampleTooltip.js';
+import { SampleGlyph, XRayLegend } from './XRayLegend.js';
+
+/** The slice of the shared finding view the x-ray needs. */
+export interface XRayViewProps {
+  numbering: Map<string, number>;
+  /** Findings the overlay draws (the isolated one, or every visible one). */
+  overlayIds: readonly string[];
+  /** Findings passing the filter (for the legend sentence). */
+  visibleIds: readonly string[];
+  isolatedFindingId: string | null;
+  hoveredFindingId: string | null;
+  setHoveredFindingId?: (findingId: string | null) => void;
+  activateFinding?: (findingId: string) => void;
+}
 
 export interface XRayPaneProps {
   snapshot: Snapshot;
@@ -18,11 +37,26 @@ export interface XRayPaneProps {
   onSelectNode?: (nodeId: string) => void;
   onSelectSample?: (sample: HitSample, targetNodeId: string) => void;
   onHoverSample?: (sampleInfo: HoveredSampleInfo | null) => void;
+  /** Shared numbering, filter, isolation and hover. Without it, only the active finding is drawn. */
+  view?: XRayViewProps;
+  /** Viewport the page frame currently shows; the overlay is refused when it differs from the capture's. */
+  frameViewport?: ViewportSize | null;
+  showLegend?: boolean;
   zoom?: number;
   overlayMode?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
+
+interface DrawnFinding {
+  finding: Finding;
+  number: number;
+  boxes: RoleBox[];
+  focused: boolean;
+}
+
+const ROLE_TAG: Record<BoxRole, string> = { target: 'TARGET', blocker: 'BLOCKER', clip: 'CLIP', context: 'CONTEXT' };
+const ROLE_CLASS: Record<BoxRole, string> = { target: 'xray-target-box', blocker: 'xray-blocker-box', clip: 'xray-clip-box', context: 'xray-context-box' };
 
 export function XRayPane({
   snapshot,
@@ -32,6 +66,9 @@ export function XRayPane({
   onSelectNode,
   onSelectSample,
   onHoverSample,
+  view,
+  frameViewport,
+  showLegend = true,
   zoom = 1,
   overlayMode = false,
   className = '',
@@ -40,284 +77,253 @@ export function XRayPane({
   const [internalHoveredSample, setInternalHoveredSample] = useState<HoveredSampleInfo | null>(null);
   const patternId = useId().replace(/:/g, '');
 
-  const finding = activeFinding !== undefined
+  const width = snapshot.page.viewport.width;
+  const height = snapshot.page.viewport.height;
+  const alignment = checkViewportAlignment(snapshot.page.viewport, frameViewport);
+
+  const nodeMap = useMemo(() => new Map<string, Measurement>(snapshot.nodes.map((n) => [n.nodeId, n])), [snapshot]);
+  const fallbackNumbering = useMemo(() => numberFindings(snapshot.findings), [snapshot]);
+  const numbering = view?.numbering ?? fallbackNumbering;
+
+  // Which findings to draw.
+  const legacyFinding = activeFinding !== undefined
     ? activeFinding
     : selectedFindingId
       ? snapshot.findings.find((f) => f.findingId === selectedFindingId) ?? null
       : null;
+  const drawIds: readonly string[] = view ? view.overlayIds : legacyFinding ? [legacyFinding.findingId] : [];
+  const focusIds = new Set<string>(
+    [view?.hoveredFindingId, selectedFindingId ?? legacyFinding?.findingId].filter((id): id is string => Boolean(id))
+  );
 
-  const boxes = computeXRayBoundingBoxes(snapshot, finding);
-  const width = snapshot.page.viewport.width;
-  const height = snapshot.page.viewport.height;
+  const drawn: DrawnFinding[] = [];
+  for (const id of drawIds) {
+    const finding = snapshot.findings.find((f) => f.findingId === id) ?? (legacyFinding?.findingId === id ? legacyFinding : undefined);
+    if (!finding) continue;
+    drawn.push({
+      finding,
+      number: numbering.get(id) ?? drawn.length + 1,
+      boxes: findingRoleBoxes(snapshot, finding),
+      focused: focusIds.has(id) || drawIds.length === 1
+    });
+  }
+  // Focused findings are drawn last so they sit on top.
+  drawn.sort((a, b) => Number(a.focused) - Number(b.focused) || a.number - b.number);
+
+  const roleNodeIds = new Set(drawn.flatMap((d) => d.boxes.map((b) => b.nodeId)));
+  const drawnTargets = new Set(drawn.map((d) => d.finding.nodeId));
 
   const allSamples = getAllPointerSamples(snapshot);
+  const samples = snapshot.findings.length === 0 ? allSamples : allSamples.filter((s) => drawnTargets.has(s.targetNodeId));
+
+  const isolated = view?.isolatedFindingId && drawn.length === 1 && drawn[0]!.finding.findingId === view.isolatedFindingId ? drawn[0]! : null;
+  const sentence = legendSentence({
+    totalFindings: snapshot.findings.length,
+    visibleFindings: view ? view.visibleIds.length : drawn.length,
+    isolated: isolated
+      ? { number: isolated.number, code: isolated.finding.code, roles: new Set(isolated.boxes.map((b) => b.role)) }
+      : null
+  });
 
   const handleMouseEnterSample = (e: React.MouseEvent, sample: SampleWithNode) => {
-    const sampleInfo = buildHoveredSampleInfo(sample, snapshot, { screenX: e.clientX, screenY: e.clientY });
-    setInternalHoveredSample(sampleInfo);
-    onHoverSample?.(sampleInfo);
+    const info = buildHoveredSampleInfo(sample, snapshot, { screenX: e.clientX, screenY: e.clientY });
+    info.sampleClass = classifySample(sample, nodeMap.get(sample.targetNodeId));
+    setInternalHoveredSample(info);
+    onHoverSample?.(info);
   };
-
-  const handleMouseMoveSample = (e: React.MouseEvent, _sample: SampleWithNode) => {
-    if (internalHoveredSample) {
-      setInternalHoveredSample((prev) => (prev ? { ...prev, screenX: e.clientX, screenY: e.clientY } : null));
-    }
+  const handleMouseMoveSample = (e: React.MouseEvent) => {
+    setInternalHoveredSample((prev) => (prev ? { ...prev, screenX: e.clientX, screenY: e.clientY } : null));
   };
-
   const handleMouseLeaveSample = () => {
     setInternalHoveredSample(null);
     onHoverSample?.(null);
   };
 
+  const hoverFinding = (id: string | null) => view?.setHoveredFindingId?.(id);
+  const activate = (finding: Finding) => {
+    if (view?.activateFinding) view.activateFinding(finding.findingId);
+    else onSelectNode?.(finding.nodeId);
+  };
+
   const gridPatternId = `xray-grid-${patternId}`;
-  const stripesPatternId = `xray-stripes-${patternId}`;
+  const rootClass = `anwc-xray-pane ${className}`.trim();
+
+  if (!alignment.aligned) {
+    return (
+      <div className={rootClass} data-testid="xray-pane" data-overlay="refused" style={{ position: 'relative', width: '100%', height: '100%', ...style }}>
+        <div className="anwc-xray-refusal" data-testid="xray-viewport-mismatch" role="status">
+          <strong>Viewport mismatch</strong>
+          <p>{alignment.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const badgeOffsets = new Map<string, number>();
 
   return (
     <div
-      className={`anwc-xray-pane ${className}`.trim()}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        overflow: 'auto',
-        backgroundColor: overlayMode ? 'transparent' : '#090d16',
-        ...style
-      }}
+      className={rootClass}
+      data-testid="xray-pane"
+      data-overlay="drawn"
+      style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...style }}
     >
       <div
-        style={{
-          width,
-          height,
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top left',
-          position: 'relative'
-        }}
+        className="anwc-xray-scroll"
+        style={{ position: 'absolute', inset: 0, overflow: 'auto', background: overlayMode ? 'transparent' : 'var(--anwc-xray-bg)' }}
       >
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          width={width}
-          height={height}
-          style={{
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            userSelect: 'none'
-          }}
-        >
-          <defs>
-            {/* Grid background pattern */}
-            <pattern
-              id={gridPatternId}
-              width="24"
-              height="24"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                d="M 24 0 L 0 0 0 24"
-                fill="none"
-                stroke="rgba(255, 255, 255, 0.04)"
-                strokeWidth="1"
-              />
-            </pattern>
+        <div style={{ width, height, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'relative' }}>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            width={width}
+            height={height}
+            role="img"
+            aria-label={sentence}
+            style={{ display: 'block', width: '100%', height: '100%', userSelect: 'none' }}
+          >
+            <defs>
+              <pattern id={gridPatternId} width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" style={{ fill: 'none', stroke: 'var(--anwc-xray-grid)', strokeWidth: 1 }} />
+              </pattern>
+            </defs>
 
-            {/* Blocker diagonal stripes pattern */}
-            <pattern
-              id={stripesPatternId}
-              width="10"
-              height="10"
-              patternUnits="userSpaceOnUse"
-              patternTransform="rotate(45)"
-            >
-              <line
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="10"
-                stroke="rgba(239, 68, 68, 0.4)"
-                strokeWidth="3"
-              />
-            </pattern>
-          </defs>
+            {!overlayMode && (
+              <>
+                <rect className="xray-canvas" width={width} height={height} style={{ fill: 'var(--anwc-xray-canvas)' }} />
+                <rect width={width} height={height} fill={`url(#${gridPatternId})`} />
+              </>
+            )}
 
-          {/* Background Grid */}
-          {!overlayMode && (
-            <>
-              <rect width={width} height={height} fill="#0b1120" />
-              <rect width={width} height={height} fill={`url(#${gridPatternId})`} />
-            </>
-          )}
+            {/* Context: other captured elements, for orientation only. */}
+            <g className="xray-dom-wireframe" opacity="0.7">
+              {snapshot.nodes.map((node) => {
+                if (!node.box || roleNodeIds.has(node.nodeId)) return null;
+                const selected = node.nodeId === selectedNodeId;
+                return (
+                  <rect
+                    key={`wf-${node.nodeId}`}
+                    className="xray-context-box"
+                    data-role="context"
+                    x={node.box.x}
+                    y={node.box.y}
+                    width={node.box.width}
+                    height={node.box.height}
+                    style={{
+                      fill: 'none',
+                      stroke: `var(${ROLE_ENCODING.context.colorVar})`,
+                      strokeWidth: selected ? 1.5 : ROLE_ENCODING.context.strokeWidth,
+                      strokeDasharray: ROLE_ENCODING.context.dash,
+                      cursor: onSelectNode ? 'pointer' : 'default'
+                    }}
+                    onClick={() => onSelectNode?.(node.nodeId)}
+                  >
+                    <title>{`Context <${node.tag}> ${node.label || node.nodeId}`}</title>
+                  </rect>
+                );
+              })}
+            </g>
 
-          {/* Discovered DOM Nodes Wireframe */}
-          <g className="xray-dom-wireframe" opacity="0.6">
-            {snapshot.nodes.map((node) => {
-              if (!node.box) return null;
-              const isTarget = node.nodeId === boxes.targetNode?.nodeId;
-              const isBlocker = boxes.blockerNodes.some((b) => b.nodeId === node.nodeId);
-              if (isTarget || isBlocker) return null;
-
-              const isExplicitlySelected = node.nodeId === selectedNodeId;
-
+            {/* Finding boxes, numbered to match the finding cards. */}
+            {drawn.map(({ finding, number, boxes, focused }) => {
+              const target = boxes.find((b) => b.role === 'target');
+              const offset = target ? badgeOffsets.get(target.nodeId) ?? 0 : 0;
+              if (target) badgeOffsets.set(target.nodeId, offset + 1);
               return (
-                <rect
-                  key={`wf-${node.nodeId}`}
-                  x={node.box.x}
-                  y={node.box.y}
-                  width={node.box.width}
-                  height={node.box.height}
-                  fill={isExplicitlySelected ? 'rgba(56, 189, 248, 0.1)' : 'none'}
-                  stroke={isExplicitlySelected ? '#38bdf8' : 'rgba(148, 163, 184, 0.15)'}
-                  strokeWidth={isExplicitlySelected ? 1.5 : 1}
-                  strokeDasharray={isExplicitlySelected ? undefined : '2 2'}
-                  onClick={() => onSelectNode?.(node.nodeId)}
-                  style={{ cursor: onSelectNode ? 'pointer' : 'default' }}
+                <g
+                  key={finding.findingId}
+                  className="xray-finding"
+                  data-finding-id={finding.findingId}
+                  data-finding-number={number}
+                  data-focused={focused ? 'true' : 'false'}
+                  opacity={focused ? 1 : 0.5}
+                  onMouseEnter={() => hoverFinding(finding.findingId)}
+                  onMouseLeave={() => hoverFinding(null)}
+                  onClick={() => activate(finding)}
+                  style={{ cursor: 'pointer' }}
                 >
-                  <title>{`<${node.tag}> ${node.label || node.nodeId}`}</title>
-                </rect>
+                  {boxes.map((b) => {
+                    const enc = ROLE_ENCODING[b.role];
+                    return (
+                      <g key={`${b.role}-${b.nodeId}`} className={ROLE_CLASS[b.role]} data-role={b.role} data-node-id={b.nodeId}>
+                        <rect
+                          x={b.box.x}
+                          y={b.box.y}
+                          width={b.box.width}
+                          height={b.box.height}
+                          rx="2"
+                          style={{
+                            fill: `var(${enc.colorVar}-fill)`,
+                            stroke: `var(${enc.colorVar})`,
+                            strokeWidth: focused ? enc.strokeWidth : Math.max(1, enc.strokeWidth - 1),
+                            strokeDasharray: enc.dash,
+                            strokeLinecap: b.role === 'clip' ? 'round' : 'butt'
+                          }}
+                        >
+                          <title>{`${number}. ${enc.label} <${b.tag}> ${b.label || b.nodeId}`}</title>
+                        </rect>
+                        {focused && b.role !== 'context' && (
+                          <text
+                            className="xray-role-label"
+                            x={b.role === 'target' ? b.box.x + 24 : b.box.x + 4}
+                            y={Math.max(12, b.box.y - 5)}
+                            style={{ fill: `var(${enc.colorVar})`, fontSize: 11, fontWeight: 700, fontFamily: 'var(--anwc-font-mono)', paintOrder: 'stroke', stroke: 'var(--anwc-label-halo)', strokeWidth: 3 }}
+                          >
+                            {ROLE_TAG[b.role]}: &lt;{b.tag}&gt;{b.role === 'target' && b.label ? ` "${b.label.slice(0, 16)}"` : ''}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                  {target && (
+                    <g
+                      className="xray-number-badge"
+                      transform={`translate(${Math.min(width - 10, target.box.x + 10 + offset * 22)}, ${Math.max(10, target.box.y + 10)})`}
+                      aria-label={`Finding ${number}`}
+                    >
+                      <circle r="9" style={{ fill: `var(${ROLE_ENCODING.target.colorVar})`, stroke: 'var(--anwc-label-halo)', strokeWidth: 1.5 }} />
+                      <text textAnchor="middle" dy="3.8" style={{ fill: 'var(--anwc-on-accent)', fontSize: 11, fontWeight: 700, fontFamily: 'var(--anwc-font-mono)' }}>
+                        {number}
+                      </text>
+                    </g>
+                  )}
+                </g>
               );
             })}
-          </g>
 
-          {/* Active Target Bounding Box */}
-          {boxes.target && (
-            <g className="xray-target-box">
-              <rect
-                x={boxes.target.x}
-                y={boxes.target.y}
-                width={boxes.target.width}
-                height={boxes.target.height}
-                fill="rgba(59, 130, 246, 0.16)"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                rx="2"
-                onClick={() => boxes.targetNode && onSelectNode?.(boxes.targetNode.nodeId)}
-                style={{ cursor: onSelectNode ? 'pointer' : 'default' }}
-              />
-              {/* Target Label */}
-              <g transform={`translate(${boxes.target.x}, ${Math.max(16, boxes.target.y - 6)})`}>
-                <rect
-                  x="0"
-                  y="-14"
-                  width={Math.min(260, Math.max(90, (boxes.targetNode?.label?.length ?? 0) * 7 + 70))}
-                  height="18"
-                  rx="3"
-                  fill="#1e3a8a"
-                  stroke="#3b82f6"
-                  strokeWidth="1"
-                />
-                <text
-                  x="6"
-                  y="-2"
-                  fill="#bfdbfe"
-                  fontSize="11"
-                  fontWeight="600"
-                  fontFamily="monospace"
-                >
-                  TARGET: &lt;{boxes.targetNode?.tag}&gt; {boxes.targetNode?.label ? `"${boxes.targetNode.label.slice(0, 16)}"` : boxes.targetNode?.nodeId}
-                </text>
-              </g>
-            </g>
-          )}
-
-          {/* Blocker Bounding Boxes */}
-          {boxes.blockerNodes.map((blockerNode, idx) => {
-            const b = blockerNode.box;
-            if (!b) return null;
-            const badgeWidth = Math.min(220, Math.max(90, blockerNode.tag.length * 8 + 80));
-            const badgeX = Math.max(b.x, b.x + b.width - badgeWidth);
-
-            return (
-              <g key={`blocker-${blockerNode.nodeId}-${idx}`} className="xray-blocker-box">
-                <rect
-                  x={b.x}
-                  y={b.y}
-                  width={b.width}
-                  height={b.height}
-                  fill={`url(#${stripesPatternId})`}
-                  stroke="#ef4444"
-                  strokeWidth="2"
-                  strokeDasharray="6 3"
-                  rx="2"
-                  onClick={() => onSelectNode?.(blockerNode.nodeId)}
-                  style={{ cursor: onSelectNode ? 'pointer' : 'default' }}
-                />
-                {/* Blocker Tag Label */}
-                <g transform={`translate(${badgeX}, ${Math.max(16, b.y - 6)})`}>
-                  <rect
-                    x="0"
-                    y="-14"
-                    width={badgeWidth}
-                    height="18"
-                    rx="3"
-                    fill="#7f1d1d"
-                    stroke="#ef4444"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x="6"
-                    y="-2"
-                    fill="#fecaca"
-                    fontSize="11"
-                    fontWeight="700"
-                    fontFamily="monospace"
-                  >
-                    BLOCKER: &lt;{blockerNode.tag}&gt;
-                  </text>
-                </g>
-              </g>
-            );
-          })}
-
-          {/* Raycast Hit Samples */}
-          <g className="xray-samples">
-            {allSamples.map((sample, idx) => {
-              const color = mapSampleColor(sample.result);
-              const isTargetSample = boxes.targetNode && sample.targetNodeId === boxes.targetNode.nodeId;
-              const isHovered =
-                internalHoveredSample?.x === sample.x &&
-                internalHoveredSample?.y === sample.y &&
-                internalHoveredSample?.targetNodeId === sample.targetNodeId;
-
-              return (
-                <g key={`sample-${sample.targetNodeId}-${idx}`}>
-                  {isHovered && (
-                    <circle
-                      cx={sample.x}
-                      cy={sample.y}
-                      r="9"
-                      fill="none"
-                      stroke={color}
-                      strokeWidth="2"
-                      opacity="0.8"
-                    />
-                  )}
-                  <circle
-                    cx={sample.x}
-                    cy={sample.y}
-                    r={isTargetSample ? 5 : 4}
-                    fill={color}
-                    stroke="#0f172a"
-                    strokeWidth="1.5"
+            {/* Hit samples of the drawn targets. */}
+            <g className="xray-samples">
+              {samples.map((sample, idx) => {
+                const cls = classifySample(sample, nodeMap.get(sample.targetNodeId));
+                const hovered =
+                  internalHoveredSample?.x === sample.x &&
+                  internalHoveredSample?.y === sample.y &&
+                  internalHoveredSample?.targetNodeId === sample.targetNodeId;
+                return (
+                  <g
+                    key={`sample-${sample.targetNodeId}-${idx}`}
+                    className="xray-sample"
+                    data-sample-class={cls}
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={(e) => handleMouseEnterSample(e, sample)}
-                    onMouseMove={(e) => handleMouseMoveSample(e, sample)}
+                    onMouseMove={handleMouseMoveSample}
                     onMouseLeave={handleMouseLeaveSample}
                     onClick={() => {
                       onSelectSample?.(sample, sample.targetNodeId);
-                      if (sample.blockerNodeId) {
-                        onSelectNode?.(sample.blockerNodeId);
-                      }
+                      if (sample.blockerNodeId) onSelectNode?.(sample.blockerNodeId);
                     }}
                   >
-                    <title>{`(${sample.x}, ${sample.y}) ${sample.result}`}</title>
-                  </circle>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
+                    {hovered && <circle cx={sample.x} cy={sample.y} r="9" style={{ fill: 'none', stroke: 'var(--anwc-focus)', strokeWidth: 2 }} />}
+                    <SampleGlyph cls={cls} x={sample.x} y={sample.y} size={4.5} />
+                    <title>{`(${sample.x}, ${sample.y}) ${cls} — hit test: ${sample.result}`}</title>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
       </div>
 
-      {/* Embedded Hover Tooltip */}
+      {showLegend && <XRayLegend sentence={sentence} />}
       {internalHoveredSample && <SampleTooltip sample={internalHoveredSample} />}
     </div>
   );
