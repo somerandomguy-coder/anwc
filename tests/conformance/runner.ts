@@ -24,7 +24,7 @@ function emptyStats(): FamilyStats {
  * timers, animations and routes' side effects), drop every stylesheet the shop
  * put in <head>, clear root attributes, then mount the case HTML.
  */
-async function mountIsolated(page: Page, c: ConformanceCase): Promise<void> {
+export async function mountIsolated(page: Page, c: Pick<ConformanceCase, 'html' | 'setup'>): Promise<void> {
   await page.goto('/');
   await page.evaluate(async () => {
     await import('/src/test-runtime.ts');

@@ -3,6 +3,9 @@ import type { Measurement, RawCapture } from '../../packages/protocol/src/index.
 import { evaluateBoundarySignal, legacyBoundaryFallback, withoutBoundarySignal } from '../conformance/boundary.js';
 import { conformanceCases } from '../conformance/matrix.js';
 import type { BoundarySignal } from '../conformance/types.js';
+import { readFileSync } from 'node:fs';
+import { gateMarkup, orderedCases, ruleGates, ruleOracles } from '../conformance/gates.js';
+import { detectorRuleCodes, ruleCodesIn } from '../conformance/rule-codes.js';
 
 describe('Q05 Conformance Matrix Specification', () => {
   test('defines defective, healthy and boundary cases across the 6 required families', () => {
@@ -150,5 +153,58 @@ describe('L3 boundary signal checks', () => {
   test('known gaps never pass', () => {
     const signal: BoundarySignal = { kind: 'known-gap', reason: 'no runtime signal' };
     expect(evaluateBoundarySignal(signal, withSignal['coverage-cap'].capture).present).toBe(false);
+  });
+});
+
+describe('P15 rule gates: every detector rule has an independent oracle gate', () => {
+  test('the rule-code scanner finds a planted rule (canary) before scanning the real source', () => {
+    const planted = `findings.push(finding(node, 'PLANTED_CANARY_RULE', 'msg', evidence));\nfindings.push(finding(node, ok ? 'A_RULE' : 'B_RULE', 'm', e));`;
+    expect(ruleCodesIn(planted)).toEqual(['A_RULE', 'B_RULE', 'PLANTED_CANARY_RULE']);
+  });
+
+  test('gate rules are exactly the codes diagnose can emit', () => {
+    const codes = detectorRuleCodes();
+    expect(codes.length).toBeGreaterThan(0);
+    expect(ruleGates.map((gate) => gate.rule).sort()).toEqual(codes);
+    expect(Object.keys(ruleOracles).sort()).toEqual(codes);
+  });
+
+  test('each gate has a planted defect, a healthy control and a boundary, all keyed into real markup', () => {
+    const matrixIds = new Set(conformanceCases.map((c) => c.id));
+    const ids = new Set<string>();
+    for (const gate of ruleGates) {
+      const roles = new Set(gate.cases.map((c) => c.role));
+      expect([...roles].sort(), gate.rule).toEqual(['boundary', 'defect', 'healthy']);
+      expect(orderedCases(gate)[0]!.role, `${gate.rule} must run its canary first`).toBe('defect');
+      for (const c of gate.cases) {
+        expect(ids.has(c.id), `duplicate gate case id ${c.id}`).toBe(false);
+        ids.add(c.id);
+        if (c.role === 'defect') expect(c.oracleExpects, `${c.id}: a defect must be a violation`).toBe(true);
+        if (c.role === 'healthy') expect(c.oracleExpects, `${c.id}: a healthy control must not be a violation`).toBe(false);
+        if (c.fromCase) expect(matrixIds.has(c.fromCase), `${c.id} reuses unknown matrix case ${c.fromCase}`).toBe(true);
+        const { html } = gateMarkup(c);
+        expect(html, `${c.id} key must exist in its markup`).toContain(`data-anwc-key="${c.key}"`);
+        expect(html, `${c.id} relies on an inert <script>`).not.toMatch(/<script/i);
+        // A recorded disagreement is never allowed on the canary.
+        if (c.role === 'defect') expect(c.knownDisagreement, c.id).toBeUndefined();
+      }
+    }
+  });
+
+  test('recorded oracle/ANWC disagreements are exactly the P15 findings', () => {
+    const recorded = ruleGates.flatMap((gate) => gate.cases.filter((c) => c.knownDisagreement).map((c) => `${gate.rule}/${c.id}`));
+    expect(recorded).toEqual([
+      'CLIPPED_BY_ANCESTOR/clip-subpixel-fit',
+      'TEXT_CLIPPED/text-clip-exact-fit',
+      'EXPECTED_VISIBLE_BUT_HIDDEN/hidden-content-visibility',
+      'POINTER_PARTIALLY_BLOCKED/partial-thin-strip'
+    ]);
+  });
+
+  test('the oracle module imports nothing, so it cannot borrow ANWC code', () => {
+    const source = readFileSync(new URL('../conformance/oracles.ts', import.meta.url), 'utf8');
+    expect(source).not.toMatch(/^\s*import\s/m);
+    expect(source).not.toMatch(/\brequire\(|import\(/);
+    expect(source).not.toMatch(/__ANWC_TEST__|@anwc\//);
   });
 });
