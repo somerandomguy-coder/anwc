@@ -18,6 +18,12 @@ Each case now gets a fresh `page.goto('/')` with the shop's head stylesheets and
 
 Windows: `npx vitest run tests/unit/conformance.test.ts` 11/11 passed; `npx playwright test tests/browser/conformance.spec.ts` 1/1 passed: 34 cases (12 defective, 13 healthy, 9 boundary), 32 pass, 0 fail, 2 known gaps. Other suites and platforms were not rerun.
 
+## 2026-11-13 L1 replay acceptance (Q06)
+
+Branch `claude/competent-lewin-bc84f2`. `packages/cli/src/{manifest,runner}.ts`: reproducible `captureState`/`stateDigest` replaces raw-hash equality across runs (`captureHash` kept as the artifact sha256); unsettled/incomplete captures fail checkpoints; bounded operations plus a hard scenario deadline (`scenarioTimeoutMs`, default 60s); safe, globally unique capture names checked before any write; required values for text/attribute assertions; `passedAll` documented as replay/assertion success only. `tests/browser/check.spec.ts` enabled with 7 tests (two-run reproduction, sessionStorage isolation, ambiguous click/assertion, missing selector, scenario deadline, unsettled and incomplete captures, unsafe/duplicate names). `tests/unit/cli.test.ts` adds usage-error and no-write checks for invalid manifests.
+
+Windows results: typecheck passed; CLI unit tests 14/14; the spec body under Vitest via a temporary shim 7/7. The Playwright run itself did not complete: Playwright 1.51.1 on Node 24.18.0 hangs while loading any spec that imports `@anwc/protocol` `dist`, independent of this change. The Playwright suite is unverified until that loader hang is fixed.
+
 ## 2026-09-17 launch triage
 
 Pulled main from `27b4da4` to `947931b`. Corrected the CLI/report dependency lockfile (`467d612`). Added conservative comparison guards and eight regression cases (`6bd4cc4`): require matching URL/scenario/runtime/scale and settled, complete evidence; no repair success from empty baselines, heuristic identity or absent behavior checks. CLI comparison remains experimental and inconclusive without behavior binding.

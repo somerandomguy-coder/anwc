@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
@@ -272,10 +272,52 @@ describe('ANWC CLI', () => {
       const checkSummary = JSON.parse(await readFile(join(outDir, 'check-summary.json'), 'utf8'));
       expect(checkSummary.passedAll).toBe(true);
       expect(checkSummary.scenarios[0].checkpoints).toHaveLength(2);
+      const [initialCheckpoint, scrolledCheckpoint] = runResult.scenarios[0].checkpoints;
+      expect(initialCheckpoint.stateDigest).toMatch(/^[0-9a-f]{64}$/);
+      expect(initialCheckpoint.captureState).toMatchObject({ location: '/', settled: true, complete: true });
+      expect(scrolledCheckpoint.captureState.scroll.y).toBeGreaterThan(0);
+      expect(scrolledCheckpoint.stateDigest).not.toBe(initialCheckpoint.stateDigest);
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
   }, 30_000);
+
+  test('rejects unsafe check manifests with a usage error before writing anything', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-check-invalid-'));
+    const capture = (name: string) => ({ name: 'c', steps: [{ action: 'navigate', path: '/' }, { action: 'capture', name }] });
+    const manifestWith = (checkpoints: unknown[], extraScenario?: unknown) => ({
+      schemaVersion: '0.1',
+      baseUrl: url,
+      scenarios: [{ id: 's', title: 't', checkpoints }, ...(extraScenario ? [extraScenario] : [])]
+    });
+    const cases: Array<[string, unknown, RegExp]> = [
+      ['path escape', manifestWith([capture('../escape')]), /capture name '\.\.\/escape'/],
+      ['nested path', manifestWith([capture('dir/name')]), /one safe file-name segment/],
+      ['windows separator', manifestWith([capture('dir\\name')]), /one safe file-name segment/],
+      ['reserved device', manifestWith([capture('nul')]), /reserved device name/],
+      ['summary collision', manifestWith([capture('check-summary')]), /reserved for the run summary/],
+      ['duplicate across scenarios', manifestWith([capture('shot')], { id: 's2', title: 't2', checkpoints: [capture('Shot')] }), /duplicates a capture in s\/c/],
+      ['text-contains without value', manifestWith([{ name: 'c', steps: [{ action: 'navigate', path: '/' }], assertions: [{ id: 'a', description: 'd', selector: 'h1', expected: 'text-contains' }] }]), /'text-contains' requires a non-empty expectedValue/],
+      ['text-contains with empty value', manifestWith([{ name: 'c', steps: [{ action: 'navigate', path: '/' }], assertions: [{ id: 'a', description: 'd', selector: 'h1', expected: 'text-contains', expectedValue: '' }] }]), /'text-contains' requires a non-empty expectedValue/],
+      ['attribute-equals without value', manifestWith([{ name: 'c', steps: [{ action: 'navigate', path: '/' }], assertions: [{ id: 'a', description: 'd', selector: 'h1', expected: 'attribute-equals', attributeName: 'id' }] }]), /'attribute-equals' requires expectedValue/],
+      ['attribute-equals without name', manifestWith([{ name: 'c', steps: [{ action: 'navigate', path: '/' }], assertions: [{ id: 'a', description: 'd', selector: 'h1', expected: 'attribute-equals', expectedValue: 'x' }] }]), /'attribute-equals' requires attributeName/]
+    ];
+    try {
+      for (const [label, manifest, message] of cases) {
+        const manifestPath = join(tmp, 'checks.json');
+        const outDir = join(tmp, 'out');
+        await writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+        const stdout: string[] = [];
+        const stderr: string[] = [];
+        const exitCode = await run(['check', manifestPath, '--output', outDir], { stdout: (m) => stdout.push(m), stderr: (m) => stderr.push(m) });
+        expect(exitCode, label).toBe(2);
+        expect(stdout.join('') + stderr.join(''), label).toMatch(message);
+        expect((await readdir(tmp)).sort(), label).toEqual(['checks.json']);
+      }
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
 
   test('parses studio command arguments correctly', () => {
     const options = parseStudioArguments(['studio', 'http://127.0.0.1:5173', '--port', '4500', '--capture', 'test.json', '--no-open']);
