@@ -2,6 +2,7 @@
   "name": "anwc",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "packageManager": "npm@11.6.1",
   "workspaces": [
