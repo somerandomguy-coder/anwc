@@ -6,6 +6,7 @@ import {
   formatBox,
   formatSourceReference
 } from './drawer-utils.js';
+import { agentBrief, sampleCounts } from './agent-brief.js';
 import { RULE_CATEGORIES, categorizeFinding, whyReported, type NodeLookup } from './encoding.js';
 
 export interface FindingCardProps {
@@ -27,7 +28,7 @@ export interface FindingCardProps {
   style?: React.CSSProperties;
 }
 
-const SEVERITY_LABEL: Record<AnyFinding['severity'], string> = { error: 'CRITICAL', warning: 'WARNING', info: 'INFO' };
+const SEVERITY_LABEL: Record<AnyFinding['severity'], string> = { error: 'Critical', warning: 'Warning', info: 'Info' };
 
 export function FindingCard({
   finding,
@@ -44,6 +45,7 @@ export function FindingCard({
   style
 }: FindingCardProps): React.JSX.Element {
   const [copied, setCopied] = useState(false);
+  const [briefCopied, setBriefCopied] = useState(false);
 
   const sourceRef = ('target' in finding && finding.target && 'source' in finding.target && finding.target.source)
     ? finding.target.source
@@ -73,6 +75,20 @@ export function FindingCard({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleCopyBrief = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(agentBrief(finding));
+      setBriefCopied(true);
+      setTimeout(() => setBriefCopied(false), 2000);
+    } catch {
+      setBriefCopied(false);
+    }
+  };
+
+  const samples = sampleCounts(finding);
+  const blockerRefs = 'blockers' in finding && Array.isArray(finding.blockers) ? finding.blockers : [];
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.target !== e.currentTarget) return;
@@ -128,10 +144,40 @@ export function FindingCard({
 
       <p className="anwc-card-message">{finding.message}</p>
 
+      {samples && (
+        <div className="anwc-gauge">
+          <span className="anwc-gauge-ticks" aria-hidden="true">
+            {Array.from({ length: samples.tested }, (_, i) => (
+              <i key={i} data-blocked={i < samples.blocked} />
+            ))}
+          </span>
+          <span><strong>{samples.blocked}</strong> of {samples.tested} points blocked</span>
+        </div>
+      )}
+
+      {blockerRefs.length > 0 && (
+        <ul className="anwc-blockers" aria-label="Covered by">
+          {blockerRefs.map((b, i) => (
+            <li key={i}>
+              Covered by <strong>&lt;{b.tag}&gt; {b.label}</strong>
+              {formatSourceReference(b.source) && <code>{formatSourceReference(b.source)}</code>}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <p className="anwc-card-why" data-testid="finding-why">
         <span className="anwc-card-why-label">Why this is reported:</span> {why}
       </p>
 
+      <div className="anwc-card-actions">
+        <button type="button" className="anwc-btn" data-testid="copy-agent-brief" onClick={handleCopyBrief}>
+          {briefCopied ? 'Copied' : 'Copy brief for agent'}
+        </button>
+      </div>
+
+      <details className="anwc-card-more" onClick={(e) => e.stopPropagation()}>
+      <summary>Measurement and limits</summary>
       {'measuredVsExpected' in finding && finding.measuredVsExpected && (
         <div className="anwc-card-measured">
           <div><span className="anwc-measured-key">measured:</span> {finding.measuredVsExpected.measured}</div>
@@ -157,6 +203,7 @@ export function FindingCard({
         {effectiveTargetBox && <span className="anwc-metric">Target: {formatBox(effectiveTargetBox)}</span>}
         {effectiveBlockerBox && <span className="anwc-metric is-bad">Blocker: {formatBox(effectiveBlockerBox)}</span>}
       </div>
+      </details>
     </div>
   );
 }

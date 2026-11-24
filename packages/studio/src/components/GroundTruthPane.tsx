@@ -57,22 +57,9 @@ export function TargetUnreachablePanel({ url, reason, onRetry }: { url: string; 
     <div
       role="alert"
       data-testid="target-unreachable"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: '12px',
-        padding: '24px',
-        backgroundColor: '#0f172a',
-        color: '#e2e8f0',
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '13px',
-        lineHeight: 1.5
-      }}
+      className="anwc-unreachable"
     >
-      <strong style={{ fontSize: '15px', color: '#fbbf24' }}>Nothing is answering at {origin}</strong>
+      <strong>Nothing is answering at {origin}</strong>
       <span>
         The live preview can't load because no server is running there
         {reason === 'timeout' ? ' (the request timed out)' : ''}. The x-ray and findings still show the loaded capture.
@@ -82,18 +69,6 @@ export function TargetUnreachablePanel({ url, reason, onRetry }: { url: string; 
           <span>Start the {example.name} from the repository root:</span>
           <code
             data-testid="target-start-command"
-            style={{
-              display: 'block',
-              padding: '8px 10px',
-              borderRadius: '6px',
-              backgroundColor: '#020617',
-              border: '1px solid #334155',
-              color: '#a5f3fc',
-              fontFamily: 'ui-monospace, monospace',
-              fontSize: '12px',
-              wordBreak: 'break-all',
-              userSelect: 'all'
-            }}
           >
             {example.startCommand}
           </code>
@@ -105,17 +80,7 @@ export function TargetUnreachablePanel({ url, reason, onRetry }: { url: string; 
         <button
           type="button"
           onClick={onRetry}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '6px 12px',
-            borderRadius: '6px',
-            border: '1px solid #3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.15)',
-            color: '#93c5fd',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: 600
-          }}
+          className="anwc-btn"
         >
           Retry
         </button>
@@ -123,19 +88,6 @@ export function TargetUnreachablePanel({ url, reason, onRetry }: { url: string; 
     </div>
   );
 }
-
-const PULSE_KEYFRAMES = `
-@keyframes anwc-pulse {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7), 0 0 16px rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    opacity: 0.85;
-    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0), 0 0 24px rgba(59, 130, 246, 0.8);
-  }
-}
-`;
 
 /**
  * Validates that a target URL is a safe, well-formed http: or https: URL.
@@ -220,15 +172,14 @@ export function GroundTruthPane({
         width: '100%',
         height: '100%',
         overflow: 'auto',
-        backgroundColor: '#090d16',
+        backgroundColor: 'var(--anwc-bg)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-start',
+        padding: '44px 0 20px',
         ...style
       }}
     >
-      <style>{PULSE_KEYFRAMES}</style>
-
       {/* Scaled viewport canvas container */}
       <div
         className="anwc-ground-truth-canvas"
@@ -239,8 +190,9 @@ export function GroundTruthPane({
           transform: zoom === 1 ? undefined : `scale(${zoom})`,
           transformOrigin: zoom === 1 ? undefined : transformOrigin,
           position: 'relative',
-          backgroundColor: '#0f172a',
-          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+          flexShrink: 0,
+          backgroundColor: 'var(--anwc-surface)',
+          boxShadow: '0 0 0 1px var(--anwc-border)',
           overflow: 'hidden'
         }}
       >
@@ -374,34 +326,16 @@ export function GroundTruthPane({
               top: `${targetBox.y}px`,
               width: `${targetBox.width}px`,
               height: `${targetBox.height}px`,
-              border: '2px solid #3b82f6',
-              borderRadius: '4px',
-              boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.3), 0 0 16px rgba(59, 130, 246, 0.6)',
-              animation: 'anwc-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              outline: '3px solid var(--anwc-role-target)',
+              outlineOffset: '2px',
               pointerEvents: 'none',
               zIndex: 30
             }}
           >
             <div
               className="anwc-ground-truth-highlight-badge"
-              style={{
-                position: 'absolute',
-                top: '-20px',
-                left: '0px',
-                background: '#3b82f6',
-                color: '#ffffff',
-                fontSize: '9px',
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: '3px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                fontFamily: 'system-ui, sans-serif'
-              }}
             >
-              Target Element
+              Target element
             </div>
           </div>
         )}

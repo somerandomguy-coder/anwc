@@ -55,7 +55,7 @@ interface DrawnFinding {
   focused: boolean;
 }
 
-const ROLE_TAG: Record<BoxRole, string> = { target: 'TARGET', blocker: 'BLOCKER', clip: 'CLIP', context: 'CONTEXT' };
+const ROLE_TAG: Record<BoxRole, string> = { target: 'Target', blocker: 'Blocker', clip: 'Clip', context: 'Context' };
 const ROLE_CLASS: Record<BoxRole, string> = { target: 'xray-target-box', blocker: 'xray-blocker-box', clip: 'xray-clip-box', context: 'xray-context-box' };
 
 export function XRayPane({
@@ -170,9 +170,9 @@ export function XRayPane({
     >
       <div
         className="anwc-xray-scroll"
-        style={{ position: 'absolute', inset: 0, overflow: 'auto', background: overlayMode ? 'transparent' : 'var(--anwc-xray-bg)' }}
+        style={{ position: 'absolute', inset: 0, overflow: 'auto', padding: '44px 0 20px', background: overlayMode ? 'transparent' : 'var(--anwc-xray-bg)' }}
       >
-        <div style={{ width, height, transform: `scale(${zoom})`, transformOrigin: 'top left', position: 'relative' }}>
+        <div style={{ width, height, transform: `scale(${zoom})`, transformOrigin: 'top center', position: 'relative', margin: '0 auto' }}>
           <svg
             viewBox={`0 0 ${width} ${height}`}
             width={width}
@@ -261,11 +261,11 @@ export function XRayPane({
                         >
                           <title>{`${number}. ${enc.label} <${b.tag}> ${b.label || b.nodeId}`}</title>
                         </rect>
-                        {focused && b.role !== 'context' && (
+                        {focused && b.role !== 'context' && boxes.find((other) => other.role === b.role) === b && (
                           <text
                             className="xray-role-label"
-                            x={b.role === 'target' ? b.box.x + 24 : b.box.x + 4}
-                            y={Math.max(12, b.box.y - 5)}
+                            x={Math.max(4, b.box.x + 4)}
+                            y={b.role === 'target' ? Math.max(12, b.box.y - 5) : Math.min(height - 4, b.box.y + b.box.height + 14)}
                             style={{ fill: `var(${enc.colorVar})`, fontSize: 11, fontWeight: 700, fontFamily: 'var(--anwc-font-mono)', paintOrder: 'stroke', stroke: 'var(--anwc-label-halo)', strokeWidth: 3 }}
                           >
                             {ROLE_TAG[b.role]}: &lt;{b.tag}&gt;{b.role === 'target' && b.label ? ` "${b.label.slice(0, 16)}"` : ''}
@@ -323,7 +323,7 @@ export function XRayPane({
         </div>
       </div>
 
-      {showLegend && <XRayLegend sentence={sentence} />}
+      {showLegend && <XRayLegend sentence={sentence} defaultCollapsed={overlayMode} />}
       {internalHoveredSample && <SampleTooltip sample={internalHoveredSample} />}
     </div>
   );

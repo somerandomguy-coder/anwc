@@ -150,10 +150,10 @@ describe('XRayPane Component', () => {
     expect(html).toContain('viewBox="0 0 390 844"');
     // Renders target bounding box
     expect(html).toContain('xray-target-box');
-    expect(html).toContain('TARGET: &lt;button&gt;');
+    expect(html).toContain('Target: &lt;button&gt;');
     // Renders blocker bounding box
     expect(html).toContain('xray-blocker-box');
-    expect(html).toContain('BLOCKER: &lt;div&gt;');
+    expect(html).toContain('Blocker: &lt;div&gt;');
     // Renders samples group
     expect(html).toContain('xray-samples');
     // P11: samples are encoded by class (colour token + shape) instead of a fixed hex fill

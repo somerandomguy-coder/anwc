@@ -118,7 +118,7 @@ describe('GroundTruthPane Component', () => {
     }
   });
 
-  test('renders animated highlight pulse overlay over active target element', () => {
+  test('renders a steady highlight overlay over active target element', () => {
     const targetBox = { x: 20, y: 150, width: 280, height: 48 };
     const html = renderToStaticMarkup(
       React.createElement(GroundTruthPane, {
@@ -135,8 +135,9 @@ describe('GroundTruthPane Component', () => {
     expect(html).toContain('top:150px');
     expect(html).toContain('width:280px');
     expect(html).toContain('height:48px');
-    // Includes pulse animation
-    expect(html).toContain('anwc-pulse');
+    // Steady outline: an endless pulse ignored reduced-motion settings
+    expect(html).toContain('outline:3px solid var(--anwc-role-target)');
+    expect(html).not.toContain('anwc-pulse');
   });
 
   test('derives target box automatically from activeFinding and snapshot', () => {

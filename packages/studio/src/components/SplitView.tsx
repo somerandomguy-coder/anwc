@@ -177,7 +177,7 @@ export function SplitView({
           width: '100%',
           height: '100%',
           overflow: 'hidden',
-          backgroundColor: '#090d16',
+          backgroundColor: 'var(--anwc-bg)',
           ...style
         }}
       >
@@ -185,9 +185,11 @@ export function SplitView({
         <div
           className="anwc-overlay-stage"
           style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: zoom === 1 ? 0 : `${(100 - 100 / zoom) / 2}%`,
+            width: zoom === 1 ? '100%' : `${100 / zoom}%`,
+            height: zoom === 1 ? '100%' : `${100 / zoom}%`,
             transform: zoom === 1 ? undefined : `scale(${zoom})`,
             transformOrigin: zoom === 1 ? undefined : 'top center'
           }}
@@ -226,27 +228,8 @@ export function SplitView({
         <div
           className="anwc-overlay-toolbar"
           data-testid="overlay-toolbar"
-          style={{
-            position: 'absolute',
-            bottom: '16px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid #334155',
-            borderRadius: '8px',
-            padding: '8px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
-            zIndex: 100,
-            fontSize: '12px',
-            color: '#f8fafc',
-            fontFamily: 'system-ui, sans-serif'
-          }}
         >
-          <span style={{ fontWeight: 600, color: '#38bdf8' }}>Overlay Mode</span>
+          <span style={{ fontWeight: 600 }}>Overlay Mode</span>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>Opacity:</span>
@@ -267,15 +250,6 @@ export function SplitView({
             <select
               value={currentBlend}
               onChange={handleBlendChange}
-              style={{
-                backgroundColor: '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid #475569',
-                borderRadius: '4px',
-                padding: '2px 6px',
-                fontSize: '11px',
-                cursor: 'pointer'
-              }}
             >
               <option value="normal">Normal</option>
               <option value="difference">Difference</option>
@@ -286,16 +260,7 @@ export function SplitView({
           <button
             type="button"
             onClick={handleExitOverlay}
-            style={{
-              backgroundColor: '#334155',
-              color: '#f8fafc',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '3px 8px',
-              fontSize: '11px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="anwc-btn"
           >
             Exit Overlay
           </button>
@@ -317,7 +282,7 @@ export function SplitView({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        backgroundColor: '#090d16',
+        backgroundColor: 'var(--anwc-bg)',
         userSelect: isDragging ? 'none' : 'auto',
         ...style
       }}
@@ -335,11 +300,15 @@ export function SplitView({
             pointerEvents: isDragging ? 'none' : 'auto'
           }}
         >
+          <span className="anwc-pane-caption">Live page</span>
           <div
             className="anwc-split-pane-inner"
             style={{
-              width: '100%',
-              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: zoom === 1 ? 0 : `${(100 - 100 / zoom) / 2}%`,
+              width: zoom === 1 ? '100%' : `${100 / zoom}%`,
+              height: zoom === 1 ? '100%' : `${100 / zoom}%`,
               transform: zoom === 1 ? undefined : `scale(${zoom})`,
               transformOrigin: zoom === 1 ? undefined : 'top center'
             }}
@@ -355,43 +324,16 @@ export function SplitView({
           className="anwc-split-divider"
           data-testid="split-divider"
           onMouseDown={handleMouseDown}
-          style={{
-            width: '8px',
-            backgroundColor: isDragging ? '#38bdf8' : '#1e293b',
-            borderLeft: '1px solid #334155',
-            borderRight: '1px solid #334155',
-            cursor: 'col-resize',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            flexShrink: 0,
-            zIndex: 10,
-            transition: 'background-color 0.15s ease'
-          }}
+          data-dragging={isDragging}
           title="Drag to resize panes"
         >
           {/* Preset Buttons Popover / Handle */}
           <div
             className="anwc-divider-handle"
-            style={{
-              width: '4px',
-              height: '32px',
-              backgroundColor: '#475569',
-              borderRadius: '2px'
-            }}
           />
 
           <div
             className="anwc-divider-presets"
-            style={{
-              position: 'absolute',
-              top: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-              zIndex: 20
-            }}
           >
             <button
               type="button"
@@ -400,15 +342,7 @@ export function SplitView({
                 handlePresetSelect(0.5);
               }}
               title="50 / 50 Split"
-              style={{
-                background: currentRatio === 0.5 ? '#3b82f6' : '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid #475569',
-                borderRadius: '3px',
-                fontSize: '9px',
-                padding: '2px 4px',
-                cursor: 'pointer'
-              }}
+              aria-pressed={currentRatio === 0.5}
             >
               50/50
             </button>
@@ -419,15 +353,7 @@ export function SplitView({
                 handlePresetSelect(0.7);
               }}
               title="70 / 30 Split"
-              style={{
-                background: currentRatio === 0.7 ? '#3b82f6' : '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid #475569',
-                borderRadius: '3px',
-                fontSize: '9px',
-                padding: '2px 4px',
-                cursor: 'pointer'
-              }}
+              aria-pressed={currentRatio === 0.7}
             >
               70/30
             </button>
@@ -438,15 +364,7 @@ export function SplitView({
                 handlePresetSelect(0.3);
               }}
               title="30 / 70 Split"
-              style={{
-                background: currentRatio === 0.3 ? '#3b82f6' : '#1e293b',
-                color: '#f8fafc',
-                border: '1px solid #475569',
-                borderRadius: '3px',
-                fontSize: '9px',
-                padding: '2px 4px',
-                cursor: 'pointer'
-              }}
+              aria-pressed={currentRatio === 0.3}
             >
               30/70
             </button>
@@ -467,11 +385,15 @@ export function SplitView({
             pointerEvents: isDragging ? 'none' : 'auto'
           }}
         >
+          <span className="anwc-pane-caption">What ANWC measured</span>
           <div
             className="anwc-split-pane-inner"
             style={{
-              width: '100%',
-              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: zoom === 1 ? 0 : `${(100 - 100 / zoom) / 2}%`,
+              width: zoom === 1 ? '100%' : `${100 / zoom}%`,
+              height: zoom === 1 ? '100%' : `${100 / zoom}%`,
               transform: zoom === 1 ? undefined : `scale(${zoom})`,
               transformOrigin: zoom === 1 ? undefined : 'top center'
             }}

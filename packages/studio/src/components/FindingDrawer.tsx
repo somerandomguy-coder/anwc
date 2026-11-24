@@ -153,7 +153,7 @@ export function FindingDrawer({
                 if (!isExpanded) setIsExpanded(true);
               }}
             >
-              Diagnostic Findings ({allFindings.length})
+              Findings ({allFindings.length})
             </button>
             <button
               type="button"
@@ -165,11 +165,11 @@ export function FindingDrawer({
                 if (!isExpanded) setIsExpanded(true);
               }}
             >
-              Agent Payload (0.1 JSON)
+              Agent data
             </button>
           </div>
         </div>
-        <div className="anwc-row anwc-mono">
+        <div className="anwc-row">
           {criticalCount > 0 && <span className="anwc-count anwc-count-error">{criticalCount} critical</span>}
           {actionableCount > 0 && <span className="anwc-count anwc-count-warn">{actionableCount} actionable</span>}
           <button
@@ -219,7 +219,7 @@ export function FindingDrawer({
               Show all
             </button>
             <span className="anwc-keys" aria-hidden="true">
-              <kbd>j</kbd>/<kbd>k</kbd> move · <kbd>/</kbd> filter · <kbd>Esc</kbd> clear
+              <kbd>j</kbd> <kbd>k</kbd> move, <kbd>/</kbd> filter, <kbd>Esc</kbd> clear
             </span>
           </div>
 

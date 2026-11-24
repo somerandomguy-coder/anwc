@@ -76,7 +76,7 @@ test.describe('P10 studio target health', () => {
     await expect(panel).toContainText(`Nothing is answering at ${SHOP_ORIGIN}`);
     await expect(panel.getByTestId('target-start-command')).toHaveText(SHOP_START_COMMAND);
     await expect(pane.locator('iframe')).toHaveCount(0);
-    await expect(page.getByTestId('data-source-badge')).toHaveText('Sample data');
+    await expect(page.getByTestId('data-source-badge')).toHaveText('Recorded capture');
 
     // Start something on the shop's stand-in port; Retry must now load the iframe.
     shopStandIn = createHttpServer((_req, res) => {
@@ -100,7 +100,7 @@ test.describe('P10 studio target health', () => {
     const iframe = pane.locator('iframe[title="Ground Truth Preview"]');
     await expect(iframe).toHaveAttribute('src', new RegExp(`^${DASHBOARD_ORIGIN}/`));
     await expect(pane.getByTestId('target-unreachable')).toHaveCount(0);
-    await expect(page.getByTestId('data-source-badge')).toHaveText('Sample data');
+    await expect(page.getByTestId('data-source-badge')).toHaveText('Recorded capture');
     // The dashboard app actually rendered inside the frame.
     await expect(pane.frameLocator('iframe[title="Ground Truth Preview"]').locator('#root')).not.toBeEmpty();
   });

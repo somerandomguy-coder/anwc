@@ -3,7 +3,8 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Header, type HeaderProps } from '../../packages/studio/src/components/Header.js';
 import { App, parseUploadedSnapshotJson } from '../../packages/studio/src/App.js';
-import { STUDIO_PRESETS, shopBlockedSnapshot, cleanShopSnapshot } from '../../packages/studio/src/data/presets.js';
+import { STUDIO_PRESETS } from '../../packages/studio/src/data/presets.js';
+import { shopBlockedSnapshot, cleanShopSnapshot } from '../fixtures/studio-snapshots.js';
 import { VIEWPORT_PRESETS } from '../../packages/studio/src/types.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 import { createReport } from '../../packages/report/src/index.js';
@@ -22,6 +23,24 @@ function captureHeaderElement(props: HeaderProps): React.ReactElement {
   return element!;
 }
 
+/** Finds an element by test id, so tests do not depend on the header's nesting. */
+function byTestId(node: React.ReactNode, id: string): React.ReactElement<any> {
+  const search = (current: React.ReactNode): React.ReactElement<any> | null => {
+    if (Array.isArray(current)) {
+      for (const child of current) {
+        const hit = search(child);
+        if (hit) return hit;
+      }
+      return null;
+    }
+    if (!React.isValidElement<any>(current)) return null;
+    return current.props['data-testid'] === id ? current : search(current.props.children);
+  };
+  const found = search(node);
+  if (!found) throw new Error(`no element with test id ${id}`);
+  return found;
+}
+
 describe('Studio Header Component', () => {
   const defaultProps: HeaderProps = {
     url: 'http://127.0.0.1:4173/?case=blocked-checkout',
@@ -31,13 +50,13 @@ describe('Studio Header Component', () => {
     overlayMode: false
   };
 
-  test('renders ANWC Studio brand, logo, and a data-source badge that says whether findings are sample or live', () => {
+  test('renders ANWC Studio brand, logo, and a data-source badge that says whether findings are recorded or live', () => {
     const html = renderToStaticMarkup(React.createElement(Header, defaultProps));
 
     expect(html).toContain('ANWC Studio');
     expect(html).toContain('Live capture');
     const sampleHtml = renderToStaticMarkup(React.createElement(Header, { ...defaultProps, activePresetId: 'shop-blocked-checkout' }));
-    expect(sampleHtml).toContain('Sample data');
+    expect(sampleHtml).toContain('Recorded capture');
     expect(sampleHtml).not.toContain('Live capture');
     expect(html).toContain('data-testid="header"');
   });
@@ -51,10 +70,10 @@ describe('Studio Header Component', () => {
     );
 
     expect(html).toContain('data-testid="preset-picker"');
-    expect(html).toContain('Shop: Blocked Checkout');
-    expect(html).toContain('Pricing: Ancestor Overflow Clipping');
-    expect(html).toContain('Dashboard: Outside Viewport Action');
-    expect(html).toContain('Shop: Healthy Layout');
+    expect(html).toContain('Shop: checkout covered');
+    expect(html).toContain('Pricing: description cut off');
+    expect(html).toContain('Dashboard: save off screen');
+    expect(html).toContain('Shop: checkout reachable');
   });
 
   test('renders URL input with current URL and placeholder', () => {
@@ -67,7 +86,7 @@ describe('Studio Header Component', () => {
 
     expect(html).toContain('data-testid="url-input"');
     expect(html).toContain('value="http://localhost:3000/shop"');
-    expect(html).toContain('placeholder="http://127.0.0.1:4175/..."');
+    expect(html).toContain('placeholder="http://127.0.0.1:4175/…"');
   });
 
   test('renders Inspect button in idle state', () => {
@@ -80,7 +99,7 @@ describe('Studio Header Component', () => {
 
     expect(html).toContain('data-testid="inspect-button"');
     expect(html).toContain('Inspect');
-    expect(html).not.toContain('Inspecting...');
+    expect(html).not.toContain('Inspecting…');
   });
 
   test('renders Inspect button in loading state with spinner when isInspecting is true', () => {
@@ -92,7 +111,7 @@ describe('Studio Header Component', () => {
     );
 
     expect(html).toContain('data-testid="inspect-button"');
-    expect(html).toContain('Inspecting...');
+    expect(html).toContain('Inspecting…');
     expect(html).toContain('disabled=""');
   });
 
@@ -174,8 +193,7 @@ describe('Studio Header Component', () => {
       onSelectPreset
     });
 
-    const leftGroup = (element.props.children as React.ReactElement[])[0];
-    const select = leftGroup.props.children[1].props.children[1];
+    const select = byTestId(element, 'preset-picker');
 
     select.props.onChange({ target: { value: 'pricing-ancestor-clip' } });
     expect(onSelectPreset).toHaveBeenCalledWith('pricing-ancestor-clip');
@@ -191,9 +209,8 @@ describe('Studio Header Component', () => {
       onInspect
     });
 
-    const middleGroup = (element.props.children as React.ReactElement[])[1];
-    const input = middleGroup.props.children[0].props.children;
-    const button = middleGroup.props.children[1];
+    const input = byTestId(element, 'url-input');
+    const button = byTestId(element, 'inspect-button');
 
     input.props.onChange({ target: { value: 'http://localhost:4000' } });
     expect(onUrlChange).toHaveBeenCalledWith('http://localhost:4000');
@@ -216,8 +233,7 @@ describe('Studio Header Component', () => {
       onSelectViewport
     });
 
-    const rightGroup = (element.props.children as React.ReactElement[])[2];
-    const vpSelect = rightGroup.props.children[0].props.children;
+    const vpSelect = byTestId(element, 'viewport-picker');
 
     vpSelect.props.onChange({ target: { value: 'desktop' } });
     expect(onSelectViewport).toHaveBeenCalledWith({
@@ -234,8 +250,7 @@ describe('Studio Header Component', () => {
       onZoomChange
     });
 
-    const rightGroup = (element.props.children as React.ReactElement[])[2];
-    const zoomSelect = rightGroup.props.children[1].props.children;
+    const zoomSelect = byTestId(element, 'zoom-picker');
 
     zoomSelect.props.onChange({ target: { value: '0.75' } });
     expect(onZoomChange).toHaveBeenCalledWith(0.75, '75%');
@@ -251,8 +266,7 @@ describe('Studio Header Component', () => {
       onToggleOverlay
     });
 
-    const rightGroup = (element.props.children as React.ReactElement[])[2];
-    const overlayBtn = rightGroup.props.children[2];
+    const overlayBtn = byTestId(element, 'overlay-toggle');
 
     overlayBtn.props.onClick();
     expect(onToggleOverlay).toHaveBeenCalled();
@@ -324,14 +338,14 @@ describe('Studio App Coordinator', () => {
     expect(html).toContain('data-testid="ground-truth-pane"');
     expect(html).toContain('anwc-xray-pane');
     expect(html).toContain('aria-label="Finding Drawer"');
-    expect(html).toContain('Diagnostic Findings');
+    expect(html).toContain('Findings');
 
     // Default snapshot has 'POINTER_BLOCKED_AT_SAMPLES'
     expect(html).toContain('POINTER_BLOCKED_AT_SAMPLES');
-    expect(html).toContain('Checkout button hit-test samples blocked');
+    expect(html).toContain('Checkout now has 25/25 pointer samples blocked');
     expect(html).toContain('examples/shop/src/main.tsx:44');
     expect(html).toContain('data-testid="data-source-badge"');
-    expect(html).toContain('Sample data');
+    expect(html).toContain('Recorded capture');
   });
 
   test('initializes with custom initialPresetId', () => {
@@ -344,8 +358,8 @@ describe('Studio App Coordinator', () => {
 
     // Clean shop has no findings
     expect(html).toContain('aria-label="Finding Drawer"');
-    expect(html).toContain('Diagnostic Findings (0)');
-    expect(html).toContain('Shop: Healthy Layout');
+    expect(html).toContain('Findings (0)');
+    expect(html).toContain('Shop: checkout reachable');
   });
 
   test('renders overlay mode when initialOverlayMode is true', () => {

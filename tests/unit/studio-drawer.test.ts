@@ -194,7 +194,7 @@ describe('FindingCard Component', () => {
     );
 
     // Severity badge CRITICAL for error
-    expect(html).toContain('CRITICAL');
+    expect(html).toContain('Critical');
     // Code pill
     expect(html).toContain('POINTER_BLOCKED_AT_SAMPLES');
     // Message
@@ -219,7 +219,7 @@ describe('FindingCard Component', () => {
     const warningHtml = renderToStaticMarkup(
       React.createElement(FindingCard, { finding: warningFinding })
     );
-    expect(warningHtml).toContain('WARNING');
+    expect(warningHtml).toContain('Warning');
     expect(warningHtml).toContain('uninstrumented');
 
     const infoFinding: Finding = {
@@ -231,7 +231,7 @@ describe('FindingCard Component', () => {
     const infoHtml = renderToStaticMarkup(
       React.createElement(FindingCard, { finding: infoFinding })
     );
-    expect(infoHtml).toContain('INFO');
+    expect(infoHtml).toContain('Info');
   });
 
   test('renders selected state styling when selected', () => {
@@ -268,8 +268,8 @@ describe('FindingDrawer Component', () => {
     );
 
     // Header counter and tabs
-    expect(html).toContain('Diagnostic Findings');
-    expect(html).toContain('Agent Payload (0.1 JSON)');
+    expect(html).toContain('Findings');
+    expect(html).toContain('Agent data');
     // P11: filter chips replaced by rule-category checkboxes, a text filter and "Show all"
     for (const label of ['Pointer', 'Clipping', 'Overflow', 'Text', 'Visibility', 'Other']) {
       expect(html).toContain(label);
@@ -340,6 +340,6 @@ describe('FindingDrawer Component', () => {
     );
 
     expect(html).toContain('POINTER_BLOCKED_AT_SAMPLES');
-    expect(html).toContain('Diagnostic Findings');
+    expect(html).toContain('Findings');
   });
 });

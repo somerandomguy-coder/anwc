@@ -31,7 +31,7 @@ import { FindingCard } from '../../packages/studio/src/components/FindingCard.js
 import { extractFindings } from '../../packages/studio/src/components/drawer-utils.js';
 import { nextTheme } from '../../packages/studio/src/components/theme.js';
 import { App } from '../../packages/studio/src/App.js';
-import { shopBlockedSnapshot, pricingAncestorClipSnapshot } from '../../packages/studio/src/data/presets.js';
+import { shopBlockedSnapshot, pricingAncestorClipSnapshot } from '../fixtures/studio-snapshots.js';
 
 /* ------------------------------------------------------------------------ */
 /* Fixture: three findings in three categories on the protocol fixture       */
@@ -180,7 +180,7 @@ describe('P11 legend and encoding', () => {
     const html = renderToStaticMarkup(React.createElement(XRayPane, { snapshot: pricingAncestorClipSnapshot, activeFinding: pricingAncestorClipSnapshot.findings[0]! }));
     expect(html).toContain('class="xray-clip-box" data-role="clip"');
     expect(html).toContain(`stroke-dasharray:${ROLE_ENCODING.clip.dash}`);
-    expect(html).toContain('CLIP: &lt;');
+    expect(html).toContain('Clip: &lt;');
     const blocked = renderToStaticMarkup(React.createElement(XRayPane, { snapshot: shopBlockedSnapshot, activeFinding: shopBlockedSnapshot.findings[0]! }));
     expect(blocked).toContain(`stroke-dasharray:${ROLE_ENCODING.blocker.dash}`);
     const targetRect = blocked.match(/class="xray-target-box"[^>]*><rect[^>]*>/)![0];

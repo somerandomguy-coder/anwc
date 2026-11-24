@@ -11,7 +11,8 @@ import { FindingDrawer } from './components/FindingDrawer.js';
 import { computeFitZoom } from './components/split-utils.js';
 import { computeXRayBoundingBoxes } from './components/xray-utils.js';
 import { extractFindings } from './components/drawer-utils.js';
-import { checkViewportAlignment } from './components/encoding.js';
+import { XRayLegend } from './components/XRayLegend.js';
+import { checkViewportAlignment, findingRoleBoxes, legendSentence } from './components/encoding.js';
 import { useFindingView } from './components/useFindingView.js';
 
 export interface AppProps {
@@ -55,6 +56,9 @@ export function parseUploadedSnapshotJson(rawJson: string): ParsedUploadResult {
     throw new Error('Parsed JSON is not an object');
   }
 
+  // CLI stdout is an envelope; unwrap it so a redirected file loads too.
+  if (parsed.ok === true && parsed.command && parsed.data) parsed = parsed.data;
+
   // 1. Snapshot schema
   if (parsed.schemaVersion === '0.1' && Array.isArray(parsed.nodes) && parsed.page) {
     return { type: 'snapshot', snapshot: parsed as Snapshot };
@@ -86,6 +90,17 @@ export function parseUploadedSnapshotJson(rawJson: string): ParsedUploadResult {
   throw new Error('Unsupported JSON file format. Expected an ANWC Snapshot, Report, or Diff schema.');
 }
 
+/** The finding listed first (report order: most severe first), not the first one captured. */
+function firstFindingId(snapshot: Snapshot): string | null {
+  try {
+    return extractFindings(createReport(snapshot))[0]?.findingId ?? null;
+  } catch {
+    return snapshot.findings?.[0]?.findingId ?? null;
+  }
+}
+
+const countFindings = (count: number) => `${count} ${count === 1 ? 'finding' : 'findings'}`;
+
 export function App({
   initialSnapshot,
   initialPresetId,
@@ -93,7 +108,7 @@ export function App({
   initialOverlayMode = false,
   initialSplitRatio = 0.5,
   initialZoom = 1,
-  initialZoomMode = '100%',
+  initialZoomMode = 'fit',
   className = '',
   style
 }: AppProps): React.JSX.Element {
@@ -118,7 +133,7 @@ export function App({
 
   // State: selected finding
   const [selectedFindingId, setSelectedFindingId] = useState<string | null>(
-    initialSelectedFindingId ?? snapshot.findings?.[0]?.findingId ?? null
+    initialSelectedFindingId ?? firstFindingId(snapshot)
   );
 
   // State: raycast dot hover tooltip
@@ -132,6 +147,13 @@ export function App({
 
   // State: toast alert banner
   const [toast, setToast] = useState<{ id: string; message: string; type: 'error' | 'info' | 'success' } | null>(null);
+
+  // Success and info notices clear themselves; errors stay until dismissed.
+  useEffect(() => {
+    if (!toast || toast.type === 'error') return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Ref to measure container dimensions for Fit zoom
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -148,8 +170,9 @@ export function App({
       }
     };
     updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    const observer = new ResizeObserver(updateDimensions);
+    observer.observe(workspaceRef.current);
+    return () => observer.disconnect();
   }, []);
 
   // Compute active report via @anwc/report
@@ -180,6 +203,21 @@ export function App({
   });
   const viewportAligned = checkViewportAlignment(snapshot.page.viewport, frameViewport).aligned;
 
+  const legendText = useMemo(() => {
+    const isolated = snapshot.findings.find((f) => f.findingId === findingView.isolatedFindingId);
+    return legendSentence({
+      totalFindings: snapshot.findings.length,
+      visibleFindings: findingView.visibleIds.length,
+      isolated: isolated
+        ? {
+            number: findingView.numbering.get(isolated.findingId) ?? 1,
+            code: isolated.code,
+            roles: new Set(findingRoleBoxes(snapshot, isolated).map((b) => b.role))
+          }
+        : null
+    });
+  }, [snapshot, findingView.isolatedFindingId, findingView.visibleIds, findingView.numbering]);
+
   // Compute target box for ground truth highlight (none when the frame and capture viewports differ)
   const selectedFindingBox = useMemo<Rect | null>(() => {
     if (!selectedFinding || !snapshot || !viewportAligned) return null;
@@ -190,11 +228,11 @@ export function App({
   // Compute effective zoom scale ratio
   const effectiveZoom = useMemo<number>(() => {
     if (zoomMode === 'fit' && containerDimensions) {
-      const availableWidth = overlayMode ? containerDimensions.width : containerDimensions.width * splitRatio;
+      const availableWidth = overlayMode ? containerDimensions.width : containerDimensions.width * Math.min(splitRatio, 1 - splitRatio);
       return computeFitZoom(
         frameViewport,
-        { width: availableWidth, height: containerDimensions.height },
-        32
+        { width: availableWidth, height: containerDimensions.height - 24 },
+        24
       );
     }
     return typeof zoom === 'number' ? zoom : 1;
@@ -207,7 +245,7 @@ export function App({
       setSnapshot(preset.snapshot);
       setActivePresetId(preset.id);
       setUrl(preset.snapshot.page.url);
-      setSelectedFindingId(preset.snapshot.findings[0]?.findingId ?? null);
+      setSelectedFindingId(firstFindingId(preset.snapshot));
       setHoveredSample(null);
     }
   };
@@ -281,12 +319,12 @@ export function App({
       setSnapshot(data.snapshot);
       setActivePresetId(null);
       setUrl(trimmed);
-      setSelectedFindingId(data.snapshot.findings?.[0]?.findingId ?? null);
+      setSelectedFindingId(firstFindingId(data.snapshot));
       setHoveredSample(null);
 
       setToast({
         id: String(Date.now()),
-        message: `Inspection succeeded: ${data.snapshot.findings?.length ?? 0} findings detected.`,
+        message: `Inspection complete: ${countFindings(data.snapshot.findings?.length ?? 0)}.`,
         type: 'success'
       });
     } catch (err: any) {
@@ -318,12 +356,12 @@ export function App({
           setSnapshot(result.snapshot);
           setActivePresetId(null);
           setUrl(result.snapshot.page.url || '');
-          setSelectedFindingId(result.snapshot.findings?.[0]?.findingId ?? null);
+          setSelectedFindingId(firstFindingId(result.snapshot));
           setHoveredSample(null);
 
           setToast({
             id: String(Date.now()),
-            message: `Loaded snapshot "${result.snapshot.captureId || file.name}" with ${result.snapshot.findings?.length ?? 0} findings.`,
+            message: `Loaded snapshot "${result.snapshot.captureId || file.name}" with ${countFindings(result.snapshot.findings?.length ?? 0)}.`,
             type: 'success'
           });
         } else if (result.type === 'report') {
@@ -371,17 +409,7 @@ export function App({
     <div
       className={`anwc-studio-app ${className}`.trim()}
       data-testid="studio-app"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        position: 'relative',
-        backgroundColor: 'var(--anwc-bg)',
-        color: 'var(--anwc-fg)',
-        ...style
-      }}
+      style={style}
     >
       {/* Top Header Bar */}
       <Header
@@ -402,18 +430,11 @@ export function App({
         onLoadJsonFile={handleLoadJsonFile}
       />
 
-      {/* Main Split Viewport Area */}
+      <main className="anwc-bench">
       <div
         ref={workspaceRef}
         className="anwc-viewport-workspace"
         data-testid="viewport-workspace"
-        style={{
-          display: 'flex',
-          flex: '1 1 0%',
-          position: 'relative',
-          overflow: 'hidden',
-          backgroundColor: 'var(--anwc-xray-bg)'
-        }}
       >
         <SplitView
           splitRatio={splitRatio}
@@ -429,7 +450,6 @@ export function App({
               activeFinding={viewportAligned ? selectedFinding : null}
               activeFindingBox={selectedFindingBox}
               snapshot={snapshot}
-              zoom={effectiveZoom}
             />
           }
           right={
@@ -442,14 +462,15 @@ export function App({
               onHoverSample={setHoveredSample}
               view={findingView}
               frameViewport={frameViewport}
-              zoom={effectiveZoom}
+              showLegend={false}
               overlayMode={overlayMode}
             />
           }
         />
       </div>
 
-      {/* Bottom Diagnostic Findings Drawer */}
+      {/* Findings, beside the page they describe */}
+      <div className="anwc-side">
       <FindingDrawer
         snapshot={snapshot}
         report={report}
@@ -457,39 +478,18 @@ export function App({
         onSelectFinding={setSelectedFindingId}
         view={findingView}
       />
+      <XRayLegend sentence={legendText} />
+      </div>
+      </main>
 
       {/* Synchronized Hovered Raycast Sample Tooltip Status Pill */}
       {hoveredSample && (
         <div
           data-testid="hovered-sample-bar"
-          style={{
-            position: 'absolute',
-            bottom: '240px',
-            left: '20px',
-            zIndex: 50,
-            backgroundColor: 'rgba(15, 23, 42, 0.92)',
-            border: '1px solid #334155',
-            borderRadius: '6px',
-            padding: '5px 12px',
-            fontSize: '11px',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            color: '#e2e8f0',
-            backdropFilter: 'blur(4px)',
-            pointerEvents: 'none',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
-          }}
+          className="anwc-sample-bar"
         >
           Sample ({hoveredSample.x}, {hoveredSample.y}) →{' '}
-          <strong
-            style={{
-              color:
-                hoveredSample.result === 'blocked'
-                  ? '#ef4444'
-                  : hoveredSample.result === 'target-or-descendant'
-                    ? '#10b981'
-                    : '#94a3b8'
-            }}
-          >
+          <strong data-result={hoveredSample.result}>
             {hoveredSample.result}
           </strong>
           {hoveredSample.blockerNodeId && ` [blocker: ${hoveredSample.blockerNodeId}]`}
@@ -498,7 +498,7 @@ export function App({
 
       {/* Toast Notification Container */}
       {toast && (
-        <div className="anwc-toast-container" data-testid="toast-container">
+        <div className="anwc-toast-container" data-testid="toast-container" role="status" aria-live="polite">
           <div
             className={`anwc-toast anwc-toast-${toast.type} anwc-fade-in`}
             data-testid="toast-alert"
@@ -508,16 +508,7 @@ export function App({
               type="button"
               data-testid="toast-dismiss"
               onClick={() => setToast(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'currentColor',
-                cursor: 'pointer',
-                fontSize: '16px',
-                lineHeight: 1,
-                padding: '0 4px',
-                opacity: 0.8
-              }}
+              className="anwc-toast-close"
               aria-label="Dismiss notification"
             >
               ×
