@@ -29,6 +29,9 @@ async function getAvailablePort(): Promise<number> {
   });
 }
 
+/** Hosted CI machines are several times slower; only the time limits change there. */
+const CI_SLOWDOWN = process.env.CI ? 4 : 1;
+
 async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastError = 'no response';
@@ -60,7 +63,7 @@ describe('P06 package distribution and external consumer integration', () => {
   beforeAll(async () => {
     packsDir = await mkdtemp(join(tmpdir(), 'anwc-packs-'));
     tarballs = (await packAndAuditPackages({ sourceRoot, destination: packsDir })) as unknown as Record<string, { tarballPath: string; files: string[] }>;
-  }, 120_000);
+  }, CI_SLOWDOWN * 120_000);
 
   afterAll(async () => {
     if (packsDir) {
@@ -459,5 +462,5 @@ if (rootElement) {
       await stopOwnedProcess(devProcess);
       await rm(spaceParent, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
-  }, 180_000);
+  }, CI_SLOWDOWN * 180_000);
 });

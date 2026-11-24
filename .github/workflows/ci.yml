@@ -25,6 +25,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Use a long temporary path on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        # The default TEMP is an 8.3 path (RUNNER~1), which Vite resolves inconsistently.
+        run: |
+          echo "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+          echo "TMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -50,6 +58,7 @@ jobs:
         run: npm run test:unit
 
       - name: Run browser tests
+        if: ${{ !cancelled() }}
         run: npm run test:browser
 
       - name: Upload test artifacts

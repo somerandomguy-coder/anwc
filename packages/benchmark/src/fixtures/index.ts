@@ -126,9 +126,18 @@ export async function runChecks(page: Page, checks: FixtureCheck[]): Promise<Che
       }
       const action = await exactAction(page, check); if (action.error) { results.push(fail(check, { error: action.error })); continue; }
       if (check.kind === 'action-rendered') { const evidence = await renderedEvidence(action.locator); results.push({ id: check.id, required: check.required, status: evidence.rendered === true ? 'pass' : 'fail', evidence }); continue; }
-      const box = await action.locator.boundingBox(); if (!box || box.width <= 0 || box.height <= 0) { results.push(fail(check, { error: 'action has no non-empty bounding box', box })); continue; }
-      const point = pointFor(box, 'point' in check ? check.point : undefined);
+      let box = await action.locator.boundingBox(); if (!box || box.width <= 0 || box.height <= 0) { results.push(fail(check, { error: 'action has no non-empty bounding box', box })); continue; }
+      let point = pointFor(box, 'point' in check ? check.point : undefined);
       if (check.kind === 'action-in-viewport') { const pageViewport = page.viewportSize(); const inViewport = Boolean(pageViewport && box.x >= 0 && box.y >= 0 && box.x + box.width <= pageViewport.width && box.y + box.height <= pageViewport.height); results.push({ id: check.id, required: check.required, status: inViewport ? 'pass' : 'fail', evidence: { box, viewport: pageViewport, reachable: inViewport } }); continue; }
+      // Font metrics can push a control below the fold on another platform. A user would scroll to it, so
+      // only an off-screen point is scrolled to; a covered control inside the viewport still fails.
+      const visible = page.viewportSize();
+      if (visible && (point.x < 0 || point.y < 0 || point.x >= visible.width || point.y >= visible.height)) {
+        await action.locator.scrollIntoViewIfNeeded({ timeout });
+        box = await action.locator.boundingBox();
+        if (!box) { results.push(fail(check, { error: 'action has no bounding box after scrolling' })); continue; }
+        point = pointFor(box, 'point' in check ? check.point : undefined);
+      }
       const hitsTarget = await pointHitsTarget(action.locator, point); if (!hitsTarget) { results.push(fail(check, { error: 'pointer target is obstructed', point, box })); continue; }
       if (check.kind === 'input-accepts') { await page.mouse.click(point.x, point.y); const focused = await action.locator.evaluate((element) => document.activeElement === element); if (!focused) { results.push(fail(check, { error: 'physical click did not focus input', point })); continue; } await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.type(check.value); const value = await action.locator.inputValue({ timeout }); results.push({ id: check.id, required: check.required, status: value === check.value ? 'pass' : 'fail', evidence: { value, point, focused } }); continue; }
       const status = await exactlyOne(page, check.statusSelector); if (status.error) { results.push(fail(check, { error: status.error })); continue; }

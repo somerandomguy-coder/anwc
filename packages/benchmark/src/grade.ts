@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, copyFile, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -131,6 +131,8 @@ export async function gradeRepair(options: GradeOptions): Promise<GradeResult> {
   let receipt: PreparedPairReceipt;
   let receiptHash: string | undefined;
   try {
+    const receiptStat = await lstat(options.receipt).catch(() => undefined);
+    if (receiptStat?.isSymbolicLink()) throw new BenchmarkPlanError([`receipt path cannot be a symbolic link: ${resolve(options.receipt)}`]);
     const receiptBytes = await readFile(options.receipt);
     receiptHash = hash(receiptBytes);
     receipt = parsePreparedPairReceipt(JSON.parse(receiptBytes.toString('utf8')), resolve(options.receipt));

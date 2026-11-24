@@ -11,6 +11,9 @@ import {
   type CheckRunResult, type StateManifest
 } from '../../packages/cli/src/index.js';
 
+/** Hosted CI machines are several times slower; only the time limits change there. */
+const CI_SLOWDOWN = process.env.CI ? 4 : 1;
+
 // Real browser, real runner: the page's HTML is swapped between the baseline and the second run.
 const PAY = `<button data-anwc-key="pay" data-anwc-expect="interactive" style="width:160px;height:40px" onclick="document.querySelector('output').textContent='Paid'">Pay</button>`;
 const OTHER = `<button id="other" style="width:160px;height:40px" onclick="document.querySelector('output').textContent='Paid'">Other</button>`;
@@ -122,7 +125,7 @@ describe('check --baseline: verified', () => {
     const missing = await cli('--baseline', join(tmp, 'nowhere'));
     expect(missing).toMatchObject({ exit: 2, envelope: { ok: false, error: { code: 'INVALID_USAGE', details: { kind: 'BASELINE_UNREADABLE' } } } });
     expect(() => parseCheckArguments(['check', file, '--baseline', before(), '--output', `${before()}/.`])).toThrow(/cannot also be the output/);
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
 });
 
 describe('check --baseline: abuse cases are never verified', () => {
@@ -212,13 +215,13 @@ describe('check --baseline: abuse cases are never verified', () => {
     html = CLICKABLE;
     const bypassed = await replay(wide, { baseline: true, loadWith: manifest() });
     expect(bypassed.baseline!.captures[0]).toMatchObject({ verdict: 'unverified', reason: 'state_not_reproduced' });
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
 
   test('unmounted and hidden targets are contradicted', async () => {
     notVerified(await repair(CLICKABLE.replace(/<button data-anwc-key="pay".*?<\/button>/, '')), 'target_unmounted', 'contradicted');
     html = BROKEN;
     notVerified(await repair(CLICKABLE.replace('width:160px', 'display:none;width:160px')), 'target_hidden', 'contradicted');
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
   test('persisting finding', async () => notVerified(await repair(BROKEN), 'finding_persists', 'contradicted'));
   test('duplicate key is ambiguous', async () => notVerified(await repair(CLICKABLE.replace('id="other"', 'id="other" data-anwc-key="pay"')), 'target_ambiguous'));
   test('healthy both sides: no repair to verify', async () => {

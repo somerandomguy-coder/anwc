@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { BenchmarkPlanError, allFixtures, extractSourceIntent, fixtureMatrix, checkEvaluatorReceipt, checkPreparedPair, checkReturnedSubject, checkSchema, evaluatorSidecarSchema, fixtureCaseSchema, fixtureFor, gradeRepair, hashReceipt, hashSourceIntent, importGradeIntoResults, materializeFixtureSource, materializeFixtureStyles, packageSubjectWorkspace, preparePair, readPreparedPairReceipt, rehearsalReportSchema, repairVerified, renderResultsSummary, renderRunbook, taskMarkdown, validateBenchmarkPlan, validateBenchmarkResults, validateSubjectInventory } from '../../packages/benchmark/src/index.js';
 import { run as runBenchmarkCli } from '../../packages/benchmark/src/main.js';
 
+/** Hosted CI machines are several times slower; only the time limits change there. */
+const CI_SLOWDOWN = process.env.CI ? 4 : 1;
+
 const validPlan = () => ({
   schemaVersion: '0.1' as const,
   id: 'pilot',
@@ -64,7 +67,7 @@ describe('benchmark plan', () => {
     expect(materializeFixtureStyles('.title-overflow { color: red }.selection-blocker { color: blue }', fixture)).not.toContain('title-overflow');
     expect(taskMarkdown(fixture)).toContain('Editable paths: examples/landing/src/**');
     expect(taskMarkdown(fixture)).not.toContain('make Growth selectable');
-  }, 20_000);
+  }, CI_SLOWDOWN * 20_000);
   test('registry freezes all planned app states without copying the shop laboratory switchboard', () => {
     expect(allFixtures()).toHaveLength(18);
     expect(fixtureMatrix()).toHaveLength(72);
@@ -103,7 +106,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 45_000);
+  }, CI_SLOWDOWN * 45_000);
   test('binds declared intent to a stable key and element shape across source modules', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-intent-identity-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -121,7 +124,7 @@ describe('benchmark plan', () => {
       await writeFile(join(pair.ordinary, 'examples/landing/src/intent-contract.tsx'), 'export const GrowthActionContract = <button data-anwc-key="pricing-growth-action" data-anwc-expect="interactive">Choose Growth</button>;\n');
       expect((await checkReturnedSubject(receipt, pair.ordinary, 'ordinary')).filter((issue) => issue.includes('declared source intent differs'))).toEqual([]);
     } finally { await rm(root, { recursive: true, force: true }); }
-  }, 20_000);
+  }, CI_SLOWDOWN * 20_000);
   test('grades a broken repair independently and accepts a source-only valid repair', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-grade-repair-'));
     const output = join(root, 'pair');
@@ -150,7 +153,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   test('enforces dirty vs scored receipt boundaries and rejects path traversal in receipt file keys', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-receipt-schema-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -185,7 +188,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
   test('refuses certified grading on evaluator version mismatch from a separate evaluator tree', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-evaluator-tree-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -207,7 +210,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
   test('rejects symlinked receipts, symlinked subjects, internal symlinks, and overlapping output before staging', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-symlink-checks-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -270,7 +273,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
   test('rejects occupied port with healthy decoy and never claims repair pass', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-port-collision-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -293,7 +296,7 @@ describe('benchmark plan', () => {
       await new Promise<void>((resolveClose) => decoy.close(() => resolveClose()));
       await rm(root, { recursive: true, force: true });
     }
-  }, 30_000);
+  }, CI_SLOWDOWN * 30_000);
   test('stalled install and startup timeouts give bounded labelled infrastructure results', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-lifecycle-timeouts-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -318,7 +321,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     }
-  }, 45_000);
+  }, CI_SLOWDOWN * 45_000);
   test('syntax crash and destructive deletions fail with bounded logs and never verify repair', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-lifecycle-failures-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -355,7 +358,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   test('repeated grades leave original files unchanged and release owned processes and ports', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-port-release-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -388,7 +391,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   async function gradeMaterializedStates(samples: ReadonlyArray<{ fixtureId: string; state: 'broken' | 'healthy'; expected: 'failed' | 'passed'; port: number; appId: 'shop' | 'landing' | 'dashboard' }>): Promise<void> {
     const root = await mkdtemp(join(tmpdir(), 'anwc-materialized-apps-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -410,19 +413,19 @@ describe('benchmark plan', () => {
       { fixtureId: 'shop-blocked-checkout', state: 'broken', expected: 'failed', port: 4401, appId: 'shop' },
       { fixtureId: 'shop-blocked-checkout', state: 'healthy', expected: 'passed', port: 4403, appId: 'shop' }
     ]);
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   test('browser-grades materialized landing states without public switching', async () => {
     await gradeMaterializedStates([
       { fixtureId: 'pricing-blocked', state: 'broken', expected: 'failed', port: 4409, appId: 'landing' },
       { fixtureId: 'pricing-blocked', state: 'healthy', expected: 'passed', port: 4411, appId: 'landing' }
     ]);
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   test('browser-grades materialized dashboard states without public switching', async () => {
     await gradeMaterializedStates([
       { fixtureId: 'dashboard-blocked-input', state: 'broken', expected: 'failed', port: 4405, appId: 'dashboard' },
       { fixtureId: 'dashboard-blocked-input', state: 'healthy', expected: 'passed', port: 4407, appId: 'dashboard' }
     ]);
-  }, 90_000);
+  }, CI_SLOWDOWN * 90_000);
   test('accepts an alternative CSS-only repair while preserving pricing content and behavior', async () => {
     const root = await mkdtemp(join(tmpdir(), 'anwc-css-repair-'));
     const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -438,7 +441,7 @@ describe('benchmark plan', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  }, 60_000);
+  }, CI_SLOWDOWN * 60_000);
   test('accepts a fair A/B pair and produces a non-secret runbook', () => {
     const plan = validateBenchmarkPlan(validPlan());
     const runbook = renderRunbook(plan);
