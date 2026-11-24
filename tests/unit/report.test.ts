@@ -481,7 +481,7 @@ describe('Report Model 0.1', () => {
     // Viewport geometry SVG diagram exists with SVG elements
     expect(html).toContain('<svg viewBox="0 0 390 844"');
     expect(html).toContain('<rect x="0" y="0" width="390" height="844"');
-    expect(html).toContain('<circle cx=');
+    expect(html).not.toContain('<circle') // a report stores no sample positions, so none may be drawn
 
     // Interactive filter buttons and details tags exist
     expect(html).toContain('class="filter-btn');

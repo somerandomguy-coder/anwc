@@ -49,6 +49,12 @@ function formatSourceLoc(source: ReportNodeRef['source'], redact = false): strin
   return `${file}:${source.line}:${source.column}`;
 }
 
+/** "Chrome 134.0.6998.35" from a full user-agent string; other values pass through. */
+function shortBrowser(name: string, version: string): string {
+  const match = /(?:Headless)?Chrome\/([\d.]+)/.exec(version) ?? /(?:Headless)?Chrome\/([\d.]+)/.exec(name);
+  return match ? `Chrome ${match[1]}` : `${name} ${version}`;
+}
+
 export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}): string {
   const redact = options.redact ?? false;
   const pageUrl = sanitizeUrl(report.page.url, redact);
@@ -108,30 +114,6 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
       }
     }
 
-    // 3. If pointer-blocked, plot tested points inside target box
-    if (finding.evidence.kind === 'pointer-blocked' && finding.target.box) {
-      const b = finding.target.box;
-      const total = finding.evidence.tested;
-      const blocked = finding.evidence.blocked;
-      const gridSize = Math.round(Math.sqrt(total));
-      let ptIndex = 0;
-      for (let r = 0; r < gridSize; r++) {
-        for (let c = 0; c < gridSize; c++) {
-          if (ptIndex >= total) break;
-          const px = b.x + (b.width * (c + 0.5)) / gridSize;
-          const py = b.y + (b.height * (r + 0.5)) / gridSize;
-          // In standard pointer test, blocked points come first or all blocked
-          const isBlocked = ptIndex < blocked;
-          const color = isBlocked ? 'var(--sample-blocked)' : 'var(--sample-hit)';
-          diagramElements.push(
-            `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3" fill="${color}" stroke="#fff" stroke-width="0.5">` +
-            `<title>Sample (${px.toFixed(0)}, ${py.toFixed(0)}): ${isBlocked ? 'Blocked' : 'Hit'}</title>` +
-            `</circle>`
-          );
-          ptIndex++;
-        }
-      }
-    }
   }
 
   // Findings cards HTML
@@ -188,89 +170,74 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
   <title>${escapeHtml(title)}</title>
   <style>
     :root {
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --card-border: #30363d;
-      --text-main: #c9d1d9;
-      --text-muted: #8b949e;
-      --text-heading: #f0f6fc;
-      --accent: #58a6ff;
-      --error-bg: #ffebe9;
-      --error-text: #cf222e;
-      --error-border: #ff8182;
-      --warning-bg: #fff8c5;
-      --warning-text: #9a6700;
-      --warning-border: #d29922;
-      --info-bg: #ddf4ff;
-      --info-text: #0969da;
-      --info-border: #54aeff;
-      --ack-bg: #f6f8fa;
-      --ack-text: #57606a;
-      --vp-bg: #090d13;
-      --vp-border: #388bfd;
-      --target-fill: rgba(56, 139, 253, 0.2);
-      --target-stroke: #58a6ff;
-      --blocker-fill: rgba(248, 81, 73, 0.25);
-      --blocker-stroke: #f85149;
-      --sample-hit: #3fb950;
-      --sample-blocked: #f85149;
+      color-scheme: light dark;
+      --bg: #fbfcfc; --card-bg: #fbfcfc; --plate: #dfe5e6; --card-border: #bcc8cb;
+      --text-main: #14242b; --text-muted: #445760; --text-heading: #14242b; --accent: #0b57a4; --on-accent: #ffffff;
+      --error: #b3261e; --warning: #855a00; --info: #0b57a4;
+      --warning-bg: #fdf3d8; --warning-text: #5f4100; --warning-border: #855a00;
+      --vp-bg: #fbfcfc; --vp-border: #bcc8cb;
+      --target-fill: rgba(11, 87, 164, 0.14); --target-stroke: #0b57a4;
+      --blocker-fill: rgba(179, 38, 30, 0.10); --blocker-stroke: #b3261e;
     }
-    @media (prefers-color-scheme: light) {
+    @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #f6f8fa;
-        --card-bg: #ffffff;
-        --card-border: #d0d7de;
-        --text-main: #24292f;
-        --text-muted: #57606a;
-        --text-heading: #1f2328;
-        --accent: #0969da;
-        --vp-bg: #f6f8fa;
-        --vp-border: #0969da;
+        --bg: #212d37; --card-bg: #212d37; --plate: #17212a; --card-border: #455562;
+        --text-main: #eaf0f2; --text-muted: #adbbc4; --text-heading: #eaf0f2; --accent: #7ab8f5; --on-accent: #0c1c29;
+        --error: #ff958b; --warning: #f0be57; --info: #7ab8f5;
+        --warning-bg: #3b3420; --warning-text: #f5d58f; --warning-border: #f0be57;
+        --vp-bg: #1d2832; --vp-border: #455562;
+        --target-fill: rgba(122, 184, 245, 0.16); --target-stroke: #7ab8f5;
+        --blocker-fill: rgba(255, 149, 139, 0.12); --blocker-stroke: #ff958b;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
       background: var(--bg);
       color: var(--text-main);
       line-height: 1.5;
-      padding: 1.5rem;
     }
-    .container { max-width: 1080px; margin: 0 auto; }
-    header.report-top { margin-bottom: 2rem; border-bottom: 1px solid var(--card-border); padding-bottom: 1rem; }
+    .container { max-width: 1240px; margin: 0 auto; padding: 1.5rem; }
+    header.report-top { margin-bottom: 1.5rem; }
     .header-row { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
     h1 { font-size: 1.6rem; color: var(--text-heading); }
     .redact-pill { background: #cf222e; color: #ffffff; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; font-size: 0.8rem; }
-    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
-    .meta-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.75rem 1rem; }
-    .meta-card .label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
-    .meta-card .val { font-size: 0.95rem; font-family: monospace; word-break: break-all; margin-top: 0.25rem; color: var(--text-heading); }
+    .meta-grid { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 0.75rem; }
+    .meta-card { min-width: 0; }
+    .meta-card .label { font-size: 0.8rem; color: var(--text-muted); }
+    .meta-card .val { font-size: 0.95rem; overflow-wrap: anywhere; }
+    .report-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; align-items: start; }
+    .diagram-section { grid-column: 2; grid-row: 1; position: sticky; top: 1rem; }
+    .findings-section { grid-column: 1; grid-row: 1; min-width: 0; }
+    .diagram-wrapper svg { max-height: 64vh; }
+    @media (max-width: 860px) { .report-body { display: block; } .diagram-section { position: static; } }
     .status-alert { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); padding: 0.75rem 1rem; border-radius: 6px; margin-top: 1.5rem; font-weight: 500; }
-    .section-title { font-size: 1.25rem; margin: 2rem 0 1rem; color: var(--text-heading); }
-    .diagram-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; padding: 1rem; margin-bottom: 2rem; }
+    .section-title { font-size: 1.1rem; margin: 0 0 0.75rem; color: var(--text-heading); }
+    .diagram-card { background: var(--plate); padding: 1rem; margin-bottom: 2rem; }
     .diagram-wrapper { display: flex; justify-content: center; align-items: center; overflow: auto; padding: 0.5rem 0; }
     .diagram-wrapper svg { max-width: 100%; height: auto; border-radius: 4px; }
-    .diagram-legend { display: flex; gap: 1.5rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; }
+    .diagram-legend { display: flex; gap: 0.4rem 1.5rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); flex-wrap: wrap; }
     .legend-item { display: flex; align-items: center; gap: 0.4rem; }
     .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
     .swatch-target { background: var(--target-stroke); }
     .swatch-blocker { background: var(--blocker-stroke); }
-    .swatch-hit { background: var(--sample-hit); border-radius: 50%; }
-    .swatch-blocked { background: var(--sample-blocked); border-radius: 50%; }
     .diagram-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; font-style: italic; }
     .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
-    .filter-btn { background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
-    .filter-btn.active { background: var(--accent); color: #ffffff; border-color: var(--accent); }
-    .finding-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 6px; margin-bottom: 1rem; overflow: hidden; }
-    .finding-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--card-border); }
-    .badge { padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-    .badge-error { background: #f85149; color: #ffffff; }
-    .badge-warning { background: #d29922; color: #ffffff; }
-    .badge-info { background: #388bfd; color: #ffffff; }
-    .badge-ack { background: var(--card-border); color: var(--text-muted); }
+    .filter-btn { font: inherit; background: none; border: 1px solid var(--card-border); color: var(--text-main); padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+    .filter-btn:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .filter-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .finding-card { border-top: 1px solid var(--card-border); border-left: 4px solid var(--info); padding: 1rem 0 1rem 1.25rem; }
+    .severity-error { border-left-color: var(--error); }
+    .severity-warning { border-left-color: var(--warning); }
+    .finding-header { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+    .badge { font-size: 0.9rem; font-weight: 700; }
+    .badge-error { color: var(--error); }
+    .badge-warning { color: var(--warning); }
+    .badge-info { color: var(--info); }
+    .badge-ack { color: var(--text-muted); }
     .finding-code { font-family: monospace; font-weight: 600; color: var(--text-heading); font-size: 0.9rem; }
-    .finding-body { padding: 1rem; }
-    .finding-message { font-size: 1rem; font-weight: 500; margin-bottom: 0.75rem; color: var(--text-heading); }
+    .finding-body { padding: 0.25rem 0 0; overflow-wrap: anywhere; }
+    .finding-message { font-size: 1.2rem; line-height: 1.35; font-weight: 600; text-wrap: pretty; margin-bottom: 0.75rem; color: var(--text-heading); }
     .finding-target, .node-rel, .finding-measurement, .finding-suggestion, .finding-limitations { margin-bottom: 0.5rem; font-size: 0.9rem; }
     .source-loc { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
     .target-label { font-style: italic; color: var(--accent); }
@@ -310,7 +277,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
         </div>
         <div class="meta-card">
           <div class="label">Browser &amp; Toolchain</div>
-          <div class="val">${escapeHtml(report.environment.browser)} ${escapeHtml(report.environment.browserVersion)}</div>
+          <div class="val">${escapeHtml(shortBrowser(report.environment.browser, report.environment.browserVersion))}</div>
         </div>
       </div>
       ${!isComplete ? `
@@ -322,6 +289,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
       </div>` : ''}
     </header>
 
+    <div class="report-body">
     <section class="diagram-section">
       <h2 class="section-title">Measured Viewport Geometry</h2>
       <div class="diagram-card">
@@ -333,10 +301,8 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
         <div class="diagram-legend">
           <div class="legend-item"><div class="legend-swatch swatch-target"></div> Target Element</div>
           <div class="legend-item"><div class="legend-swatch swatch-blocker"></div> Blocker Element</div>
-          <div class="legend-item"><div class="legend-swatch swatch-hit"></div> Tested Hit</div>
-          <div class="legend-item"><div class="legend-swatch swatch-blocked"></div> Blocked Sample</div>
         </div>
-        <p class="diagram-note">Diagram represents directly measured bounding boxes and hit test sample coordinates. Paint, shape, and transform visibility remain outside ANWC guarantees.</p>
+        <p class="diagram-note">Boxes are measured. Individual sample positions are not stored in a report, so none are drawn. Paint, shape, and transform visibility remain outside ANWC guarantees.</p>
       </div>
     </section>
 
@@ -355,6 +321,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
         ${findingsHtml || `<p>${escapeHtml(noFindingsStatement(report))}</p>`}
       </div>
     </section>
+    </div>
   </div>
 
   <script>
