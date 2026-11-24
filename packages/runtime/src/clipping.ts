@@ -22,9 +22,12 @@ const EDGE_TOLERANCE = 0.01;
  * from the fractional padding box recovers an integer scrollbar size. An axis that cannot have a
  * scrollbar has no gutter, whatever the rounding says.
  */
-function scrollbarSize(padding: number, client: number, possible: boolean): number {
+function scrollbarSize(padding: number, client: number, possible: boolean, zoom: number): number {
   if (!possible) return 0;
-  const size = Math.round(padding - client);
+  // Under CSS zoom the client size is rounded before scaling, so it is uncertain by half a zoomed
+  // pixel. Take the smallest scrollbar that fits: never invent a clip, at the cost of missing a
+  // sub-two-pixel one at ordinary zoom levels.
+  const size = zoom === 1 ? Math.round(padding - client) : Math.floor(padding - client - zoom / 2);
   // A 1px difference is indistinguishable from pixel snapping of the integer client size.
   return size > 1 ? size : 0;
 }
@@ -47,8 +50,8 @@ function clipBox(element: HTMLElement): Rect {
   const borderTop = border(style.borderTopWidth);
   const paddingWidth = Math.max(0, rect.width - borderLeft - border(style.borderRightWidth));
   const paddingHeight = Math.max(0, rect.height - borderTop - border(style.borderBottomWidth));
-  const vertical = scrollbarSize(paddingWidth, element.clientWidth * zoom, canScroll(style.overflowY));
-  const horizontal = scrollbarSize(paddingHeight, element.clientHeight * zoom, canScroll(style.overflowX));
+  const vertical = scrollbarSize(paddingWidth, element.clientWidth * zoom, canScroll(style.overflowY), zoom);
+  const horizontal = scrollbarSize(paddingHeight, element.clientHeight * zoom, canScroll(style.overflowX), zoom);
   // clientLeft includes a scrollbar on the left edge (RTL). A reserved gutter without a scrollbar
   // (`overflow: hidden; scrollbar-gutter: stable`) is not cut: Chromium clips at the padding edge.
   const left = Math.min(vertical, Math.max(0, Math.round(element.clientLeft * zoom - borderLeft)));

@@ -16,7 +16,7 @@ async function targetCodes(page: Page, targetKey: string): Promise<string[]> {
 const fixtures: ExpectedFixture[] = [
   { url: 'http://127.0.0.1:4176/?case=title-overflow&variant=broken', targetKey: 'pricing-growth-title', code: 'HORIZONTAL_OVERFLOW' },
   { url: 'http://127.0.0.1:4176/?case=description-crop&variant=broken', targetKey: 'pricing-growth-description', code: 'TEXT_CLIPPED' },
-  { url: 'http://127.0.0.1:4176/?case=blocked-selection&variant=broken', targetKey: 'pricing-growth-action', code: 'POINTER_BLOCKED_AT_SAMPLES' },
+  { url: 'http://127.0.0.1:4176/?case=blocked-selection&variant=broken', targetKey: 'pricing-growth-action', code: 'POINTER_BLOCKED_AT_SAMPLES', setup: async (page) => { await page.locator('[data-anwc-key="pricing-growth-action"]').scrollIntoViewIfNeeded(); } },
   { url: 'http://127.0.0.1:4176/?case=hidden-selection&variant=broken', targetKey: 'pricing-growth-action', code: 'EXPECTED_VISIBLE_BUT_HIDDEN' },
   { url: 'http://127.0.0.1:4177/?case=clipped-save&variant=broken', targetKey: 'dashboard-save', code: 'CLIPPED_BY_ANCESTOR' },
   { url: 'http://127.0.0.1:4177/?case=long-title&variant=broken', targetKey: 'dashboard-task-title', code: 'TEXT_LINE_BUDGET_EXCEEDED' },

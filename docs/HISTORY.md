@@ -697,3 +697,8 @@ Branch `phase4/p05-and-detectors` from `2f64109`. Windows, PowerShell, Node 24; 
 
 - CI had failed on every `main` push since 2026-11-12. Causes found: `ubuntu-latest` became 26.04, unsupported by Playwright 1.51 (pinned 24.04); Windows TEMP is an 8.3 path that breaks the consumer Vite build (TEMP/TMP set to the runner temp); test time limits too short for hosted machines (limits x4 when `CI` is set, files run one at a time); and two grader bugs: `gradeRepair` did not reject a symlinked receipt (visible only where symlinks work), and a control below the fold was reported as obstructed (off-screen points are now scrolled to; covered controls in view still fail). Browser tests now run even when unit tests fail.
 - Windows, local: typecheck 0, build 0, full Vitest 416 passed with `consumer.test.ts` failing to load from a misplaced constant; fixed, consumer 2/2. The symlink rejection cannot run on this machine (EPERM); CI on Linux is its evidence.
+
+## 2026-11-25 — Linux browser failures
+
+- CI on `259677d`: both Windows jobs passed; both Ubuntu jobs passed unit tests and failed 3 of 57 browser tests. Fixed: a below-the-fold pointer fixture now scrolls to its target; the dashboard's healthy title wrapped to a third line in Linux fonts (ANWC reported it correctly; the fixture was tight); the clip box under CSS `zoom` with a classic scrollbar could be 1 px too small (now takes the smallest consistent scrollbar, so clips under two pixels inside a zoomed scroller can be missed).
+- Windows, local, final code: typecheck 0, build 0, `$env:CI='1'; npx playwright test` 0 (57 passed), full `npx vitest run` 0 (418 passed, 28 files).
