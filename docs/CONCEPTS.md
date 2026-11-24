@@ -65,7 +65,7 @@ Wrapping or scrolling without intent is an observation, not an error ([ADR-009](
 
 **Repair integrity verdict (exists).** The diff summary's single overall outcome, `summary.repairIntegrityVerdict`: `verified-repair`, `unresolved-defects`, `regressions-introduced`, `inconclusive-evidence`, `incompatible-comparison` (`packages/report/src/diff-schema.ts`).
 
-**Verdict.** What `diff` and `check` evidence proves about one finding: `verified | unverified | contradicted` plus a closed `reason` (`packages/report/src/verdict-schema.ts`, [PROTOCOL §9](PROTOCOL.md)). Distinct from `repairIntegrityVerdict`, the diff's single overall outcome. The CLI cannot reach `verified` yet: it has no bound behavior evidence. `check` also gives each checkpoint a verdict (`packages/cli/src/check-verdicts.ts`).
+**Verdict.** What `diff` and `check` evidence proves about one finding: `verified | unverified | contradicted` plus a closed `reason` (`packages/report/src/verdict-schema.ts`, [PROTOCOL §9](PROTOCOL.md)). Distinct from `repairIntegrityVerdict`, the diff's single overall outcome. The only CLI path to `verified` is `check --baseline`. `check` also gives each checkpoint a verdict (`packages/cli/src/check-verdicts.ts`).
 
 ## State replay
 
@@ -74,6 +74,10 @@ Wrapping or scrolling without intent is an observation, not an error ([ADR-009](
 **Manifest scenario / checkpoint / step.** A manifest *scenario* has an id, viewport and *checkpoints*; a checkpoint is a list of *steps* (`navigate`, `click`, `fill`, `scroll`, `wait-for-selector`, `capture`) plus *behavior assertions* (`visible`, `hidden`, `text-contains`, `attribute-equals`). `scenarioSchema`, `checkpointSchema`, `checkpointStepSchema`, `behaviorAssertionSchema` in `packages/cli/src/manifest.ts`. The runner, not capture, performs interactions.
 
 **Check run result.** The outcome of `anwc check`: `CheckRunResult` in `packages/cli/src/manifest.ts`. Its `passedAll` means replay and assertions succeeded, not that the UI is clean (STATUS, LAUNCH L1).
+
+**Baseline.** The output directory of an earlier `anwc check` run, compared capture by capture with `check --baseline`. `loadBaseline` and `compareWithBaseline` in `packages/cli/src/baseline.ts`; `statesHash`, `producer` and `summaryHash` in `check-summary.json` tie it to the same manifest content and reveal edits.
+
+**Behavior evidence / proof.** What a declared step did to the captured target and to the assertions that declare `proves`. `BehaviorObserver` in `packages/cli/src/behavior.ts` records it; `compareRepairs` judges it per finding ([PROTOCOL §9](PROTOCOL.md)).
 
 ## Studio
 

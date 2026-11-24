@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
@@ -32,6 +32,7 @@ import { chromium, type Page } from 'playwright';
 import { stateManifestSchema, type StateManifest, type CheckRunResult } from './manifest.js';
 import { runDoctor, formatDoctorText, type DoctorResult, type DoctorCheck } from './doctor.js';
 import { runCheckSuite } from './runner.js';
+import { loadBaseline } from './baseline.js';
 import { startStudioServer } from './studio.js';
 import { CliError, commandName, errorEnvelope, exitCodeForError, successEnvelope, toCliError } from './output.js';
 
@@ -54,7 +55,7 @@ function unwrapSavedPayload(json: unknown, label: string): unknown {
 
 let bundledRuntime: Promise<string> | undefined;
 
-async function runtimeScript(): Promise<string> {
+export async function runtimeScript(): Promise<string> {
   let entryPoint: string;
   try {
     entryPoint = fileURLToPath(import.meta.resolve('@anwc/runtime/browser-entry'));
@@ -327,27 +328,31 @@ function selectFinding(input: Snapshot | Report, findingId: string | undefined, 
 export interface CheckCommandOptions {
   manifestFile: string;
   outputDir?: string;
+  baselineDir?: string;
 }
 
 export function parseCheckArguments(arguments_: string[]): CheckCommandOptions {
   if (arguments_[0] !== 'check' || !arguments_[1] || arguments_[1].startsWith('-')) {
     throw new CliError(
       'INVALID_USAGE',
-      'Usage: anwc check MANIFEST_FILE [--output DIR]',
+      'Usage: anwc check MANIFEST_FILE [--output DIR] [--baseline DIR]',
       'USAGE',
-      { hint: "Run 'anwc check anwc.checks.json [--output artifacts/ui]'." }
+      { hint: "Run 'anwc check anwc.checks.json [--output artifacts/ui] [--baseline artifacts/ui-before]'." }
     );
   }
   const manifestFile = arguments_[1];
   let outputDir: string | undefined;
+  let baselineDir: string | undefined;
 
   for (let index = 2; index < arguments_.length; index += 1) {
     const option = arguments_[index]!;
     const value = arguments_[index + 1];
     if (!value || value.startsWith('--')) throw missingValue(option);
     index += 1;
-    if (option === '--output') {
+    if (option === '--output' || option === '--output-dir') {
       outputDir = value;
+    } else if (option === '--baseline') {
+      baselineDir = value;
     } else if (option === '--format' && value === 'json') {
       // check only emits JSON; '--format json' is accepted for symmetry with the other commands.
     } else {
@@ -355,7 +360,10 @@ export function parseCheckArguments(arguments_: string[]): CheckCommandOptions {
     }
   }
 
-  return { manifestFile, outputDir };
+  if (baselineDir && outputDir && relative(resolve(baselineDir), resolve(outputDir)) === '') {
+    throw new CliError('INVALID_USAGE', 'The baseline directory cannot also be the output directory.', 'USAGE', { hint: 'Write this run to another directory so the baseline stays intact.' });
+  }
+  return { manifestFile, outputDir, ...(baselineDir ? { baselineDir } : {}) };
 }
 
 export interface DiffCommandOptions {
@@ -743,14 +751,18 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
         });
       }
 
+      // Read and verified before the replay, so nothing written during it can become the baseline.
+      const baseline = checkOptions.baselineDir ? await loadBaseline(checkOptions.baselineDir, manifest) : undefined;
       const runResult = await runCheckSuite({
         manifest,
+        baseline,
         manifestRaw: content,
         outputDir: checkOptions.outputDir,
         runtimeScriptProvider: runtimeScript
       });
 
       printEnvelope(successEnvelope('check', runResult), 2);
+      if (runResult.baseline) return runResult.baseline.repairVerified ? 0 : 1;
       return runResult.passedAll ? 0 : 1;
     }
 
@@ -779,8 +791,8 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       const beforeInput = parseSide(before.json, 'Before', diffOptions.beforeFile);
       const afterInput = parseSide(after.json, 'After', diffOptions.afterFile);
 
-      // No behavior evidence is accepted on the CLI: disappeared findings stay inconclusive
-      // and `unverified(behavior_not_checked)`; `verified` is unreachable here by design (LAUNCH).
+      // Two saved captures carry no executed behavior, so `diff` never reaches `verified`.
+      // `check --baseline` is the only CLI path that executes and binds it.
       const diffResult = compareRepairs(beforeInput, afterInput);
       let diffOutput: string;
       if (diffOptions.format === 'html') {
@@ -862,6 +874,7 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
 export * from './manifest.js';
 export * from './runner.js';
 export * from './check-verdicts.js';
+export * from './baseline.js';
 export * from './doctor.js';
 export * from './studio.js';
 export { CliError, errorEnvelope, successEnvelope, retryFor, exitCodeForError } from './output.js';

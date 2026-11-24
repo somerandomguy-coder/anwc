@@ -15,8 +15,46 @@ import {
 import { countVerdicts, verdictFor, type VerdictReason } from './verdict-schema.js';
 
 export interface DiffOptions {
-  /** Trusted caller signal that behavior was executed against the after state. No CLI flag sets it. */
+  /**
+   * Trusted caller signal that behavior was executed against the after state. No CLI flag sets it.
+   * `true` is ignored when `behaviorEvidence` is supplied; `false` (a declared assertion failed)
+   * always counts.
+   */
   behaviorCheckPassed?: boolean;
+  /** Executed-behavior evidence of the run that took the after capture, judged per finding target. */
+  behaviorEvidence?: readonly BehaviorEvidence[];
+}
+
+/** What one declared step and the assertions bound to it showed about one captured element. */
+export interface BehaviorEvidence {
+  sessionId: string;
+  captureId: string;
+  /** Captured node with that author key; null unless exactly one was captured. */
+  nodeId: string | null;
+  semanticKey: string;
+  action: 'click' | 'fill' | null;
+  /** `finding_absent_target_retained` means proven; anything else is why it is not. */
+  reason: Extract<VerdictReason, 'finding_absent_target_retained' | 'behavior_not_checked' | 'behavior_target_mismatch' | 'behavior_unchanged' | 'behavior_step_failed'>;
+  explanation: string;
+}
+
+/**
+ * Why the evidence does not prove behavior for this finding, or null when it does. Only pointer
+ * findings can be proven: an unforced click has to reach the element through the hit test. A click
+ * or fill says nothing about clipping, overflow, text, opacity or viewport position.
+ */
+function behaviorProblem(finding: { evidence: { kind: string } }, target: ReportNodeRef, after: Snapshot | null, evidence: readonly BehaviorEvidence[]): { reason: VerdictReason; explanation: string } | null {
+  if (finding.evidence.kind !== 'pointer-blocked') {
+    return { reason: 'behavior_not_provable', explanation: 'Finding is no longer observed, but a declared click or fill does not exercise the property behind this rule. Repair remains unverified.' };
+  }
+  const own = evidence.filter((e) => after !== null && e.sessionId === after.sessionId && e.captureId === after.captureId && e.semanticKey === target.semanticKey);
+  const proven = own.filter((e) => e.reason === 'finding_absent_target_retained' && e.nodeId === target.nodeId);
+  if (proven.some((e) => e.action === 'click')) return null;
+  if (proven.length > 0) return { reason: 'behavior_not_provable', explanation: 'Finding is no longer observed, but the bound step is a fill, which does not use the pointer. Repair remains unverified.' };
+  const why = own.find((e) => e.reason !== 'finding_absent_target_retained');
+  return why
+    ? { reason: why.reason, explanation: `Finding is no longer observed, but behavior was not proven: ${why.explanation}` }
+    : { reason: 'behavior_not_checked', explanation: 'Finding is no longer observed, but no executed behavior is bound to its target. Repair remains unverified.' };
 }
 
 export type DiffInput =
@@ -398,6 +436,11 @@ export function compareRepairs(
       const sameElementKind = afterNode.tag === bFinding.target.tag && afterNode.role === bFinding.target.role;
       const identityDefinite = targetMatch.confidence === 'definite' && sameElementKind;
 
+      const behavior = options.behaviorEvidence
+        ? behaviorProblem(bFinding, afterNode, afterResolved.snapshot, options.behaviorEvidence)
+        : options.behaviorCheckPassed === true ? null
+        : { reason: 'behavior_not_checked' as const, explanation: 'Finding is no longer observed, but no passing behavior check was supplied. Repair remains unverified.' };
+
       let reason: VerdictReason;
       let explanation: string;
       if (!coverageComplete || !settled) {
@@ -418,9 +461,9 @@ export function compareRepairs(
       } else if (options.behaviorCheckPassed === false) {
         reason = 'behavior_assertion_failed';
         explanation = 'Finding is no longer observed, but declared behavior assertion failed. Action is not functionally verified.';
-      } else if (options.behaviorCheckPassed !== true) {
-        reason = 'behavior_not_checked';
-        explanation = 'Finding is no longer observed, but no passing behavior check was supplied. Repair remains unverified.';
+      } else if (behavior) {
+        reason = behavior.reason;
+        explanation = behavior.explanation;
       } else if (targetMatch.confidence !== 'definite') {
         reason = 'target_identity_heuristic';
         explanation = 'Finding is no longer observed, but target identity is heuristic. Repair remains unverified.';

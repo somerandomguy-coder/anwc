@@ -3,7 +3,7 @@ import { countVerdicts, verdictFor, VERDICT_REASON_TEXT, type VerdictReason } fr
 import type { AssertionResult, CheckFindingVerdict, CheckpointVerdict, CheckVerdictSummary, ScenarioExecutionResult, StateManifest } from './manifest.js';
 
 /**
- * `check` replays one state without a before capture, so it can never report `verified`
+ * One replay has no before capture, so nothing here can report `verified`
  * (no repair is being compared). It reports what each measured finding and each declared
  * checkpoint shows: `contradicted` with a measured defect or failed assertion, else `unverified`.
  */

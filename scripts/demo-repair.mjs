@@ -3,7 +3,7 @@
 //   npm run demo            runs straight through
 //   npm run demo -- --step  waits for Enter between steps (for presenting)
 import { spawn } from 'node:child_process';
-import { appendFileSync, cpSync, mkdirSync, rmSync } from 'node:fs';
+import { appendFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { chromium } from 'playwright';
@@ -13,8 +13,9 @@ const root = resolve(import.meta.dirname, '..');
 const out = join(root, 'artifacts', 'demo');
 const app = join(out, 'shop');
 const step = process.argv.includes('--step');
-const before = join(out, 'before.json');
-const after = join(out, 'after.json');
+const before = join(out, 'before');
+const after = join(out, 'after');
+const states = join(out, 'checkout.states.json');
 
 // Asynchronous on purpose: the dev server runs in this process and must keep answering.
 function anwc(...args) {
@@ -37,11 +38,35 @@ async function heading(text) {
   console.log(`\n${text}\n${'-'.repeat(text.length)}`);
 }
 
-async function capture(url, file) {
-  const human = await anwc('inspect', url, '--viewport', '390x844', '--format', 'text');
-  const saved = await anwc('inspect', url, '--viewport', '390x844', '--format', 'json', '--output', file);
-  if (saved.code !== 0) throw new Error(`inspect failed (exit ${saved.code})\n${saved.text}`);
-  return human.text;
+/** Replays the committed states; check is JSON-only, so this returns its data. A failed gate is data. */
+async function check(directory, ...args) {
+  const { text } = await anwc('check', states, '--output', directory, ...args);
+  const envelope = JSON.parse(text);
+  if (!envelope.ok) throw new Error(`check failed: ${envelope.error.message}`);
+  return envelope.data;
+}
+
+function summarize(run) {
+  const { capture, steps, error } = run.scenarios[0].checkpoints[0];
+  if (!capture) throw new Error(`No capture: ${error}`);
+  const { width, height } = capture.page.viewport;
+  console.log(`${width}x${height} | ${capture.findings.length} finding(s)`);
+  for (const finding of capture.findings) {
+    console.log(`  ${finding.severity.toUpperCase()} ${finding.code}`);
+    console.log(`  ${finding.message}`);
+    if (finding.source) console.log(`  source:  ${finding.source.file}:${finding.source.line}`);
+    for (const id of finding.relatedNodeIds) console.log(`  blocker: ${capture.nodes.find((n) => n.nodeId === id)?.label}`);
+  }
+  console.log(`Declared click:    ${steps.at(-1).action === 'click' ? steps.at(-1).status : 'not run'}`);
+}
+
+/** Waits until the dev server serves the edit, so the next load cannot see the old file. */
+async function served(url, text) {
+  for (let tries = 0; tries < 100; tries += 1) {
+    if ((await (await fetch(url)).text()).includes(text)) return;
+    await new Promise((done) => setTimeout(done, 50));
+  }
+  throw new Error(`${url} was not updated.`);
 }
 
 /** Independent check: a real click, not ANWC's own measurement. */
@@ -68,12 +93,15 @@ const server = await createServer({ root: app, configFile: join(app, 'vite.confi
 let failed = false;
 try {
   await server.listen();
-  const url = `http://127.0.0.1:${server.httpServer.address().port}/lab?case=blocked-checkout`;
+  const origin = `http://127.0.0.1:${server.httpServer.address().port}`;
+  const url = `${origin}/lab?case=blocked-checkout`;
+  const template = JSON.parse(readFileSync(join(root, 'examples/shop/anwc/checkout.states.json'), 'utf8'));
+  writeFileSync(states, JSON.stringify({ ...template, baseUrl: origin }, null, 2));
 
   await heading('1. Measure the seeded defect');
-  console.log(await capture(url, before));
+  summarize(await check(before));
   const clickedBefore = await clickCheckout(url);
-  console.log(`\nA real click on Checkout: ${clickedBefore ? 'works' : 'does nothing'}`);
+  console.log(`Independent click: ${clickedBefore ? 'works' : 'does nothing'}`);
 
   await heading('2. Repair the disposable copy');
   const fix = `
@@ -82,25 +110,38 @@ try {
 .blocked .cookie-obstacle { position: static; margin-top: .5rem; min-height: 2.5rem; }
 `;
   appendFileSync(join(app, 'src/styles.css'), fix);
-  console.log(`artifacts/demo/shop/src/styles.css${fix}`);
+  await served(`${origin}/src/styles.css?direct`, '.blocked.obstacle-fixture > button');
+  console.log(`artifacts/demo/shop/src/styles.css${fix.trimEnd()}`);
 
-  await heading('3. Measure the same URL and viewport again');
-  console.log(await capture(url, after));
+  await heading('3. Measure the same state again');
+  const run = await check(after, '--baseline', before);
+  summarize(run);
   const clickedAfter = await clickCheckout(url);
-  console.log(`\nA real click on Checkout: ${clickedAfter ? 'works' : 'does nothing'}`);
+  console.log(`Independent click: ${clickedAfter ? 'works' : 'does nothing'}`);
 
-  await heading('4. Compare before and after');
-  const diff = await anwc('diff', before, after, '--format', 'text');
-  console.log(diff.text);
-  console.log('\nThe click above is a separate check; anwc diff judges only the two captures.');
+  await heading('4. Verdict against the baseline');
+  const { baseline } = run;
+  for (const { findings, ...capture } of baseline.captures) {
+    if (findings.length === 0) console.log(`${capture.verdict.toUpperCase()} (${capture.reason})\n  ${capture.explanation}`);
+    for (const finding of findings) {
+      console.log(`${finding.verdict.toUpperCase()} (${finding.reason})`);
+      console.log(`  ${finding.code} on ${finding.targetKey}`);
+      if (finding.proof) {
+        console.log('  Same URL, viewport and target key: the finding is gone.');
+        console.log(`  Declared click: ${finding.proof.baselineStep} before, passed now.`);
+        console.log(`  It turned '${finding.proof.assertions.join("', '")}' from failing to passing.`);
+      } else console.log(`  ${finding.explanation}`);
+    }
+  }
+  console.log('Scope: this finding in this state, not the whole UI.');
 
-  for (const [from, name] of [[before, 'before'], [after, 'after']]) {
-    const report = await anwc('report', from, '--format', 'html', '--output', join(out, `${name}.html`));
+  for (const [directory, name] of [[before, 'before'], [after, 'after']]) {
+    const report = await anwc('report', join(directory, 'checkout.json'), '--format', 'html', '--output', join(out, `${name}.html`));
     if (report.code !== 0) throw new Error(report.text);
   }
-  console.log('Reports: artifacts/demo/before.html and artifacts/demo/after.html');
-  failed = clickedBefore || !clickedAfter;
-  if (failed) console.error('\nDemo check failed: expected the click to fail before and work after.');
+  console.log('Reports: artifacts/demo/before.html, artifacts/demo/after.html');
+  failed = !baseline.repairVerified || clickedBefore || !clickedAfter;
+  if (failed) console.error('\nDemo check failed: expected a verified repair and a click that fails before and works after.');
 } finally {
   await server.close();
 }

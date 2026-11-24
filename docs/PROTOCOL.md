@@ -361,7 +361,7 @@ An unsettled or incomplete Snapshot is **not** `NOT_SETTLED`: it is `ok:true` da
 | Exit | Meaning |
 | --- | --- |
 | 0 | `ok:true`, no gate failed |
-| 1 | `ok:false` with a code other than `INVALID_USAGE`; or `ok:true` with a failed gate: `inspect --fail-on` threshold met, `check` `passedAll:false`, `diff` verdict other than `verified-repair`, `doctor` `ok:false` |
+| 1 | `ok:false` with a code other than `INVALID_USAGE`; or `ok:true` with a failed gate: `inspect --fail-on` threshold met, `check` `passedAll:false` (with `--baseline`: `baseline.repairVerified:false`), `diff` verdict other than `verified-repair`, `doctor` `ok:false` |
 | 2 | `ok:false`, `INVALID_USAGE` (envelope still printed in JSON mode) |
 | 3 | `inspect` only: `ok:true`, but coverage incomplete or readiness unsettled (takes precedence over `--fail-on`) |
 
@@ -396,7 +396,7 @@ Before P01, `--format json` stdout was the bare payload and errors were `{ schem
 
 | Reason | Verdict | Means | `diff` | `check` |
 | --- | --- | --- | --- | --- |
-| `finding_absent_target_retained` | verified | The rule could have fired on the same retained target, did not, and behavior was executed | pure API only | never |
+| `finding_absent_target_retained` | verified | The rule could have fired on the same retained target, did not, and behavior was executed | pure API only | with `--baseline` |
 | `behavior_not_checked` | unverified | The finding is gone, but no executed behavior check is bound to the result | yes | yes |
 | `target_ambiguous` | unverified | Several elements could be the target | yes | yes |
 | `state_not_reproduced` | unverified | URL, scenario, viewport, scroll, scale or runtime differ; or a declared state was not reached | yes | yes |
@@ -407,7 +407,14 @@ Before P01, `--format json` stdout was the bare payload and errors were `{ schem
 | `target_identity_heuristic` | unverified | No author key, or the key moved to another tag/role | pure API, and the CLI when the matched element is hidden | no |
 | `target_retention_unknown` | unverified | No author key and no match, or a Report input that omits healthy nodes | yes | no |
 | `finding_acknowledged` | unverified | Declared acceptable (on both sides, in `diff`), so not a repair target | yes | yes |
-| `no_baseline` | unverified | A clean checkpoint with held assertions; nothing to compare a repair with | no | yes |
+| `no_baseline` | unverified | A clean checkpoint with held assertions; nothing to compare a repair with, or the baseline run never reached this capture | no | yes |
+| `baseline_invalid` | unverified | The baseline summary or a capture is altered, missing, foreign, newer than this run, or its findings do not follow from its measurements | no | with `--baseline` |
+| `baseline_manifest_mismatch` | unverified | The baseline was recorded with other states, steps or assertions | no | with `--baseline` |
+| `no_repair_to_verify` | unverified | Neither capture has a finding | no | with `--baseline` |
+| `behavior_not_provable` | unverified | Not a pointer rule, or the bound step is a fill: the step does not exercise the measured property | no | with `--baseline` |
+| `behavior_target_mismatch` | unverified | The step acted on another element than the captured target | no | with `--baseline` |
+| `behavior_unchanged` | unverified | The assertion held before the step | no | with `--baseline` |
+| `behavior_step_failed` | unverified | The step, or a later part of the checkpoint, failed | no | with `--baseline` |
 | `finding_persists` | contradicted | Still measured on the target, including a pointer blocker that became partial or a finding silenced only afterwards | yes | no |
 | `finding_present` | contradicted | Measured in this state | no | yes |
 | `new_finding` | contradicted | Appears only in the after capture of a comparable, complete, settled pair | yes | no |
@@ -415,15 +422,37 @@ Before P01, `--format json` stdout was the bare payload and errors were `{ schem
 | `target_hidden` | contradicted | The target is in the DOM but newly hidden | yes | no |
 | `behavior_assertion_failed` | contradicted | A declared assertion was executed and did not hold | pure API only | yes |
 
-`verified` needs all of: the same URL, scenario, viewport, scroll, scale and runtime version; complete and settled captures on both sides with no lost capability; an after Snapshot (not a Report); the target matched by a unique author key on the same tag and role, rendered, not newly hidden, with unchanged intent; the rule's measurement supported on it; the finding absent; **and** executed behavior evidence. **The CLI has no source of bound behavior evidence, so `anwc diff` never prints `verified`**: its best result is `unverified(behavior_not_checked)`. No flag changes that (LAUNCH L2).
+`verified` needs all of: the same URL, scenario, viewport, scroll, scale and runtime version; complete and settled captures on both sides with no lost capability; an after Snapshot (not a Report); the target matched by a unique author key on the same tag and role, rendered, not newly hidden, with unchanged intent; the rule's measurement supported on it; the finding absent; **and** executed behavior evidence. **Two saved captures carry no executed behavior, so `anwc diff` never prints `verified`**: its best result is `unverified(behavior_not_checked)`. `check --baseline` executes and binds it; no flag supplies it (LAUNCH L2).
 
 **DiffReport 0.1.** Each entry of `findings` has `verdict` and `reason`; `summary.verdicts` is `{ verified, unverified, contradicted }` and sums to `findings.length`. `status`, `repairIntegrityVerdict` and the exit code keep their meaning; `status: 'verified-fixed'` and `verdict: 'verified'` imply each other. Text, Markdown and HTML show both.
 
-**CheckRunResult 0.1.** Each checkpoint has `findingVerdicts` (every finding of every capture in it) and its own `verdict`, `reason`, `explanation`. `verdictSummary` holds `{ findings, checkpoints }` counts and `checkpointsNotRun` (declared checkpoints after a failure, counted as `unverified(state_not_reproduced)`). `passedAll` and the exit code are unchanged: a checkpoint can be `passed: true` and `contradicted(finding_present)`.
+**CheckRunResult 0.1.** Each checkpoint has `findingVerdicts` (every finding of every capture in it) and its own `verdict`, `reason`, `explanation`. `verdictSummary` holds `{ findings, checkpoints }` counts and `checkpointsNotRun` (declared checkpoints after a failure, counted as `unverified(state_not_reproduced)`). `passedAll` is unchanged: a checkpoint can be `passed: true` and `contradicted(finding_present)`. Since P03b each checkpoint also has `captures` (name and sha256 of every artifact) and `behaviorEvidence`, and the result has `producer`, `statesHash`, `summaryHash` and, with a baseline, `baseline`.
 
 **UI helper.** `listFindingVerdicts(before: Snapshot, after: Snapshot): FindingVerdictList` (`packages/report/src/verdict.ts`) is pure and browser-bundle safe. It takes no behavior option and never returns `verified`. `after` is `null` whenever no after box may be drawn. `findingVerdictsFromDiff(diff)` does the same for an existing DiffReport.
 
 Consumer impact: the new fields are required, so a DiffReport saved before P03 no longer validates against `diffReportSchema`; re-run `anwc diff` on the saved captures. Captures and Reports are unaffected. A pure-API `status` can now be `inconclusive` where it was `verified-fixed`: newly hidden target, removed or relaxed intent, unmeasurable property, partially blocked pointer, or a key moved to another element kind.
+
+### Baseline verification (P03b)
+
+`anwc check MANIFEST --baseline DIR [--output DIR2]` replays the manifest and compares each capture with the same-named capture of an earlier `check --output DIR` run. Schemas: `baselineComparisonSchema` and its parts in `packages/cli/src/baseline.ts`; they enforce one verdict per reason, and that a finding is `verified` exactly when it carries a `proof`. `--output-dir` is an alias of `--output`; it may not be the baseline directory.
+
+The broken baseline is recorded by the same command without `--baseline`. The capture precedes the click, so it is saved; the click is recorded as `timed-out`; that run exits 1.
+
+A finding is `verified` only when **all** of these hold:
+
+1. **Baseline intact.** `check-summary.json` has the runner's `producer`, a matching `summaryHash`, and finished before this run started. Every listed capture's bytes match its sha256, parse as Snapshot 0.1, and give the same findings when `diagnose` is re-run. The baseline is read before the replay. One problem invalidates the whole baseline.
+2. **Same manifest content.** Equal `statesHash` (canonical scenarios: viewports, steps, assertions). `baseUrl` is not in the hash; URL equality is checked per capture.
+3. **The `diff` rules above** for the pair (including scroll, scale, scenario and runtime version), and the same browser version.
+4. **Executed on the target.** The first `click` or `fill` after the capture, in the same checkpoint, with only `wait-for-selector` and `capture` steps between. The runner holds the one live element that carried the key when the capture was taken. The step must act on that very element, still connected, still the only holder of the key. A child, a wrapper, a replacement with the same key or another element does not count. Interactions are never forced, and the manifest cannot express `force`.
+5. **An assertion that changed.** An assertion with `proves: "<data-anwc-key>"` fails at every probe for 1 s directly before the step (after Playwright's actionability checks passed) and passes within 1 s of the step's start. It may not use `:focus`, `:hover`, `:active`, `:target` or `:visited`.
+6. **The whole checkpoint passes**, including the final evaluation of every assertion.
+7. **Pointer rules only, by `click`.** An unforced click must pass Chromium's hit test, which is what the pointer rules measure. A click or fill says nothing about clipping, overflow, text, opacity or viewport position: those findings are `unverified(behavior_not_provable)`.
+
+A failed assertion in the checkpoint makes its disappeared findings `contradicted(behavior_assertion_failed)`. A persisting, new, deleted or hidden target stays `contradicted`. `repairVerified` is true only when the baseline is valid, `passedAll` is true, at least one finding is `verified`, and every capture is `verified` or `no_repair_to_verify`; with `--baseline` that decides exit 0 or 1. A new finding elsewhere therefore fails the gate even though the original finding's own row stays `verified`.
+
+`proves` is optional, so existing manifests stay valid; without it nothing can be verified. `proof.baselineStep` reports how the step ended in the baseline; it is informative.
+
+Limits: the hashes are an integrity check, not a signature, so someone who forges a whole consistent run is not detected. A change that coincides with the step inside the 1 s window is credited to it. An app slower than 1 s stays unverified. Key identity across the two runs is the author key plus tag and role.
 
 ## 10. Capture-scoped references (P02)
 

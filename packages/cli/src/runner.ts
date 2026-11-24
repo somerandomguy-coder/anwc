@@ -4,11 +4,16 @@ import { chromium, type Browser, type Page } from 'playwright';
 import { createHash } from 'node:crypto';
 import { diagnose } from '@anwc/diagnostics';
 import { rawCaptureSchema, snapshotSchema, type RawCapture, type Snapshot } from '@anwc/protocol';
+import { baselineCheckpointVerdict, compareWithBaseline, type LoadedBaseline, type ReplayedCapture } from './baseline.js';
+import { BehaviorObserver } from './behavior.js';
 import { checkpointVerdict, findingVerdicts, summarizeCheckVerdicts } from './check-verdicts.js';
 import {
   CHECK_MANIFEST_VERSION,
+  CHECK_PRODUCER,
   captureNameProblem,
   computeManifestHash,
+  computeStatesHash,
+  computeSummaryHash,
   stateManifestSchema,
   type AssertionResult,
   type CaptureStateSummary,
@@ -29,6 +34,8 @@ export interface CheckRunnerOptions {
   browser?: Browser;
   /** Hard wall-clock deadline per scenario. Defaults to 60s; clamped to [1s, 10min]. */
   scenarioTimeoutMs?: number;
+  /** An earlier run to compare with, loaded by `loadBaseline` before this replay starts. */
+  baseline?: LoadedBaseline;
 }
 
 const DEFAULT_STEP_TIMEOUT = 2_000;
@@ -171,6 +178,7 @@ interface RunContext {
   deadline: Deadline;
   outputDir?: string;
   runtimeScriptProvider?: () => Promise<string>;
+  onCapture?: (capture: ReplayedCapture) => void;
 }
 
 export async function runStateScenario(
@@ -181,6 +189,7 @@ export async function runStateScenario(
     outputDir?: string;
     runtimeScriptProvider?: () => Promise<string>;
     scenarioTimeoutMs?: number;
+    onCapture?: (capture: ReplayedCapture) => void;
   } = {}
 ): Promise<ScenarioExecutionResult> {
   const scenarioStarted = performance.now();
@@ -193,7 +202,7 @@ export async function runStateScenario(
   const checkpointResults: CheckpointExecutionResult[] = [];
   let scenarioPassed = true;
   let scenarioError: string | undefined;
-  const run: RunContext = { baseUrl, deadline, outputDir: options.outputDir, runtimeScriptProvider: options.runtimeScriptProvider };
+  const run: RunContext = { baseUrl, deadline, outputDir: options.outputDir, runtimeScriptProvider: options.runtimeScriptProvider, onCapture: options.onCapture };
 
   try {
     const page = await context.newPage();
@@ -218,7 +227,7 @@ export async function runStateScenario(
       if (outcome === 'deadline') {
         const message = `Scenario deadline of ${deadline.totalMs}ms reached during checkpoint '${checkpoint.name}'.`;
         checkpointResults.push({
-          name: checkpoint.name, passed: false, steps: [], assertions: [], findingVerdicts: [],
+          name: checkpoint.name, passed: false, steps: [], assertions: [], findingVerdicts: [], captures: [], behaviorEvidence: [],
           ...checkpointVerdict({ name: checkpoint.name, stepsPassed: false, stepError: message, assertions: [], captures: [], findings: [] }),
           finalUrl: page.url(), finalScroll: { x: 0, y: 0 },
           durationMs: Math.round(performance.now() - scenarioStarted), error: message
@@ -318,11 +327,12 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
   let checkpointPassed = true;
   let checkpointError: string | undefined;
   let lastCapture: Snapshot | undefined;
-  const captures: Array<{ name: string; snapshot: Snapshot }> = [];
+  const captures: ReplayedCapture[] = [];
+  const observer = new BehaviorObserver(checkpoint, page, deadline);
   let lastCaptureHash: string | undefined;
   let lastCaptureState: CaptureStateSummary | undefined;
 
-  for (const step of checkpoint.steps) {
+  for (const [stepIndex, step] of checkpoint.steps.entries()) {
     const stepStarted = performance.now();
     const target = step.action === 'capture' ? step.name
       : 'selector' in step && step.selector ? step.selector
@@ -337,20 +347,22 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
     });
     try {
       if (step.action === 'navigate') {
+        observer.stateChanged();
         const fullUrl = resolveSafeUrl(run.baseUrl, step.path);
         await deadline.bound(`navigation to '${step.path}'`, NAVIGATION_TIMEOUT, (t) => page.goto(fullUrl, { waitUntil: 'domcontentloaded', timeout: t }));
         record('passed');
       } else if (step.action === 'click') {
         const timeoutMs = resolveTimeout(step.timeoutMs);
         await requireSingleTarget(page, step.selector, run);
-        await deadline.bound(`click on '${step.selector}'`, timeoutMs, (t) => page.locator(step.selector).click({ timeout: t }));
+        await observer.perform(stepIndex, step, timeoutMs);
         record('passed');
       } else if (step.action === 'fill') {
         const timeoutMs = resolveTimeout(step.timeoutMs);
         await requireSingleTarget(page, step.selector, run);
-        await deadline.bound(`fill of '${step.selector}'`, timeoutMs, (t) => page.locator(step.selector).fill(step.text, { timeout: t }));
+        await observer.perform(stepIndex, step, timeoutMs);
         record('passed');
       } else if (step.action === 'scroll') {
+        observer.stateChanged();
         const coords = { x: step.x, y: step.y };
         if (step.selector) {
           const selector = step.selector;
@@ -373,8 +385,9 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
       } else if (step.action === 'capture') {
         const { snapshot, json, problem } = await captureStep(step, page, run);
         lastCapture = snapshot;
-        captures.push({ name: step.name, snapshot });
         lastCaptureHash = sha256(json);
+        captures.push({ name: step.name, snapshot, sha256: lastCaptureHash });
+        run.onCapture?.(captures.at(-1)!);
         lastCaptureState = summarizeCaptureState(snapshot);
 
         // The artifact is written even for a partial capture: it is the evidence of the failure.
@@ -385,6 +398,7 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
         }
 
         if (problem) throw new Error(problem);
+        await observer.captured(step.name, snapshot);
         record('passed');
       }
     } catch (error) {
@@ -392,6 +406,7 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
       record(isTimeout(error) ? 'timed-out' : 'failed', msg);
       checkpointPassed = false;
       checkpointError = msg;
+      if (step.action === 'click' || step.action === 'fill') observer.stepFailed(stepIndex, step.action, msg);
       break;
     }
   }
@@ -465,6 +480,8 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
     steps: stepRecords,
     assertions: assertionResults,
     findingVerdicts: findings,
+    captures: captures.map(({ name, sha256: hash }) => ({ name, sha256: hash })),
+    behaviorEvidence: observer.finish(captures, checkpointPassed, checkpointError),
     ...verdict,
     finalUrl,
     finalScroll,
@@ -501,12 +518,14 @@ export async function runCheckSuite(options: CheckRunnerOptions): Promise<CheckR
   const shouldCloseBrowser = !options.browser;
 
   const scenarioResults: ScenarioExecutionResult[] = [];
+  const replayed = new Map<string, ReplayedCapture>();
   try {
     for (const scenario of manifest.scenarios) {
       const scenarioRes = await runStateScenario(scenario, manifest.baseUrl, browser, {
         outputDir: options.outputDir,
         runtimeScriptProvider: options.runtimeScriptProvider,
-        scenarioTimeoutMs: options.scenarioTimeoutMs
+        scenarioTimeoutMs: options.scenarioTimeoutMs,
+        onCapture: (capture) => replayed.set(capture.name, capture)
       });
       scenarioResults.push(scenarioRes);
     }
@@ -522,7 +541,16 @@ export async function runCheckSuite(options: CheckRunnerOptions): Promise<CheckR
   // Replay/assertion success only — not a claim that the UI has no layout findings.
   const passedAll = failedScenarios === 0;
 
-  const result: CheckRunResult = {
+  let baseline: CheckRunResult['baseline'];
+  if (options.baseline) {
+    const compared = compareWithBaseline({ manifest, baseline: options.baseline, scenarios: scenarioResults, replayed, startedAt, passedAll });
+    for (const checkpoint of scenarioResults.flatMap((s) => s.checkpoints)) {
+      Object.assign(checkpoint, baselineCheckpointVerdict(checkpoint, compared.captures.filter((c) => checkpoint.captures.some((own) => own.name === c.capture))));
+    }
+    baseline = compared;
+  }
+
+  const unsigned: Omit<CheckRunResult, 'summaryHash'> = {
     schemaVersion: CHECK_MANIFEST_VERSION,
     manifestHash,
     baseUrl: manifest.baseUrl,
@@ -533,8 +561,12 @@ export async function runCheckSuite(options: CheckRunnerOptions): Promise<CheckR
     failedScenarios,
     scenarios: scenarioResults,
     passedAll,
-    verdictSummary: summarizeCheckVerdicts(manifest, scenarioResults)
+    verdictSummary: summarizeCheckVerdicts(manifest, scenarioResults),
+    producer: CHECK_PRODUCER,
+    statesHash: computeStatesHash(manifest),
+    ...(baseline ? { baseline } : {})
   };
+  const result: CheckRunResult = { ...unsigned, summaryHash: computeSummaryHash(unsigned) };
 
   if (options.outputDir) {
     const runSummaryPath = join(options.outputDir, 'check-summary.json');
