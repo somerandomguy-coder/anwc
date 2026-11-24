@@ -103,7 +103,7 @@ export function diagnose(capture: RawCapture): Finding[] {
         [],
         node.render.effectiveOpacityZero.limitations,
         false,
-        'Inspect display, visibility, opacity, and the current component state.'
+        'Inspect display, visibility, content-visibility, opacity, and the current component state.'
       ));
     }
 

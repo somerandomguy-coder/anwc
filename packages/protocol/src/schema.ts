@@ -83,7 +83,9 @@ export const measurementSchema = z.object({
   intent: z.object({
     expectedCurrent: z.enum(['visible', 'interactive']).nullable(), maxLines: positiveInteger.nullable(),
     allow: z.array(z.enum(['horizontal-scroll', 'text-truncation']))
-  }).strict()
+  }).strict(),
+  /** P05: this node's subtree or geometry was not fully observed. Present only when true. */
+  truncated: z.literal(true).optional()
 }).strict().superRefine((node, context) => {
   if (node.source && node.siteId !== node.source.siteId) context.addIssue({ code: z.ZodIssueCode.custom, message: 'siteId must match source.siteId' });
 });
@@ -114,11 +116,43 @@ export const findingSchema = z.object({
 
 const coverageSchema = z.object({
   complete: z.boolean(), discoveredNodes: z.number().int().nonnegative(), inspectedNodes: z.number().int().nonnegative(), skippedNodes: z.number().int().nonnegative(),
-  reasons: z.array(z.string()), capabilities: z.array(z.string()), unsupportedFeatures: z.array(z.string())
+  reasons: z.array(z.string()), capabilities: z.array(z.string()), unsupportedFeatures: z.array(z.string()),
+  /** P05: how many nodes the capture actually measured (equals inspectedNodes). Absent in captures saved before P05. */
+  nodesObserved: z.number().int().nonnegative().optional()
 }).strict().superRefine((coverage, context) => {
   if (coverage.discoveredNodes !== coverage.inspectedNodes + coverage.skippedNodes) context.addIssue({ code: z.ZodIssueCode.custom, message: 'discoveredNodes must equal inspectedNodes + skippedNodes' });
+  if (coverage.nodesObserved !== undefined && coverage.nodesObserved !== coverage.inspectedNodes) context.addIssue({ code: z.ZodIssueCode.custom, message: 'nodesObserved must equal inspectedNodes' });
   if (coverage.complete && coverage.skippedNodes > 0) context.addIssue({ code: z.ZodIssueCode.custom, message: 'complete capture cannot have skipped nodes' });
 });
+
+/** P05: what the readiness loop last saw before it gave up. Only on unsettled captures. */
+export const lastObservedSchema = z.object({
+  phase: z.enum(['fonts', 'geometry']),
+  stableFrames: z.number().int().nonnegative(),
+  movingCount: z.number().int().nonnegative(),
+  movingNodeIds: z.array(z.string().min(1))
+}).strict().refine((value) => value.movingNodeIds.length <= value.movingCount, 'movingNodeIds cannot exceed movingCount');
+
+const readinessSchema = z.object({
+  settled: z.boolean(), waitMs: z.number().int().nonnegative(), reasons: z.array(z.string()), lastObserved: lastObservedSchema.optional()
+}).strict().refine((readiness) => !(readiness.settled && readiness.lastObserved), 'lastObserved is only for unsettled captures');
+
+type PartialEvidence = {
+  nodes: Array<{ nodeId: string; truncated?: true | undefined }>;
+  coverage: { complete: boolean };
+  readiness: { settled: boolean; lastObserved?: { movingNodeIds: string[] } | undefined };
+};
+
+/** Truncation evidence must match the capture it is in: a clean capture cannot carry it. */
+function checkPartialEvidence(capture: PartialEvidence, context: z.RefinementCtx): void {
+  if (capture.coverage.complete && capture.readiness.settled && capture.nodes.some((node) => node.truncated)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'truncated nodes require incomplete coverage or unsettled readiness', path: ['nodes'] });
+  }
+  const ids = new Set(capture.nodes.map((node) => node.nodeId));
+  for (const id of capture.readiness.lastObserved?.movingNodeIds ?? []) {
+    if (!ids.has(id)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'lastObserved.movingNodeIds must resolve', path: ['readiness', 'lastObserved'] });
+  }
+}
 
 const captureFields = {
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -128,7 +162,7 @@ const captureFields = {
     scroll: z.object({ x: finite, y: finite }).strict(), devicePixelRatio: finite.positive(), visualViewportScale: finite.positive(), scenario: z.string().min(1).nullable()
   }).strict(),
   environment: z.object({ browser: z.string().min(1), browserVersion: z.string().min(1), compilerVersion: z.string().min(1).nullable(), runtimeVersion: z.string().min(1) }).strict(),
-  readiness: z.object({ settled: z.boolean(), waitMs: z.number().int().nonnegative(), reasons: z.array(z.string()) }).strict(),
+  readiness: readinessSchema,
   coverage: coverageSchema,
   timingsMs: z.object({ capture: nonNegative, serialize: nonNegative }).strict(),
   nodes: z.array(measurementSchema)
@@ -137,6 +171,7 @@ const captureFields = {
 const rawCaptureBaseSchema = z.object(captureFields).strict();
 
 export const rawCaptureSchema = rawCaptureBaseSchema.superRefine((capture, context) => {
+  checkPartialEvidence(capture, context);
   const ids = new Set<string>();
   for (const [index, node] of capture.nodes.entries()) {
     if (ids.has(node.nodeId)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'nodeId must be unique', path: ['nodes', index, 'nodeId'] });
@@ -154,6 +189,7 @@ export const snapshotSchema = rawCaptureBaseSchema.extend({
   timingsMs: z.object({ capture: nonNegative, rules: nonNegative, serialize: nonNegative }).strict(),
   findings: z.array(findingSchema)
 }).superRefine((snapshot, context) => {
+  checkPartialEvidence(snapshot, context);
   const ids = new Set(snapshot.nodes.map((node) => node.nodeId));
   for (const [index, finding] of snapshot.findings.entries()) {
     if (!ids.has(finding.nodeId)) context.addIssue({ code: z.ZodIssueCode.custom, message: 'finding nodeId must resolve', path: ['findings', index, 'nodeId'] });
@@ -181,6 +217,7 @@ export type Assessment<T> =
   | { status: 'unknown'; value: null; method: string; limitations: string[] };
 export type Measurement = z.infer<typeof measurementSchema>;
 export type DiagnosticEvidence = z.infer<typeof diagnosticEvidenceSchema>;
+export type LastObserved = z.infer<typeof lastObservedSchema>;
 export type Finding = z.infer<typeof findingSchema>;
 export type RawCapture = z.infer<typeof rawCaptureSchema>;
 export type Snapshot = z.infer<typeof snapshotSchema>;

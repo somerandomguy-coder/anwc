@@ -1,4 +1,4 @@
-import type { Assessment, Measurement, RawCapture, SourceRef } from '@anwc/protocol';
+import type { Assessment, LastObserved, Measurement, RawCapture, SourceRef } from '@anwc/protocol';
 import { observeAncestorClip } from './clipping.js';
 import { observePointer } from './hit-test.js';
 import { observeText } from './text.js';
@@ -102,6 +102,12 @@ function labelFor(element: Element, limit: number): Pick<Measurement, 'label' | 
   return { label: text.label, textTruncated: text.truncated, labelMethod: text.label ? 'text' : 'none' };
 }
 
+/** Whether `content-visibility` applies: it needs a principal box that size containment applies to. */
+function contentVisibilityApplies(display: string): boolean {
+  if (display === 'none' || display === 'contents' || display === 'inline' || display.startsWith('ruby')) return false;
+  return !display.startsWith('table-') || display === 'table-cell' || display === 'table-caption';
+}
+
 function renderState(element: Element): Measurement['render'] {
   const hidden: string[] = [];
   let opacityZero = false;
@@ -109,6 +115,8 @@ function renderState(element: Element): Measurement['render'] {
     const style = getComputedStyle(current);
     if (style.display === 'none') hidden.push('display:none');
     if (Number(style.opacity) === 0) opacityZero = true;
+    // Skips the contents of a box, never the box itself. Not inherited, so a descendant cannot undo it.
+    if (current !== element && style.contentVisibility === 'hidden' && contentVisibilityApplies(style.display)) hidden.push('content-visibility:hidden');
   }
   // `visibility` inherits, but a descendant can explicitly restore `visible`.
   // The target's computed value already reflects that CSS inheritance/override rule.
@@ -211,13 +219,14 @@ function observeGeometry(): GeometryObservation {
   }));
 }
 
-function geometryStable(before: GeometryObservation, after: GeometryObservation): boolean {
-  if (before.size !== after.size) return false;
-  for (const [element, previous] of before) {
-    const next = after.get(element);
-    if (!next || Math.abs(next.x - previous.x) > 1 || Math.abs(next.y - previous.y) > 1 || Math.abs(next.width - previous.width) > 1 || Math.abs(next.height - previous.height) > 1) return false;
+/** Elements that appeared, disappeared or moved/resized by more than 1 CSS px between two frames. */
+function movingElements(before: GeometryObservation, after: GeometryObservation): Element[] {
+  const moving = [...before.keys()].filter((element) => !after.has(element));
+  for (const [element, next] of after) {
+    const previous = before.get(element);
+    if (!previous || Math.abs(next.x - previous.x) > 1 || Math.abs(next.y - previous.y) > 1 || Math.abs(next.width - previous.width) > 1 || Math.abs(next.height - previous.height) > 1) moving.push(element);
   }
-  return true;
+  return moving;
 }
 
 function nextFrameBefore(deadline: number): Promise<boolean> {
@@ -237,24 +246,54 @@ function fontsReadyBefore(deadline: number): Promise<boolean> {
   });
 }
 
-async function waitForReadiness(timeoutMs: number): Promise<{ settled: boolean; waitMs: number; reasons: string[] }> {
+type Readiness = {
+  settled: boolean;
+  waitMs: number;
+  reasons: string[];
+  /** Unsettled only: what was last seen. `moving` is empty when no movement was observed before the timeout. */
+  last?: { phase: LastObserved['phase']; stableFrames: number; moving: Element[] };
+};
+
+async function waitForReadiness(timeoutMs: number): Promise<Readiness> {
   const started = performance.now();
   const deadline = started + timeoutMs;
-  const finish = (settled: boolean, reasons: string[]) => ({ settled, waitMs: Math.round(performance.now() - started), reasons });
-  if (!document.fonts) return finish(false, ['font readiness API is unavailable']);
+  const finish = (reasons: string[], last?: Readiness['last']): Readiness => ({
+    settled: last === undefined, waitMs: Math.round(performance.now() - started), reasons, ...(last ? { last } : {})
+  });
+  const fonts = { phase: 'fonts' as const, stableFrames: 0, moving: [] };
+  if (!document.fonts) return finish(['font readiness API is unavailable'], fonts);
 
   const fontsReady = await fontsReadyBefore(deadline);
-  if (!fontsReady) return finish(false, ['font readiness did not complete before timeout']);
+  if (!fontsReady) return finish(['font readiness did not complete before timeout'], fonts);
 
   let previous = observeGeometry();
   let stableFrames = 0;
+  let moving: Element[] = [];
   while (stableFrames < 2) {
-    if (!await nextFrameBefore(deadline)) return finish(false, ['fonts ready', 'geometry remained unstable before timeout']);
+    if (!await nextFrameBefore(deadline)) return finish(['fonts ready', 'geometry remained unstable before timeout'], { phase: 'geometry', stableFrames, moving });
     const current = observeGeometry();
-    stableFrames = geometryStable(previous, current) ? stableFrames + 1 : 0;
+    const moved = movingElements(previous, current);
+    if (moved.length > 0) moving = moved;
+    stableFrames = moved.length === 0 ? stableFrames + 1 : 0;
     previous = current;
   }
-  return finish(true, ['fonts ready', 'geometry stable within 1 CSS px for two successive frames']);
+  return finish(['fonts ready', 'geometry stable within 1 CSS px for two successive frames']);
+}
+
+const MAX_MOVING_IDS = 20;
+
+/** Why the content behind this element cannot be inspected, if it is an unsupported boundary with something behind it. */
+function uninspectedBoundary(element: Element): string | null {
+  if (element.shadowRoot && element.shadowRoot.childElementCount > 0) {
+    const rendered = element.getClientRects().length > 0 || getComputedStyle(element).display === 'contents';
+    if (rendered) return 'open shadow root content is not inspected';
+  }
+  if (['iframe', 'frame', 'object', 'embed'].includes(element.tagName.toLowerCase())) {
+    const rect = element.getBoundingClientRect();
+    // A frame without area (a hidden tracking or bridge frame) shows nothing to inspect.
+    if (rect.width > 0 && rect.height > 0) return 'embedded frame content is not inspected';
+  }
+  return null;
 }
 
 export function configureRuntime(configuration: RuntimeConfiguration): void {
@@ -274,6 +313,35 @@ export async function capture(options: CaptureOptions = {}): Promise<RawCapture>
   const selected = discovered.slice(0, limits.maxNodes);
   const selectedSet = new Set(selected);
   const nodes = selected.map((element) => measure(element, selectedSet, state, limits.textLimit, limits.maxSamplesPerNode));
+
+  // Partial evidence (P05): mark the nodes whose subtree or geometry was not fully observed.
+  const capped = discovered.length > selected.length;
+  const reasons = capped ? ['max node cap reached'] : [];
+  const truncated = new Set<Element>();
+  for (const element of discovered.slice(selected.length)) {
+    // The cut point: the nearest captured ancestor of a skipped element.
+    let parent = element.parentElement;
+    while (parent && !selectedSet.has(parent)) parent = parent.parentElement;
+    if (parent) truncated.add(parent);
+  }
+  for (const element of selected) {
+    const boundary = uninspectedBoundary(element);
+    if (!boundary) continue;
+    truncated.add(element);
+    if (!reasons.includes(boundary)) reasons.push(boundary);
+  }
+  let lastObserved: LastObserved | undefined;
+  if (readiness.last) {
+    const { phase, stableFrames, moving } = readiness.last;
+    // With no identified mover, any geometry may still change, so every node is affected.
+    const affected = moving.length === 0 ? selected : selected.filter((element) => moving.some((mover) => mover === element || mover.contains(element)));
+    for (const element of affected) truncated.add(element);
+    lastObserved = {
+      phase, stableFrames, movingCount: moving.length,
+      movingNodeIds: moving.filter((element) => selectedSet.has(element)).slice(0, MAX_MOVING_IDS).map((element) => nodeId(element, state))
+    };
+  }
+  selected.forEach((element, index) => { if (truncated.has(element)) nodes[index]!.truncated = true; });
   const scenarioElement = document.querySelector('[data-anwc-scenario]');
 
   return {
@@ -288,10 +356,10 @@ export async function capture(options: CaptureOptions = {}): Promise<RawCapture>
       scenario: scenarioElement?.getAttribute('data-anwc-scenario') ?? null
     },
     environment: { browser: navigator.userAgent, browserVersion: navigator.userAgent, compilerVersion: null, runtimeVersion: state.configuration.runtimeVersion ?? '0.0.0' },
-    readiness,
+    readiness: { settled: readiness.settled, waitMs: readiness.waitMs, reasons: readiness.reasons, ...(lastObserved ? { lastObserved } : {}) },
     coverage: {
-      complete: discovered.length <= limits.maxNodes, discoveredNodes: discovered.length, inspectedNodes: selected.length, skippedNodes: discovered.length - selected.length,
-      reasons: discovered.length <= limits.maxNodes ? [] : ['max node cap reached'],
+      complete: reasons.length === 0, discoveredNodes: discovered.length, inspectedNodes: selected.length, skippedNodes: discovered.length - selected.length,
+      reasons, nodesObserved: nodes.length,
       capabilities: ['rectangles', 'computed-style', 'overflow', 'best-effort-label', 'ancestor-clipping', 'text-fragments', 'pointer-samples'],
       unsupportedFeatures: ['paint-visibility', 'non-rectangular-clipping', 'transformed-geometry']
     },

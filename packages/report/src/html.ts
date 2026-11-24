@@ -1,3 +1,4 @@
+import { noFindingsStatement, partialCaptureFacts } from './model.js';
 import type { Report, ReportFinding, ReportNodeRef } from './schema.js';
 
 export interface ReportHtmlOptions {
@@ -316,7 +317,8 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
       <div class="status-alert" role="alert">
         <strong>Warning: Incomplete or Unsettled Capture!</strong>
         ${!report.coverage.complete ? `Coverage incomplete: ${escapeHtml(report.coverage.reasons.join('; ')) || 'Unknown reasons'}. ` : ''}
-        ${!report.readiness.settled ? `Readiness unsettled: ${escapeHtml(report.readiness.reasons.join('; ')) || 'Did not reach network/dom idle'}.` : ''}
+        ${!report.readiness.settled ? `Readiness unsettled: ${escapeHtml(report.readiness.reasons.join('; ')) || 'Did not reach network/dom idle'}. ` : ''}
+        ${partialCaptureFacts(report).map((fact) => `<div class="partial-fact">${escapeHtml(fact[0]!.toUpperCase() + fact.slice(1))}</div>`).join('')}
       </div>` : ''}
     </header>
 
@@ -350,7 +352,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
       </div>
 
       <div class="findings-list">
-        ${findingsHtml || '<p>No findings recorded.</p>'}
+        ${findingsHtml || `<p>${escapeHtml(noFindingsStatement(report))}</p>`}
       </div>
     </section>
   </div>

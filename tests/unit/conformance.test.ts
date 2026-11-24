@@ -12,7 +12,7 @@ describe('Q05 Conformance Matrix Specification', () => {
     // Actual counts by role; these are cases, not pairs.
     const byRole = (role: string) => conformanceCases.filter((c) => c.role === role).length;
     expect({ total: conformanceCases.length, defective: byRole('defective'), healthy: byRole('healthy'), boundary: byRole('boundary') })
-      .toEqual({ total: 34, defective: 12, healthy: 13, boundary: 9 });
+      .toEqual({ total: 39, defective: 13, healthy: 14, boundary: 12 });
 
     const families = new Set(conformanceCases.map((c) => c.family));
     expect(families).toEqual(new Set([
@@ -116,6 +116,10 @@ const withSignal: Record<Exclude<BoundarySignal['kind'], 'known-gap'>, { signal:
     signal: { kind: 'boxless-node', key: 'wrap' },
     capture: capture([node('wrap', { box: null, render: { hasBox: false, cssHiddenReasons: [], effectiveOpacityZero: { status: 'known', value: false, method: 'computed-style-ancestry', limitations: [] } } })])
   },
+  'truncated-node': {
+    signal: { kind: 'truncated-node', key: 'cut', reason: 'max node cap reached' },
+    capture: capture([node('cut', { truncated: true })], { coverage: { complete: false, discoveredNodes: 5, inspectedNodes: 1, skippedNodes: 4, nodesObserved: 1, reasons: ['max node cap reached'], capabilities: [], unsupportedFeatures: ['paint-visibility'] } })
+  },
   'pointer-sample-collapse': {
     signal: { kind: 'pointer-sample-collapse', key: 'thin', sampleBudget: 25 },
     capture: capture([node('thin', { pointer: { status: 'known', value: { samples: [], tested: 10, blocked: 0, noTarget: 0, blockedSampleFraction: 0 }, method: 'browser-hit-test-grid', limitations: [] } })])
@@ -191,12 +195,9 @@ describe('P15 rule gates: every detector rule has an independent oracle gate', (
     }
   });
 
-  test('recorded oracle/ANWC disagreements are exactly the P15 findings', () => {
+  test('recorded oracle/ANWC disagreements are exactly the remaining P15 findings', () => {
     const recorded = ruleGates.flatMap((gate) => gate.cases.filter((c) => c.knownDisagreement).map((c) => `${gate.rule}/${c.id}`));
     expect(recorded).toEqual([
-      'CLIPPED_BY_ANCESTOR/clip-subpixel-fit',
-      'TEXT_CLIPPED/text-clip-exact-fit',
-      'EXPECTED_VISIBLE_BUT_HIDDEN/hidden-content-visibility',
       'POINTER_PARTIALLY_BLOCKED/partial-thin-strip'
     ]);
   });

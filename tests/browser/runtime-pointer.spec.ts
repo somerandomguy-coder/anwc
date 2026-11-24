@@ -111,3 +111,46 @@ test('samples only visible target area and honors the per-node cap', async ({ pa
   await expect(page.evaluate(() => window.__ANWC_TEST__!.capture({ maxSamplesPerNode: 26 }))).rejects.toThrow('maxSamplesPerNode must be an integer from 1 to 25');
   await expect(page.evaluate(() => window.__ANWC_TEST__!.capture({ maxSamplesPerNode: 1.5 }))).rejects.toThrow('maxSamplesPerNode must be an integer from 1 to 25');
 });
+
+test('a wrapped inline link is sampled on its own line fragments, within the cap and deterministically', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => { await import('/src/test-runtime.ts'); });
+  await page.evaluate(() => {
+    document.body.innerHTML = `<p style="width:200px;font:16px/24px sans-serif"><a href="#a">first neighbour link</a>
+      <a href="#b" data-anwc-key="wrapped">link that wraps onto another line</a> <a href="#c">last neighbour link</a></p>
+      <a href="#d" data-anwc-key="single">single</a>`;
+  });
+  const run = () => page.evaluate(() => window.__ANWC_TEST__!.capture());
+  const [first, second] = [await run(), await run()];
+  const pointerOf = (capture: typeof first, key: string) => capture.nodes.find((node) => node.semanticKey === key)!.pointer;
+  const wrapped = pointerOf(first, 'wrapped');
+  expect(wrapped).toMatchObject({ status: 'known', value: { tested: 25, blocked: 0, noTarget: 0 } });
+  expect(wrapped.limitations.join(' ')).toContain('client-rect fragment');
+  expect(pointerOf(second, 'wrapped')).toEqual(wrapped);
+
+  const rects = await page.evaluate(() => [...document.querySelector('[data-anwc-key="wrapped"]')!.getClientRects()].map((r) => ({ l: r.left, t: r.top, r: r.right, b: r.bottom })));
+  expect(rects.length).toBeGreaterThan(1);
+  const counts = rects.map((r) => wrapped.value!.samples.filter((s) => s.x > r.l && s.x < r.r && s.y > r.t && s.y < r.b).length);
+  expect(counts.reduce((sum, count) => sum + count, 0)).toBe(25);
+  for (const count of counts) expect(count).toBeGreaterThan(0);
+
+  // One fragment: the plain 5x5 grid over the box, unchanged.
+  const single = pointerOf(first, 'single');
+  const box = first.nodes.find((node) => node.semanticKey === 'single')!.box!;
+  expect(single.limitations.join(' ')).not.toContain('fragment');
+  expect(single.value!.samples[0]).toMatchObject({ x: box.x + box.width * 0.5, y: box.y + box.height * 0.5 });
+  expect(single.value!.samples[1]).toMatchObject({ x: box.x + box.width * (2 / 6), y: box.y + box.height * (2 / 6) });
+});
+
+test('dashboard outside-save reports no pointer finding on its wrapped navigation links at 390x844', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('http://127.0.0.1:4177/?case=outside-save&variant=broken');
+  await page.waitForFunction(() => Boolean(window.__ANWC__));
+  const capture = await page.evaluate(() => window.__ANWC__!.capture());
+  const links = capture.nodes.filter((node) => node.tag === 'a');
+  expect(links.length).toBeGreaterThan(0);
+  const rects = await page.evaluate(() => [...document.querySelectorAll('a')].map((link) => link.getClientRects().length));
+  expect(Math.max(...rects)).toBeGreaterThan(1);
+  const ids = new Set(links.map((node) => node.nodeId));
+  expect(diagnose(capture as Parameters<typeof diagnose>[0]).filter((finding) => ids.has(finding.nodeId) && finding.code.startsWith('POINTER_'))).toEqual([]);
+});

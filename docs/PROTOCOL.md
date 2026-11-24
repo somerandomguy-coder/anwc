@@ -93,6 +93,7 @@ type Measurement = {
     maxLines: number | null;
     allow: Array<'horizontal-scroll' | 'text-truncation'>;
   };
+  truncated?: true; // P05, see "Partial captures"
 };
 
 type Finding = {
@@ -129,7 +130,12 @@ type Snapshot = {
     compilerVersion: string | null;
     runtimeVersion: string;
   };
-  readiness: { settled: boolean; waitMs: number; reasons: string[] };
+  readiness: {
+    settled: boolean;
+    waitMs: number;
+    reasons: string[];
+    lastObserved?: { phase: 'fonts' | 'geometry'; stableFrames: number; movingCount: number; movingNodeIds: string[] }; // P05, unsettled only
+  };
   coverage: {
     complete: boolean;
     discoveredNodes: number;
@@ -138,6 +144,7 @@ type Snapshot = {
     reasons: string[];
     capabilities: string[];
     unsupportedFeatures: string[];
+    nodesObserved?: number; // P05, equals inspectedNodes
   };
   timingsMs: { capture: number; rules: number; serialize: number };
   nodes: Measurement[];
@@ -149,11 +156,24 @@ type Snapshot = {
 
 `paintVisibility` is unknown in v0 even when hit samples reach the target. `render` describes non-paint facts that callers may use independently. This avoids implying that pointer tests detect opaque overlays with `pointer-events:none`.
 
-Pointer samples are collected only from the intersection of the target border rectangle and the current viewport. The deterministic sequence starts at the center, has at most 25 interior locations, and is deduplicated by physical browser hit-test location. `capture({ maxSamplesPerNode })` accepts only integers from 1 through 25 (default 25). A target with no viewport intersection returns an unknown pointer assessment with a no-samples limitation; it is not evidence that pointer delivery succeeds. A lower configured cap is recorded as a method limitation. Pointer evidence and clipping evidence remain separate.
+Pointer samples are collected only from the intersection of the target border rectangle and the current viewport. The deterministic sequence starts at the center, has at most 25 interior locations, and is deduplicated by physical browser hit-test location. `capture({ maxSamplesPerNode })` accepts only integers from 1 through 25 (default 25). A target with no viewport intersection returns an unknown pointer assessment with a no-samples limitation; it is not evidence that pointer delivery succeeds. A lower configured cap is recorded as a method limitation. Pointer evidence and clipping evidence remain separate. When an element has more than one client rectangle (a wrapped inline link), samples are taken only inside its viewport-visible fragments, each grid position across all fragments in order, under the same 25-sample cap; the limitations then say so. Elements with one client rectangle keep the plain grid. The outermost samples sit one sixth of the box in from each edge, so a thin edge overlay (for example 8px on a 140px button) can be missed: that is a documented sampling limit, not a claim that the edge is reachable.
 
-For `visibility`, the collector uses the target's computed value. CSS inheritance permits a descendant to restore `visibility:visible` under a hidden ancestor, so ancestor iteration would misreport that child. `display:none` and zero opacity are still collected across the element's ancestry. These are render-state facts, not paint-visibility guarantees.
+For `visibility`, the collector uses the target's computed value. CSS inheritance permits a descendant to restore `visibility:visible` under a hidden ancestor, so ancestor iteration would misreport that child. `display:none` and zero opacity are still collected across the element's ancestry, and so is `content-visibility:hidden` on an ancestor box (not on the element itself, whose own box is still rendered, and not on boxes it does not apply to, such as inline elements). These are render-state facts, not paint-visibility guarantees.
+
+Clip boxes are fractional: an overflow ancestor's border box minus its borders and any classic scrollbar. Element edges within 0.01px of the clip edge count as unclipped (layout units are 1/64px). The root element is the exception: its clip is the integer viewport client size. A scroll container clips at its current scroll position; content that can be scrolled into view is still reported as clipped in the captured state.
 
 The label is a best-effort label with provenance, not a conforming computed accessible name. Prefer platform semantics and test common roles; do not claim a full accessibility audit.
+
+### Partial captures (P05)
+
+A partial capture is a success (`ok:true`, exit 3 for `inspect`) that says what it did not see. All fields are optional additions to `0.1`: captures and reports saved before P05 still parse; builds older than P05 reject captures that carry the new fields, because the schemas are strict.
+
+- `coverage.nodesObserved`: nodes actually measured. Always written by the runtime; equals `inspectedNodes`.
+- `coverage.complete` is `false`, with a reason, when the node cap was reached (`max node cap reached`), when an open shadow root with rendered content was not traversed (`open shadow root content is not inspected`), or when a frame, object or embed with area was not entered (`embedded frame content is not inspected`). The two boundary reasons leave `skippedNodes` at 0: how many nodes lie behind a boundary is unknown. A closed shadow root and canvas pixels are not detectable this way and remain known gaps.
+- `truncated: true` (never `false`) marks the affected nodes: the nearest captured ancestor of each skipped element, each uninspected boundary host, and on a settle timeout the elements that last moved plus their captured descendants. If nothing was seen moving (for example fonts never became ready), every captured node is marked, because no geometry is final. It is invalid in a complete, settled capture.
+- `readiness.lastObserved` (unsettled only): the phase that was waited for, stable frames seen, how many candidate elements last moved, and up to 20 of their node ids.
+
+`Report 0.1` carries the same facts as optional `coverage.nodesObserved`, `coverage.truncatedNodes` (present when above 0) and `readiness.lastObserved`. The text header starts with `PARTIAL CAPTURE` or `UNSETTLED CAPTURE`; HTML and Markdown put the facts in their header warning; with zero findings none of them prints a clean result.
 
 ## 3. Intent attributes
 

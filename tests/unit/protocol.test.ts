@@ -35,4 +35,39 @@ describe('ANWC protocol 0.1', () => {
     snapshot.findings[0].relatedNodeIds = ['missing'];
     expect(() => parseSnapshot(snapshot)).toThrow();
   });
+
+  describe('partial evidence (P05)', () => {
+    const partial = (): any => {
+      const capture = JSON.parse(JSON.stringify(partialRawCaptureFixture));
+      capture.coverage.nodesObserved = 3;
+      capture.nodes[0].truncated = true;
+      return capture;
+    };
+
+    test('captures saved before P05 still parse, and gain no new fields', () => {
+      const old = JSON.parse(JSON.stringify(partialRawCaptureFixture));
+      expect(old.coverage).not.toHaveProperty('nodesObserved');
+      expect(parseRawCapture(old)).toEqual(old);
+      const snapshot = JSON.parse(JSON.stringify(validSnapshotFixture));
+      expect(parseSnapshot(snapshot)).toEqual(snapshot);
+    });
+
+    test('accepts truncated, nodesObserved and lastObserved', () => {
+      const capture = partial();
+      capture.readiness = { settled: false, waitMs: 90, reasons: ['geometry remained unstable before timeout'], lastObserved: { phase: 'geometry', stableFrames: 0, movingCount: 1, movingNodeIds: ['n-card-1'] } };
+      expect(parseRawCapture(capture)).toEqual(capture);
+    });
+
+    test.each([
+      ['truncated: false', (c: any) => { c.nodes[0].truncated = false; }],
+      ['nodesObserved that disagrees with inspectedNodes', (c: any) => { c.coverage.nodesObserved = 4; }],
+      ['lastObserved on a settled capture', (c: any) => { c.readiness.lastObserved = { phase: 'fonts', stableFrames: 0, movingCount: 0, movingNodeIds: [] }; }],
+      ['an unresolved moving node', (c: any) => { c.readiness.settled = false; c.readiness.lastObserved = { phase: 'geometry', stableFrames: 0, movingCount: 1, movingNodeIds: ['gone'] }; }],
+      ['a truncated node in a complete, settled capture', (c: any) => { c.coverage = { ...c.coverage, complete: true, discoveredNodes: 3, skippedNodes: 0, reasons: [] }; }]
+    ])('rejects %s', (_, mutate) => {
+      const capture = partial();
+      mutate(capture);
+      expect(() => parseRawCapture(capture)).toThrow();
+    });
+  });
 });

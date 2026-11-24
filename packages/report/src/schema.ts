@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   diagnosticEvidenceSchema,
+  lastObservedSchema,
   rectSchema,
   sourceRefSchema,
   type DiagnosticEvidence,
@@ -90,7 +91,8 @@ export const reportSchema = z.object({
   readiness: z.object({
     settled: z.boolean(),
     waitMs: z.number().int().nonnegative(),
-    reasons: z.array(z.string())
+    reasons: z.array(z.string()),
+    lastObserved: lastObservedSchema.optional()
   }).strict(),
   coverage: z.object({
     complete: z.boolean(),
@@ -100,6 +102,8 @@ export const reportSchema = z.object({
     reasons: z.array(z.string()),
     capabilities: z.array(z.string()),
     unsupportedFeatures: z.array(z.string()),
+    nodesObserved: z.number().int().nonnegative().optional(),
+    truncatedNodes: z.number().int().nonnegative().optional(),
     paintVisibility: z.literal('unknown')
   }).strict(),
   summary: reportSummarySchema,

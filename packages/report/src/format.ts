@@ -1,3 +1,4 @@
+import { partialCaptureFacts } from './model.js';
 import type { Report, ReportFinding } from './schema.js';
 
 export const MIN_TEXT_BUDGET = 80;
@@ -85,7 +86,10 @@ export function formatReportText(report: Report, options?: { limit?: number; max
 
   const coverageStatus = report.coverage.complete ? 'complete' : 'partial';
   const readinessStatus = report.readiness.settled ? ', settled' : ', unsettled';
-  const header = `ANWC ${report.schemaVersion} | ${report.page.viewport.width}x${report.page.viewport.height} | capture ${report.input.captureId} | ${coverageStatus}${readinessStatus}`;
+  // First in the header, so a --max-chars cut cannot hide it.
+  const partialTag = report.summary.status !== 'incomplete' ? '' : report.coverage.complete ? 'UNSETTLED CAPTURE | ' : 'PARTIAL CAPTURE | ';
+  const facts = partialCaptureFacts(report).map((fact) => ` | ${printable(fact)}`).join('');
+  const header = `ANWC ${report.schemaVersion} | ${partialTag}${report.page.viewport.width}x${report.page.viewport.height} | capture ${report.input.captureId} | ${coverageStatus}${readinessStatus}${facts}`;
 
   if (report.summary.totalFindings === 0) {
     let zeroFindingsMsg = '0 actionable findings for inspected rules (note: paint visibility unknown, no screenshots captured)';
@@ -108,6 +112,9 @@ export function formatReportText(report: Report, options?: { limit?: number; max
 
   if (maxChars < minStructuralBudget) {
     const notice = '\n... text output truncated by --max-chars (increase with --max-chars <N>) ...';
+    // Keep the partial marker readable even when the full notice would push it out.
+    const markerEnd = partialTag ? header.indexOf(partialTag) + partialTag.length : 0;
+    if (partialTag && maxChars - notice.length < markerEnd) return `${header.slice(0, Math.max(0, maxChars - 14))} ... truncated`.slice(0, maxChars);
     if (maxChars <= notice.length) {
       return header.slice(0, maxChars);
     }
