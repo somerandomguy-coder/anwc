@@ -162,7 +162,7 @@ npx anwc diff artifacts/before.json artifacts/after.json --format markdown
 ```
 
 Every finding gets a verdict with a closed reason ([PROTOCOL §9](PROTOCOL.md)):
-- `verified`: resolved on the same retained, measured target, with executed behavior evidence. The CLI does not collect bound behavior evidence yet, so `anwc diff` never prints it.
+- `verified`: resolved on the same retained, measured target, with executed behavior evidence. `anwc diff` never prints it, because two saved captures execute nothing; `anwc check --baseline` can (section 8).
 - `unverified(reason)`: the evidence cannot decide, for example `behavior_not_checked` (the finding is gone; confirm the interaction yourself), `target_ambiguous`, `coverage_reduced` or `intent_changed`.
 - `contradicted(reason)`: the claim of a fix conflicts with the evidence, for example `finding_persists`, `new_finding`, `target_unmounted` or `target_hidden`.
 
@@ -176,7 +176,17 @@ Replay deterministic user flows (drawers, modals, scrolled states) declared in a
 npx anwc check anwc.checks.json --output artifacts/check-results
 ```
 
-Each checkpoint and each measured finding carries a `verdict` and `reason`; `verdictSummary` counts them. `passedAll` only means that replay and assertions succeeded, and `check` never says `verified` because it has no before capture.
+Each checkpoint and each measured finding carries a `verdict` and `reason`; `verdictSummary` counts them. `passedAll` only means that replay and assertions succeeded, and `check` without a baseline never says `verified`.
+
+To verify a repair, let an assertion say whose behavior it proves, and compare with a run recorded before the fix:
+
+```bash
+npx anwc check anwc.checks.json --output artifacts/before   # broken: the click step times out, the capture is kept
+# fix the source
+npx anwc check anwc.checks.json --baseline artifacts/before --output artifacts/after
+```
+
+The checkpoint needs a capture, then a `click` on the keyed element, and an assertion that the click turns from failing to passing, for example `{ "id": "confirmed", "description": "Checkout opens", "selector": "[role=dialog]", "expected": "visible", "proves": "checkout" }`. The exit code is 0 only when the repair is verified. Only pointer findings can be verified this way; the full rules are in [PROTOCOL §9](PROTOCOL.md).
 
 Example `anwc.checks.json`:
 ```json

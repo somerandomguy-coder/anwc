@@ -50,6 +50,14 @@ npm run anwc -- report artifacts/launch/blocked.json --format html --output arti
 
 Open `artifacts/launch/blocked.html` in your browser. The report works offline and includes source locations, measured blocker geometry and severity filters. `--fail-on none` lets this intentional-defect capture exit successfully; it does not remove findings. `--output` chooses a path; `--format` chooses its contents.
 
+Or run the repair loop end to end (about 10 seconds, nothing in `examples/` is edited):
+
+```powershell
+npm run demo
+```
+
+It records the broken checkout, repairs a disposable copy, and ends with `VERIFIED` only if the finding is gone and a real click on the same button now opens the confirmation (`anwc check --baseline`, rules in [PROTOCOL §9](docs/PROTOCOL.md)). That covers one finding in one state, not the whole UI.
+
 The root storefront is healthy; the lab intentionally contains defects and revealing labels. It is for learning and regression checks, not blinded evaluation. Plain terminal URLs must not use Markdown's `[label](URL)` syntax.
 
 ```powershell

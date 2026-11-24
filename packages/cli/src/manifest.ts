@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import type { Finding, Snapshot } from '@anwc/protocol';
-import type { Verdict, VerdictCounts, VerdictReason } from '@anwc/report';
+import type { BehaviorEvidence, Verdict, VerdictCounts, VerdictReason } from '@anwc/report';
+
+import type { BaselineComparison } from './baseline.js';
 
 export const CHECK_MANIFEST_VERSION = '0.1' as const;
 
@@ -74,8 +76,16 @@ export const behaviorAssertionSchema = z.object({
   selector: z.string().min(1),
   expected: z.enum(['visible', 'hidden', 'text-contains', 'attribute-equals']),
   attributeName: z.string().min(1).optional(),
-  expectedValue: z.string().optional()
+  expectedValue: z.string().optional(),
+  /**
+   * Optional: the `data-anwc-key` of the element whose behavior this assertion proves. Only such
+   * assertions are observed around the step, and only they can support a `verified` verdict.
+   */
+  proves: z.string().min(1).optional()
 }).strict().superRefine((assertion, context) => {
+  if (assertion.proves !== undefined && /:(focus|hover|active|target|visited)/i.test(assertion.selector)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['selector'], message: `assertion '${assertion.id}': a 'proves' assertion may not depend on :focus, :hover, :active, :target or :visited, which any click changes` });
+  }
   // An omitted value must never silently become '' (which every text contains).
   if (assertion.expected === 'text-contains' && (assertion.expectedValue === undefined || assertion.expectedValue.length === 0)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['expectedValue'], message: `assertion '${assertion.id}': 'text-contains' requires a non-empty expectedValue` });
@@ -188,7 +198,7 @@ export interface CheckFindingVerdict {
   reason: VerdictReason;
 }
 
-/** P03 verdict on a whole checkpoint. Never `verified`: `check` has no before capture to compare. */
+/** P03 verdict on a whole checkpoint. `verified` only with `--baseline` and every compared finding verified. */
 export interface CheckpointVerdict {
   verdict: Verdict;
   reason: VerdictReason;
@@ -203,6 +213,14 @@ export interface CheckVerdictSummary {
   checkpointsNotRun: number;
 }
 
+/** Evidence for one `proves` assertion and one capture of the same checkpoint. */
+export interface CheckBehaviorEvidence extends BehaviorEvidence {
+  capture: string;
+  assertion: string;
+  /** Index of the observed step in the checkpoint's `steps`; null when none was observed. */
+  step: number | null;
+}
+
 export interface CheckpointExecutionResult extends CheckpointVerdict {
   name: string;
   passed: boolean;
@@ -210,6 +228,10 @@ export interface CheckpointExecutionResult extends CheckpointVerdict {
   assertions: AssertionResult[];
   /** One entry per finding in every capture of this checkpoint, not only the last. */
   findingVerdicts: CheckFindingVerdict[];
+  /** Every capture of this checkpoint with the sha256 of its exact JSON bytes. */
+  captures: Array<{ name: string; sha256: string }>;
+  /** One entry per capture and `proves` assertion; empty when none is declared. */
+  behaviorEvidence: CheckBehaviorEvidence[];
   finalUrl: string;
   finalScroll: { x: number; y: number };
   capture?: Snapshot;
@@ -253,6 +275,32 @@ export interface CheckRunResult {
    */
   passedAll: boolean;
   verdictSummary: CheckVerdictSummary;
+  /** Marks a summary the runner wrote; see `loadBaseline`. Detects edits, not a determined forger. */
+  producer: typeof CHECK_PRODUCER;
+  /** sha256 of the canonical scenarios (states, steps, assertions); formatting and baseUrl excluded. */
+  statesHash: string;
+  /** Present only with `--baseline`. */
+  baseline?: BaselineComparison;
+  /** sha256 of this result without `summaryHash`, as compact JSON. */
+  summaryHash: string;
+}
+
+export const CHECK_PRODUCER = 'anwc-check/0.1' as const;
+
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (typeof value !== 'object' || value === null) return value;
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, canonical(v)]));
+}
+
+/** Hash of what is replayed and asserted. The compared captures' URLs are checked separately. */
+export function computeStatesHash(manifest: StateManifest): string {
+  return computeManifestHash(JSON.stringify(canonical(manifest.scenarios)));
+}
+
+export function computeSummaryHash(result: object): string {
+  const { summaryHash: _omitted, ...rest } = result as Record<string, unknown>;
+  return computeManifestHash(JSON.stringify(rest));
 }
 
 export function computeManifestHash(content: string): string {

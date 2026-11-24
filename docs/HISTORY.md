@@ -6,6 +6,12 @@ Last updated: 2026-09-17, Australia/Sydney.
 
 **Historical summary:** W01–W14 and the Phase 2 foundations, local packaging and pilot helpers shipped. Phase 3 Q01–Q07 implementations exist with acceptance gaps. Older entries retain their original dates and claims; they are not current certification. Paired-agent results remain unrecorded. Start at [STATUS](STATUS.md).
 
+## 2026-11-25 P03b: bound verification (`check --baseline`)
+
+Branch `phase4/p03b-bound-verification` from `8d6e2db`. New `packages/cli/src/{behavior,baseline}.ts`, `examples/shop/anwc/checkout.states.json`, `tests/unit/check-baseline.test.ts`, `tests/browser/check-baseline.spec.ts`; `behaviorEvidence` option in `compareRepairs`; seven new `unverified` reasons; `proves` in the manifest; demo script rewritten around the manifest. The first draft of the unit fixtures failed 26 of 30 (then 24 twice): `runtimeScript` was not exported, and absolutely positioned and empty fixture elements produced extra findings. Fixed by fixture changes and that export. One test first expected a hidden target to be `new_finding`; `target_hidden` is what is reported and is right. An empty zero-area element is reported as `CLIPPED_BY_ANCESTOR`; not investigated, outside this card.
+
+Windows, PowerShell, Node 24: `npm run typecheck` exit 0; `npm run build` exit 0; full `npx vitest run` exit 0, 28 files, 413/413, 0 skipped, 230 s (before one more test was added to `diff.test.ts`); then `npx vitest run tests/unit/diff.test.ts tests/unit/doc-drift.test.ts` exit 0, 92/92. Ports 4173/4176/4177 free, `$env:CI='1'; npx playwright test tests/browser/check.spec.ts tests/browser/check-baseline.spec.ts` exit 0, 9/9. `npm run demo` exit 0, 10.5 s. Other Playwright specs and platforms were not run.
+
 ## 2026-11-25 P02: capture-scoped references
 
 Branch `phase4/p03-p02`, after P03. New `packages/protocol/src/node-ref.ts`; `nodeRef`/`findingRef` in the query schema, `resolveNodeRef`/`resolveFindingRef`, CLI refusals. The existing 8 Q09 tests pass unchanged; 9 P02 tests added. Agent-summary reduction on the fixture is 65%: refs add characters, and QUICKSTART, which said 68%, was corrected. No existing producer for `AMBIGUOUS_TARGET` on node ids was found beyond duplicate ids in a hand-edited Snapshot, so a source `siteId` is accepted as the id part; that is where `.map()` siblings become ambiguous.

@@ -19,6 +19,7 @@ import {
   VERDICT_BY_REASON,
   VERDICT_REASONS,
   VERDICT_REASON_TEXT,
+  type BehaviorEvidence,
   type VerdictReason
 } from '../../packages/report/src/index.js';
 import { parseDiffArguments, run } from '../../packages/cli/src/index.js';
@@ -581,6 +582,20 @@ describe('P03 per-finding verdicts', () => {
     expect(reasonFor(undefined)).toBe('behavior_not_checked');
     expect(reasonFor(false)).toBe('behavior_assertion_failed');
     expect(reasonFor(true)).toBe('finding_absent_target_retained');
+  });
+
+  test('supplied behavior evidence is bound to one capture, node, action and rule; the boolean cannot override it', () => {
+    const after = repaired();
+    const proof: BehaviorEvidence = { sessionId: after.sessionId, captureId: after.captureId, nodeId: 'n1', semanticKey: 'checkout-action', action: 'click', reason: 'finding_absent_target_retained', explanation: 'clicked' };
+    const reasonFor = (evidence: BehaviorEvidence[], behaviorCheckPassed?: boolean) => compareRepairs(snapshot(), after, { behaviorEvidence: evidence, behaviorCheckPassed }).findings[0]!.reason;
+    expect(reasonFor([proof])).toBe('finding_absent_target_retained');
+    expect(reasonFor([], true)).toBe('behavior_not_checked');
+    expect(reasonFor([proof], false)).toBe('behavior_assertion_failed');
+    for (const patch of [{ sessionId: 'other' }, { captureId: 'other' }, { nodeId: 'n2' }, { nodeId: null }, { semanticKey: 'cookie-notice' }]) expect(reasonFor([{ ...proof, ...patch }], true)).toBe('behavior_not_checked');
+    expect(reasonFor([{ ...proof, action: 'fill' }], true)).toBe('behavior_not_provable');
+    for (const reason of ['behavior_not_checked', 'behavior_target_mismatch', 'behavior_unchanged', 'behavior_step_failed'] as const) expect(reasonFor([{ ...proof, reason }], true)).toBe(reason);
+    // A second, always-true assertion does not cancel a real proof.
+    expect(reasonFor([{ ...proof, reason: 'behavior_unchanged' }, proof])).toBe('finding_absent_target_retained');
   });
 
   test('a Report after input never verifies, even when the target is retained through another finding', () => {

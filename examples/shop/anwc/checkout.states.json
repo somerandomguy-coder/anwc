@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "0.1",
+  "baseUrl": "http://127.0.0.1:4175",
+  "scenarios": [
+    {
+      "id": "blocked-checkout",
+      "title": "Checkout on a phone, with the cookie notice",
+      "viewport": { "width": 390, "height": 844 },
+      "checkpoints": [
+        {
+          "name": "checkout",
+          "steps": [
+            { "action": "navigate", "path": "/lab?case=blocked-checkout" },
+            { "action": "wait-for-selector", "selector": "[aria-label='Scenario fixture']" },
+            { "action": "capture", "name": "checkout" },
+            { "action": "click", "selector": "[data-anwc-key='blocked-checkout']" }
+          ],
+          "assertions": [
+            {
+              "id": "checkout-confirmed",
+              "description": "Clicking Checkout opens the confirmation",
+              "selector": "[role='dialog'][aria-label='Checkout confirmation']",
+              "expected": "visible",
+              "proves": "blocked-checkout"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
