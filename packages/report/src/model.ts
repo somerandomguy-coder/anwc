@@ -14,6 +14,33 @@ function hashSnapshot(snapshot: Snapshot): string {
   return createHash('sha256').update(JSON.stringify(snapshot), 'utf8').digest('hex');
 }
 
+/**
+ * The partial-capture facts every renderer puts in its header; empty for a complete, settled capture.
+ * `nodesObserved` falls back to `inspectedNodes` for captures saved before P05.
+ */
+export function partialCaptureFacts(report: Report): string[] {
+  const { coverage, readiness } = report;
+  if (coverage.complete && readiness.settled) return [];
+  const truncated = coverage.truncatedNodes ?? 0;
+  const facts = [`observed ${coverage.nodesObserved ?? coverage.inspectedNodes} of ${coverage.discoveredNodes} nodes${truncated > 0 ? `, ${truncated} truncated` : ''}`];
+  const last = readiness.lastObserved;
+  if (last) {
+    const more = last.movingCount > last.movingNodeIds.length ? ', ...' : '';
+    const moving = last.movingCount === 0
+      ? 'no moving element identified'
+      : `${last.movingCount} moving element(s)${last.movingNodeIds.length > 0 ? ` [${last.movingNodeIds.join(', ')}${more}]` : ''}`;
+    facts.push(`last observed: waiting for ${last.phase}, ${moving}`);
+  }
+  return facts;
+}
+
+/** Heading for an incomplete report with no findings: never a clean result. */
+export function noFindingsStatement(report: Report): string {
+  return report.coverage.complete && report.readiness.settled
+    ? 'No findings recorded.'
+    : 'No findings recorded in the part that was observed. This capture is partial or unsettled, so this is not a clean result.';
+}
+
 function makeNodeRef(nodeId: string, nodeMap: Map<string, Measurement>): ReportNodeRef {
   const node = nodeMap.get(nodeId);
   if (node) {
@@ -271,6 +298,8 @@ export function createReport(snapshot: Snapshot): Report {
   const acknowledged = reportFindings.filter((f) => f.acknowledged).length;
   const actionable = unacknowledgedErrors + unacknowledgedWarnings;
 
+  const truncatedNodes = snapshot.nodes.filter((node) => node.truncated).length;
+
   let status: ReportSummary['status'] = 'pass';
   if (!snapshot.coverage.complete || !snapshot.readiness.settled) {
     status = 'incomplete';
@@ -317,7 +346,8 @@ export function createReport(snapshot: Snapshot): Report {
     readiness: {
       settled: snapshot.readiness.settled,
       waitMs: snapshot.readiness.waitMs,
-      reasons: [...snapshot.readiness.reasons]
+      reasons: [...snapshot.readiness.reasons],
+      ...(snapshot.readiness.lastObserved ? { lastObserved: snapshot.readiness.lastObserved } : {})
     },
     coverage: {
       complete: snapshot.coverage.complete,
@@ -327,6 +357,8 @@ export function createReport(snapshot: Snapshot): Report {
       reasons: [...snapshot.coverage.reasons],
       capabilities: [...snapshot.coverage.capabilities],
       unsupportedFeatures: [...snapshot.coverage.unsupportedFeatures],
+      ...(snapshot.coverage.nodesObserved !== undefined ? { nodesObserved: snapshot.coverage.nodesObserved } : {}),
+      ...(truncatedNodes > 0 ? { truncatedNodes } : {}),
       paintVisibility: 'unknown'
     },
     summary,

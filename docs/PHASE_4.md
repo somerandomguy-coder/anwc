@@ -101,7 +101,7 @@ Build: `--skeleton` groups findings by source file → component → region with
 
 **Acceptance:** totals in skeleton equal totals in full output; drilling every group reproduces the full finding set. **Evidence:** invariant tests on all three example apps.
 
-#### P05 — Partial-but-successful captures (S)
+#### P05 — Partial-but-successful captures (S) — done 2026-11-25
 
 **Own:** `packages/runtime` collector limits, `packages/protocol` snapshot fields, report renderers. **Depends:** P01.
 

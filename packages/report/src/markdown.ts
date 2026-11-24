@@ -1,3 +1,4 @@
+import { noFindingsStatement, partialCaptureFacts } from './model.js';
 import type { Report, ReportFinding, ReportNodeRef } from './schema.js';
 
 export interface ReportMarkdownOptions {
@@ -71,6 +72,7 @@ export function renderReportMarkdown(report: Report, options: ReportMarkdownOpti
     if (!report.readiness.settled) {
       lines.push(`> - Readiness unsettled: ${escapeMarkdown(report.readiness.reasons.join('; ') || 'Did not reach network/dom idle')}`);
     }
+    for (const fact of partialCaptureFacts(report)) lines.push(`> - ${escapeMarkdown(fact[0]!.toUpperCase() + fact.slice(1))}`);
     lines.push('');
   }
 
@@ -98,7 +100,7 @@ export function renderReportMarkdown(report: Report, options: ReportMarkdownOpti
   lines.push('');
 
   if (allFindings.length === 0) {
-    lines.push('No findings recorded.');
+    lines.push(noFindingsStatement(report));
     lines.push('');
   } else {
     for (const [idx, f] of allFindings.entries()) {

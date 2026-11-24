@@ -12,7 +12,7 @@ describe('Q05 Conformance Matrix Specification', () => {
     // Actual counts by role; these are cases, not pairs.
     const byRole = (role: string) => conformanceCases.filter((c) => c.role === role).length;
     expect({ total: conformanceCases.length, defective: byRole('defective'), healthy: byRole('healthy'), boundary: byRole('boundary') })
-      .toEqual({ total: 36, defective: 13, healthy: 14, boundary: 9 });
+      .toEqual({ total: 39, defective: 13, healthy: 14, boundary: 12 });
 
     const families = new Set(conformanceCases.map((c) => c.family));
     expect(families).toEqual(new Set([
@@ -115,6 +115,10 @@ const withSignal: Record<Exclude<BoundarySignal['kind'], 'known-gap'>, { signal:
   'boxless-node': {
     signal: { kind: 'boxless-node', key: 'wrap' },
     capture: capture([node('wrap', { box: null, render: { hasBox: false, cssHiddenReasons: [], effectiveOpacityZero: { status: 'known', value: false, method: 'computed-style-ancestry', limitations: [] } } })])
+  },
+  'truncated-node': {
+    signal: { kind: 'truncated-node', key: 'cut', reason: 'max node cap reached' },
+    capture: capture([node('cut', { truncated: true })], { coverage: { complete: false, discoveredNodes: 5, inspectedNodes: 1, skippedNodes: 4, nodesObserved: 1, reasons: ['max node cap reached'], capabilities: [], unsupportedFeatures: ['paint-visibility'] } })
   },
   'pointer-sample-collapse': {
     signal: { kind: 'pointer-sample-collapse', key: 'thin', sampleBudget: 25 },

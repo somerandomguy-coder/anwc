@@ -58,6 +58,11 @@ export function evaluateBoundarySignal(signal: BoundarySignal, capture: RawCaptu
       const present = tested > 0 && tested < signal.sampleBudget;
       return { present, evidence: `${signal.key}.pointer.tested=${tested} of budget ${signal.sampleBudget}` };
     }
+    case 'truncated-node': {
+      const node = nodeByKey(capture, signal.key);
+      const present = !capture.coverage.complete && capture.coverage.reasons.includes(signal.reason) && node?.truncated === true;
+      return { present, evidence: `${signal.key}.truncated=${node?.truncated}, coverage.complete=${capture.coverage.complete}, reasons=[${capture.coverage.reasons.join('; ')}]` };
+    }
     case 'known-gap':
       return { present: false, evidence: `known gap: ${signal.reason}` };
   }
@@ -101,6 +106,11 @@ export function withoutBoundarySignal(signal: BoundarySignal, capture: RawCaptur
     case 'pointer-sample-collapse': {
       const node = copy.nodes.find((candidate) => candidate.semanticKey === signal.key);
       if (node && node.pointer.status !== 'unknown') node.pointer.value.tested = signal.sampleBudget;
+      return copy;
+    }
+    case 'truncated-node': {
+      const node = copy.nodes.find((candidate) => candidate.semanticKey === signal.key);
+      if (node) delete node.truncated;
       return copy;
     }
     case 'known-gap':

@@ -25,6 +25,8 @@ export type BoundarySignal =
   | { kind: 'boxless-node'; key: string }
   /** The keyed node's pointer grid collapsed below the sample budget (sub-pixel geometry). */
   | { kind: 'pointer-sample-collapse'; key: string; sampleBudget: number }
+  /** Coverage is incomplete for `reason` and the keyed node is marked `truncated` (P05). */
+  | { kind: 'truncated-node'; key: string; reason: string }
   /** No runtime signal exists yet. Reported as a known gap, never as a pass. */
   | { kind: 'known-gap'; reason: string };
 
