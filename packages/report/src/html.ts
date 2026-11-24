@@ -108,7 +108,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
         );
         if (b.width > 20 && b.height > 14) {
           diagramElements.push(
-            `<text x="${b.x + 4}" y="${b.y + Math.min(14, b.height - 2)}" font-size="11" font-family="monospace" fill="var(--blocker-stroke)">blocker &lt;${escapeHtml(blocker.tag)}&gt;</text>`
+            `<text x="${b.x + 4}" y="${Math.min(vh - 4, b.y + b.height + 13)}" font-size="11" font-family="monospace" fill="var(--blocker-stroke)">blocker &lt;${escapeHtml(blocker.tag)}&gt;</text>`
           );
         }
       }
@@ -120,7 +120,7 @@ export function renderReportHtml(report: Report, options: ReportHtmlOptions = {}
   const findingsHtml = allFindings.map((f, idx) => {
     const targetSource = formatSourceLoc(f.target.source, redact);
     const blockersHtml = f.blockers.length > 0
-      ? `<div class="node-rel"><strong>Blocker:</strong> &lt;<code>${escapeHtml(f.blockers[0]!.tag)}</code>&gt;${f.blockers[0]!.role ? ` (role: <code>${escapeHtml(f.blockers[0]!.role)}</code>)` : ''} — <code>${escapeHtml(formatSourceLoc(f.blockers[0]!.source, redact))}</code></div>`
+      ? `<div class="node-rel"><strong>Blocker:</strong> &lt;<code>${escapeHtml(f.blockers[0]!.tag)}</code>&gt;${f.blockers[0]!.label ? ` <span class="target-label">"${escapeHtml(f.blockers[0]!.label)}"</span>` : ''}${f.blockers[0]!.role ? ` (role: <code>${escapeHtml(f.blockers[0]!.role)}</code>)` : ''} — <code>${escapeHtml(formatSourceLoc(f.blockers[0]!.source, redact))}</code></div>`
       : '';
     const clipHtml = f.clipAncestors.length > 0
       ? `<div class="node-rel"><strong>Clip Ancestor:</strong> &lt;<code>${escapeHtml(f.clipAncestors[0]!.tag)}</code>&gt; — <code>${escapeHtml(formatSourceLoc(f.clipAncestors[0]!.source, redact))}</code></div>`
