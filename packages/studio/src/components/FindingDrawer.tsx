@@ -210,7 +210,7 @@ export function FindingDrawer({
               type="search"
               className="anwc-filter-input"
               data-testid="finding-filter"
-              placeholder="Filter findings (press /)"
+              placeholder="Filter findings…"
               aria-label="Filter findings by code, message or source"
               value={view.query}
               onChange={(e) => view.setQuery(e.target.value)}

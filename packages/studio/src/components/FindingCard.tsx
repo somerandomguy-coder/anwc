@@ -90,21 +90,10 @@ export function FindingCard({
   const samples = sampleCounts(finding);
   const blockerRefs = 'blockers' in finding && Array.isArray(finding.blockers) ? finding.blockers : [];
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onSelectFinding?.(finding.findingId);
-    }
-  };
-
   const classes = ['anwc-card', selected ? 'is-selected' : '', hovered ? 'is-hovered' : '', className].filter(Boolean).join(' ');
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
+    <article
       aria-label={`${number !== undefined ? `Finding ${number}: ` : ''}${finding.code}`}
       data-selected={selected ? 'true' : 'false'}
       data-hovered={hovered ? 'true' : 'false'}
@@ -117,7 +106,6 @@ export function FindingCard({
       onMouseLeave={() => onHover?.(null)}
       onFocus={() => onHover?.(finding.findingId)}
       onBlur={() => onHover?.(null)}
-      onKeyDown={handleKeyDown}
       className={classes}
       style={style}
     >
@@ -142,7 +130,7 @@ export function FindingCard({
         )}
       </div>
 
-      <p className="anwc-card-message">{finding.message}</p>
+      <button type="button" className="anwc-card-message" aria-pressed={selected}>{finding.message}</button>
 
       {samples && (
         <div className="anwc-gauge">
@@ -204,6 +192,6 @@ export function FindingCard({
         {effectiveBlockerBox && <span className="anwc-metric is-bad">Blocker: {formatBox(effectiveBlockerBox)}</span>}
       </div>
       </details>
-    </div>
+    </article>
   );
 }

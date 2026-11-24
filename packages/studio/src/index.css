@@ -734,3 +734,7 @@ summary:focus-visible, .anwc-card:focus-visible, pre:focus-visible { outline: 2p
 .anwc-segment button:focus-visible { outline-offset: -3px; }
 .anwc-tab:focus-visible, .anwc-cat:focus-within { outline: 2px solid var(--anwc-focus); outline-offset: 2px; }
 @media (max-width: 900px) { .anwc-compare { max-height: none; } }
+
+button.anwc-card-message { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; font-family: inherit; text-align: left; cursor: pointer; }
+button.anwc-card-message:focus-visible { outline-offset: 3px; }
+.anwc-source-btn, .anwc-btn, .anwc-tab { min-height: 24px; }
