@@ -2,17 +2,24 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { build } from 'esbuild';
 import { envelopeOf, errorEnvelopeSchema, snapshotSchema } from '@anwc/protocol';
 import type { Finding, Measurement, Snapshot, SourceRef } from '@anwc/protocol';
 import {
   compareRepairs,
   createReport,
   DiffInputError,
+  findingVerdictsFromDiff,
   formatDiffText,
+  listFindingVerdicts,
   parseDiffInput,
   renderDiffHtml,
   renderDiffMarkdown,
-  diffReportSchema
+  diffReportSchema,
+  VERDICT_BY_REASON,
+  VERDICT_REASONS,
+  VERDICT_REASON_TEXT,
+  type VerdictReason
 } from '../../packages/report/src/index.js';
 import { parseDiffArguments, run } from '../../packages/cli/src/index.js';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
@@ -493,5 +500,173 @@ describe('L2 diff input validation and honest explanations', () => {
     expect(added.explanation).toContain('not evidence of a regression');
     expect(added.explanation).not.toMatch(/Potential regression/);
     expect(renderDiffHtml(diff)).not.toContain('<span class="badge badge-regression">');
+  });
+});
+
+describe('P03 per-finding verdicts', () => {
+  const finding = (target: Measurement, code: string, evidence: Finding['evidence'], overrides: Partial<Finding> = {}): Finding =>
+    blockedFinding(target, { findingId: `f_${target.nodeId}_${code}`, code, evidence, relatedNodeIds: [], ...overrides });
+  const beforeWith = (target: Measurement, f: Finding) => snapshot({ nodes: [rootNode, target, cookieNode], findings: [f] });
+  const afterWith = (target: Measurement, findings: Finding[] = []) => snapshot({ nodes: [rootNode, target, cookieNode], findings });
+  const hidden = { render: { hasBox: false, cssHiddenReasons: ['display:none'], effectiveOpacityZero: known(false) }, box: null, pointer: unknown(['no box']) };
+  const overBudget = checkoutNode({ intent: { expectedCurrent: 'interactive', maxLines: 1, allow: [] } }, null);
+  const budgetFinding = finding(overBudget, 'TEXT_LINE_BUDGET_EXCEEDED', { kind: 'text-line-budget-exceeded', observedLines: 2, maxLines: 1 });
+  const scrolls = checkoutNode({ intent: { expectedCurrent: null, maxLines: null, allow: ['horizontal-scroll'] } }, null);
+  const acknowledged = finding(scrolls, 'HORIZONTAL_OVERFLOW', { kind: 'horizontal-overflow', clientWidth: 100, scrollWidth: 200 }, { acknowledged: true, severity: 'info' });
+  const unkeyed = (blocker: string | null) => checkoutNode({ semanticKey: null }, blocker);
+  const duplicate = [checkoutNode(), checkoutNode({ nodeId: 'n3' })];
+
+  /** Every case is run with behavior passing, i.e. the most permissive input: only the named reason blocks it. */
+  const cases: Array<[VerdictReason, string, () => [Snapshot, Snapshot]]> = [
+    ['finding_absent_target_retained', 'CSS repair of a keyed target', () => [snapshot(), repaired()]],
+    ['target_unmounted', 'keyed target deleted', () => [snapshot(), snapshot({ nodes: [rootNode, cookieNode], findings: [] })]],
+    ['target_retention_unknown', 'unkeyed target without a candidate', () => [beforeWith(unkeyed('n2'), blockedFinding(unkeyed('n2'))), snapshot({ nodes: [rootNode, cookieNode], findings: [] })]],
+    ['target_ambiguous', 'duplicate author keys', () => [snapshot({ nodes: [rootNode, ...duplicate, cookieNode] }), snapshot({ nodes: [rootNode, ...duplicate, cookieNode], findings: [] })]],
+    ['state_not_reproduced', 'different URL', () => [snapshot(), repaired({ page: { url: 'http://127.0.0.1:4173/other' } })]],
+    ['state_not_reproduced', 'different viewport', () => [snapshot(), repaired({ page: { viewport: { width: 1440, height: 900 } } })]],
+    ['coverage_reduced', 'incomplete after capture', () => [snapshot(), repaired({ coverage: { complete: false } })]],
+    ['coverage_reduced', 'incomplete before capture', () => [snapshot({ coverage: { complete: false } }), repaired()]],
+    ['coverage_reduced', 'target missing from an incomplete capture', () => [snapshot(), snapshot({ nodes: [rootNode, cookieNode], findings: [], coverage: { complete: false } })]],
+    ['coverage_reduced', 'after capture lost a capability', () => [snapshot(), repaired({ coverage: { capabilities: ['rectangles'] } })]],
+    ['capture_not_settled', 'unsettled after capture', () => [snapshot(), repaired({ readiness: { settled: false } })]],
+    ['capture_not_settled', 'persisting finding in a moving layout', () => [snapshot(), snapshot({ readiness: { settled: false } })]],
+    ['measurement_unsupported', 'pointer not sampled any more', () => [snapshot(), afterWith(checkoutNode({ pointer: unknown(['outside viewport']) }))]],
+    ['measurement_unsupported', 'target disabled', () => [snapshot(), afterWith(checkoutNode({ interaction: { candidate: true, disabled: true, inert: false, pointerEvents: 'auto' } }, null))]],
+    ['measurement_unsupported', 'clip model no longer applies', () => {
+      const f = finding(checkoutNode({}, null), 'CLIPPED_BY_ANCESTOR', { kind: 'clipped-by-ancestor', boxFraction: 0.5, ancestorNodeIds: [] });
+      return [beforeWith(checkoutNode({}, null), f), afterWith(checkoutNode({ clip: unknown(['transform']) }, null))];
+    }],
+    ['measurement_unsupported', 'text emptied', () => [beforeWith(overBudget, budgetFinding), afterWith({ ...overBudget, text: known({ lineCount: 0, fragmentRects: [], clippedFragmentCount: 0 }) })]],
+    ['intent_changed', 'line budget removed', () => [beforeWith(overBudget, budgetFinding), afterWith(checkoutNode({}, null))]],
+    ['intent_changed', 'line budget raised', () => [beforeWith(overBudget, budgetFinding), afterWith({ ...overBudget, intent: { expectedCurrent: 'interactive', maxLines: 3, allow: [] } })]],
+    ['intent_changed', 'visibility expectation removed', () => {
+      const target = checkoutNode(hidden);
+      const f = finding(target, 'EXPECTED_VISIBLE_BUT_HIDDEN', { kind: 'expected-visible-but-hidden', hiddenReasons: ['display:none'], expectedCurrent: 'interactive' });
+      return [beforeWith(target, f), afterWith({ ...target, intent: { expectedCurrent: null, maxLines: null, allow: [] } })];
+    }],
+    ['target_hidden', 'target hidden with CSS', () => [snapshot(), afterWith(checkoutNode(hidden))]],
+    ['target_identity_heuristic', 'no author key', () => [beforeWith(unkeyed('n2'), blockedFinding(unkeyed('n2'))), afterWith(unkeyed(null))]],
+    ['target_identity_heuristic', 'author key moved to another element kind', () => [snapshot(), afterWith(checkoutNode({ tag: 'a', role: 'link' }, null))]],
+    ['finding_persists', 'still blocked', () => [snapshot(), snapshot()]],
+    ['finding_persists', 'fully blocked becomes partially blocked', () => [snapshot(), afterWith(checkoutNode(), [blockedFinding(checkoutNode(), { findingId: 'f_partial', code: 'POINTER_PARTIALLY_BLOCKED' })])]],
+    ['finding_persists', 'silenced afterwards', () => [beforeWith(scrolls, { ...acknowledged, acknowledged: false }), afterWith(scrolls, [acknowledged])]],
+    ['finding_acknowledged', 'acknowledged on both sides', () => [beforeWith(scrolls, acknowledged), afterWith(scrolls, [acknowledged])]],
+    ['new_finding', 'regression', () => [afterWith(checkoutNode({}, null)), snapshot()]]
+  ];
+
+  test.each(cases)('%s: %s', (reason, _label, make) => {
+    const [before, after] = make();
+    const diff = diffReportSchema.parse(compareRepairs(before, after, { behaviorCheckPassed: true }));
+    const comparison = diff.findings[0]!;
+    expect(comparison.reason).toBe(reason);
+    expect(comparison.verdict).toBe(VERDICT_BY_REASON[reason]);
+    expect(diff.summary.verdicts[comparison.verdict]).toBeGreaterThan(0);
+    const { verified, unverified, contradicted } = diff.summary.verdicts;
+    expect(verified + unverified + contradicted).toBe(diff.findings.length);
+    if (reason !== 'finding_absent_target_retained') expect(diff.summary.verifiedFixed).toBe(0);
+    // Text, Markdown and HTML carry the verdict (incompatible text/Markdown print counts only).
+    const counts = `${verified} verified, ${unverified} unverified, ${contradicted} contradicted`;
+    expect(formatDiffText(diff)).toContain(counts);
+    expect(renderDiffMarkdown(diff)).toContain(counts);
+    const html = renderDiffHtml(diff);
+    expect(html).toContain(`>${comparison.verdict}</span> <code>${reason}</code>`);
+    if (diff.compatibility.comparable) {
+      expect(formatDiffText(diff)).toContain(`Verdict: ${comparison.verdict}(${reason})`);
+      expect(renderDiffMarkdown(diff)).toContain(`\`${comparison.verdict}\` (\`${reason}\`)`);
+    }
+  });
+
+  test('behavior evidence decides between unverified, contradicted and verified', () => {
+    const reasonFor = (behaviorCheckPassed?: boolean) => compareRepairs(snapshot(), repaired(), { behaviorCheckPassed }).findings[0]!.reason;
+    expect(reasonFor(undefined)).toBe('behavior_not_checked');
+    expect(reasonFor(false)).toBe('behavior_assertion_failed');
+    expect(reasonFor(true)).toBe('finding_absent_target_retained');
+  });
+
+  test('a Report after input never verifies, even when the target is retained through another finding', () => {
+    const other = finding(checkoutNode({}, null), 'TEXT_CLIPPED', { kind: 'text-clipped', clippedFragmentCount: 1, lineCount: 1 });
+    const diff = compareRepairs(snapshot(), createReport(afterWith(checkoutNode({}, null), [other])), { behaviorCheckPassed: true });
+    expect(diff.findings[0]).toMatchObject({ targetRetained: true, verdict: 'unverified', reason: 'measurement_unsupported' });
+  });
+
+  test('a finding after an incomplete baseline is not called new', () => {
+    const diff = compareRepairs(snapshot({ nodes: [rootNode, checkoutNode({}, null), cookieNode], findings: [], coverage: { complete: false } }), snapshot());
+    expect(diff.findings[0]).toMatchObject({ verdict: 'unverified', reason: 'coverage_reduced' });
+  });
+
+  test('only one reason maps to verified and the schema rejects relabelled or unsupported verdicts', () => {
+    expect(VERDICT_REASONS.filter((r) => VERDICT_BY_REASON[r] === 'verified')).toEqual(['finding_absent_target_retained']);
+    expect(Object.keys(VERDICT_REASON_TEXT).sort()).toEqual([...VERDICT_REASONS].sort());
+    const diff = compareRepairs(snapshot(), snapshot({ nodes: [rootNode, cookieNode], findings: [] }));
+    const tamper = (patch: object) => diffReportSchema.safeParse({ ...diff, findings: [{ ...diff.findings[0]!, ...patch }] }).success;
+    expect(tamper({})).toBe(true);
+    expect(tamper({ verdict: 'verified' })).toBe(false);
+    expect(tamper({ verdict: 'verified', reason: 'finding_absent_target_retained' })).toBe(false);
+    expect(tamper({ verdict: 'verified', reason: 'finding_absent_target_retained', status: 'verified-fixed' })).toBe(false);
+    expect(tamper({ reason: 'because' })).toBe(false);
+  });
+
+  // One CLI diff per reason. The CLI has no behavior evidence, so a clean disappearance is
+  // behavior_not_checked; `verified`, heuristic identity and failed behavior sit behind that gate.
+  const apiOnly: VerdictReason[] = ['finding_absent_target_retained', 'target_identity_heuristic'];
+  const cliCases: typeof cases = [
+    ...cases.filter(([reason]) => !apiOnly.includes(reason)),
+    ['behavior_not_checked', 'clean disappearance', () => [snapshot(), repaired()]]
+  ];
+  test.each(cliCases)('CLI diff reports %s: %s', async (reason, _label, make) => {
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-cli-verdict-'));
+    try {
+      const [before, after] = make();
+      await writeFile(join(tmp, 'b.json'), JSON.stringify(before), 'utf8');
+      await writeFile(join(tmp, 'a.json'), JSON.stringify(after), 'utf8');
+      const stdout: string[] = [];
+      const exit = await run(['diff', join(tmp, 'b.json'), join(tmp, 'a.json'), '--format', 'json'], { stdout: (m) => stdout.push(m), stderr: () => {} });
+      expect(exit).toBe(1);
+      const envelope = envelopeOf(diffReportSchema).parse(JSON.parse(stdout.join('')));
+      if (!envelope.ok) throw new Error(envelope.error.code);
+      const diff = diffReportSchema.parse(envelope.data);
+      expect(diff.findings[0]).toMatchObject({ reason, verdict: VERDICT_BY_REASON[reason] });
+      expect(diff.summary.verdicts.verified).toBe(0);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test('the CLI diff has no option that supplies or switches on verification', () => {
+    for (const flag of ['--verified', '--behavior', '--behavior-check-passed', '--assume-verified']) {
+      expect(() => parseDiffArguments(['diff', 'b.json', 'a.json', flag, 'true'])).toThrow(/Unknown or invalid option/);
+    }
+  });
+
+  test('listFindingVerdicts lists rows for a UI, offers no after box for unmounted, ambiguous or incompatible targets, and never verifies', () => {
+    const fixed = listFindingVerdicts(snapshot(), repaired());
+    expect(fixed.counts).toEqual({ verified: 0, unverified: 1, contradicted: 0 });
+    expect(fixed.verdicts[0]).toMatchObject({ reason: 'behavior_not_checked', reasonText: VERDICT_REASON_TEXT.behavior_not_checked, code: 'POINTER_BLOCKED_AT_SAMPLES', severity: 'error', targetKey: 'key:checkout-action', before: { nodeId: 'n1' }, after: { nodeId: 'n1', findingId: null, box: checkoutBox } });
+
+    const deleted = listFindingVerdicts(snapshot(), snapshot({ nodes: [rootNode, cookieNode], findings: [] }));
+    expect(deleted.verdicts[0]).toMatchObject({ verdict: 'contradicted', reason: 'target_unmounted', after: null });
+    const ambiguous = listFindingVerdicts(snapshot({ nodes: [rootNode, ...duplicate, cookieNode] }), snapshot({ nodes: [rootNode, ...duplicate, cookieNode], findings: [] }));
+    expect(ambiguous.verdicts[0]).toMatchObject({ reason: 'target_ambiguous', after: null });
+    const other = listFindingVerdicts(snapshot(), repaired({ page: { url: 'http://127.0.0.1:4173/other' } }));
+    expect(other).toMatchObject({ comparable: false, verdicts: [{ reason: 'state_not_reproduced', after: null }] });
+    expect(other.incompatibilities.length).toBeGreaterThan(0);
+
+    const added = listFindingVerdicts(repaired(), snapshot());
+    expect(added.verdicts[0]).toMatchObject({ reason: 'new_finding', before: null, after: { findingId: 'f_n1_blocked' } });
+    expect(findingVerdictsFromDiff(compareRepairs(snapshot(), repaired(), { behaviorCheckPassed: true })).counts.verified).toBe(1);
+    expect(() => listFindingVerdicts(legacyInput, snapshot())).toThrow(DiffInputError);
+  });
+  const legacyInput = { schemaVersion: '0.1' } as unknown as Snapshot;
+
+  test('listFindingVerdicts runs from a browser bundle with the studio crypto alias', async () => {
+    const bundled = await build({
+      stdin: { contents: "export { listFindingVerdicts } from './packages/report/src/verdict.ts';", resolveDir: process.cwd(), loader: 'ts' },
+      bundle: true, platform: 'browser', format: 'esm', write: false, logLevel: 'silent',
+      alias: { 'node:crypto': join(process.cwd(), 'packages/studio/src/crypto-shim.ts') }
+    });
+    const code = bundled.outputFiles[0]!.text;
+    expect(code).not.toMatch(/from "node:/);
+    const module = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`) as { listFindingVerdicts: typeof listFindingVerdicts };
+    expect(module.listFindingVerdicts(snapshot(), repaired()).verdicts[0]!.reason).toBe('behavior_not_checked');
   });
 });

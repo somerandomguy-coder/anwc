@@ -714,7 +714,8 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       const beforeInput = parseSide(before.json, 'Before', diffOptions.beforeFile);
       const afterInput = parseSide(after.json, 'After', diffOptions.afterFile);
 
-      // No behavior evidence is accepted on the CLI: disappeared findings stay inconclusive.
+      // No behavior evidence is accepted on the CLI: disappeared findings stay inconclusive
+      // and `unverified(behavior_not_checked)`; `verified` is unreachable here by design (LAUNCH).
       const diffResult = compareRepairs(beforeInput, afterInput);
       let diffOutput: string;
       if (diffOptions.format === 'html') {
@@ -795,6 +796,7 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
 
 export * from './manifest.js';
 export * from './runner.js';
+export * from './check-verdicts.js';
 export * from './doctor.js';
 export * from './studio.js';
 export { CliError, errorEnvelope, successEnvelope, retryFor, exitCodeForError } from './output.js';

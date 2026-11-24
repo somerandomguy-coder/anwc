@@ -1,4 +1,5 @@
 import type { DiffReport } from './diff-schema.js';
+import { VERDICT_REASON_TEXT } from './verdict-schema.js';
 
 function escapeHtml(str: string): string {
   return str
@@ -53,7 +54,10 @@ export function renderDiffHtml(diff: DiffReport): string {
           <strong>${escapeHtml(f.target.label || f.target.tag)}</strong><br>
           <small>${escapeHtml(f.targetKey)}</small>
         </td>
-        <td>${escapeHtml(f.explanation)}</td>
+        <td>
+          <span class="badge verdict-${f.verdict}" title="${escapeHtml(VERDICT_REASON_TEXT[f.reason])}">${f.verdict}</span> <code>${f.reason}</code><br>
+          ${escapeHtml(f.explanation)}
+        </td>
         <td><small>${f.beforeFinding ? escapeHtml(f.beforeFinding.message) : '<em>None</em>'}</small></td>
         <td><small>${f.afterFinding ? escapeHtml(f.afterFinding.message) : '<em>None</em>'}</small></td>
       </tr>`;
@@ -111,10 +115,10 @@ export function renderDiffHtml(diff: DiffReport): string {
       font-weight: 600;
       text-transform: uppercase;
     }
-    .status-pass, .badge-fixed { background: rgba(34, 197, 94, 0.2); color: var(--pass); border: 1px solid var(--pass); }
-    .status-error, .badge-regression { background: rgba(239, 68, 68, 0.2); color: var(--error); border: 1px solid var(--error); }
+    .status-pass, .badge-fixed, .verdict-verified { background: rgba(34, 197, 94, 0.2); color: var(--pass); border: 1px solid var(--pass); }
+    .status-error, .badge-regression, .verdict-contradicted { background: rgba(239, 68, 68, 0.2); color: var(--error); border: 1px solid var(--error); }
     .status-warning, .badge-persistent { background: rgba(245, 158, 11, 0.2); color: var(--warning); border: 1px solid var(--warning); }
-    .status-incomplete, .badge-inconclusive { background: rgba(56, 189, 248, 0.2); color: var(--info); border: 1px solid var(--info); }
+    .status-incomplete, .badge-inconclusive, .verdict-unverified { background: rgba(56, 189, 248, 0.2); color: var(--info); border: 1px solid var(--info); }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -150,6 +154,8 @@ export function renderDiffHtml(diff: DiffReport): string {
     </div>
 
     ${diff.summary.verdictReason ? `<p class="verdict-reason">${escapeHtml(diff.summary.verdictReason)}</p>` : ''}
+
+    <p class="verdict-counts">Finding verdicts: <strong>${diff.summary.verdicts.verified}</strong> verified, <strong>${diff.summary.verdicts.unverified}</strong> unverified, <strong>${diff.summary.verdicts.contradicted}</strong> contradicted</p>
 
     ${compatibilityNotice}
 

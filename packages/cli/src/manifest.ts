@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import type { Snapshot } from '@anwc/protocol';
+import type { Finding, Snapshot } from '@anwc/protocol';
+import type { Verdict, VerdictCounts, VerdictReason } from '@anwc/report';
 
 export const CHECK_MANIFEST_VERSION = '0.1' as const;
 
@@ -174,11 +175,41 @@ export interface CaptureStateSummary {
   findings: string[];
 }
 
-export interface CheckpointExecutionResult {
+/** P03 verdict on one finding measured in one capture of a checkpoint. */
+export interface CheckFindingVerdict {
+  capture: string;
+  findingId: string;
+  code: string;
+  severity: Finding['severity'];
+  nodeId: string;
+  targetKey: string;
+  source: Finding['source'];
+  verdict: Verdict;
+  reason: VerdictReason;
+}
+
+/** P03 verdict on a whole checkpoint. Never `verified`: `check` has no before capture to compare. */
+export interface CheckpointVerdict {
+  verdict: Verdict;
+  reason: VerdictReason;
+  explanation: string;
+}
+
+export interface CheckVerdictSummary {
+  /** Findings measured in all captures, per verdict. */
+  findings: VerdictCounts;
+  /** Declared checkpoints per verdict, including those that never ran. */
+  checkpoints: VerdictCounts;
+  checkpointsNotRun: number;
+}
+
+export interface CheckpointExecutionResult extends CheckpointVerdict {
   name: string;
   passed: boolean;
   steps: StepRecord[];
   assertions: AssertionResult[];
+  /** One entry per finding in every capture of this checkpoint, not only the last. */
+  findingVerdicts: CheckFindingVerdict[];
   finalUrl: string;
   finalScroll: { x: number; y: number };
   capture?: Snapshot;
@@ -218,9 +249,10 @@ export interface CheckRunResult {
   /**
    * True when every scenario replayed: every step ran within its deadline, every capture was
    * settled and complete, and every behavior assertion held. It is NOT a statement that the UI is
-   * free of layout findings — read each capture's `findings` (or `captureState.findings`) for that.
+   * free of layout findings — read `verdictSummary`, each checkpoint's `verdict` and its `findingVerdicts` for that.
    */
   passedAll: boolean;
+  verdictSummary: CheckVerdictSummary;
 }
 
 export function computeManifestHash(content: string): string {

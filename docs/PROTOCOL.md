@@ -307,8 +307,8 @@ Empty optional fields are omitted, never `null`. `data` is always present when `
 | `report --format json` | Report 0.1 |
 | `report --query summary --format json` | AgentSummary 0.1 |
 | `report --query detail --format json` | AgentFindingDetail 0.1 |
-| `diff --format json` | DiffReport 0.1 |
-| `check` (always JSON) | CheckRunResult 0.1 |
+| `diff --format json` | DiffReport 0.1 (with P03 verdicts, §9) |
+| `check` (always JSON) | CheckRunResult 0.1 (with P03 verdicts, §9) |
 | `doctor --json` / `doctor --format json` | DoctorResult 0.1 |
 
 **Findings and verdicts are data.** A capture with findings, a `check` with failed checkpoints, a `diff` that is not `verified-repair` and an unhealthy `doctor` are all `ok:true`; only the exit code reports the gate (§5 and below).
@@ -369,3 +369,38 @@ Before P01, `--format json` stdout was the bare payload and errors were `{ schem
 | Old error codes | `NAVIGATION_FAILED`, `TIMEOUT`, `PARTIAL_CAPTURE` | `TARGET_UNREACHABLE` (kind `NAVIGATION_FAILED`); `TIMEOUT` split into `NOT_SETTLED` (kind `READY_SELECTOR_TIMEOUT`) and `BUDGET_EXCEEDED` (kind `CAPTURE_TIMEOUT`); `PARTIAL_CAPTURE` removed (it had no producer; partial captures are `ok:true` data with exit 3) | Map codes; use `details.kind` for the precise case. |
 | Relies on exit 2 for runtime/navigation failures | 2 for every error | 1 for structured errors; 2 only for `INVALID_USAGE` | CI scripts that treated 2 as "tool failed" should treat 1 or 2 with `ok:false` as failure. |
 | `@anwc/protocol` `errorEnvelopeSchema` / `ErrorEnvelope` | Old error shape | Same names, new `ok:false` envelope shape | Recompile; old-shape fixtures fail validation. |
+
+## 9. Finding verdicts (P03)
+
+`diff` and `check` say what their evidence proves about each finding: `verdict` (`verified | unverified | contradicted`) plus one `reason` from a closed enum. Executable source: `packages/report/src/verdict-schema.ts` (`verdictSchema`, `verdictReasonSchema`, `VERDICT_BY_REASON`, `VERDICT_REASON_TEXT`). Every reason implies exactly one verdict, and `diffReportSchema` rejects any other pairing. Adding a reason is a protocol change.
+
+| Reason | Verdict | Means | `diff` | `check` |
+| --- | --- | --- | --- | --- |
+| `finding_absent_target_retained` | verified | The rule could have fired on the same retained target, did not, and behavior was executed | pure API only | never |
+| `behavior_not_checked` | unverified | The finding is gone, but no executed behavior check is bound to the result | yes | yes |
+| `target_ambiguous` | unverified | Several elements could be the target | yes | yes |
+| `state_not_reproduced` | unverified | URL, scenario, viewport, scroll, scale or runtime differ; or a declared state was not reached | yes | yes |
+| `coverage_reduced` | unverified | Incomplete coverage, a lost measurement capability, or (`check`) nothing captured | yes | yes |
+| `capture_not_settled` | unverified | Layout was still moving | yes | yes |
+| `measurement_unsupported` | unverified | The property behind the finding was not measurable on the target afterwards (pointer not sampled, disabled, clip unknown, text gone, hidden on both sides, Report input) | yes | no |
+| `intent_changed` | unverified | `data-anwc-max-lines` / `data-anwc-expect` was removed or relaxed, so the rule cannot fire | yes | no |
+| `target_identity_heuristic` | unverified | No author key, or the key moved to another tag/role | pure API, and the CLI when the matched element is hidden | no |
+| `target_retention_unknown` | unverified | No author key and no match, or a Report input that omits healthy nodes | yes | no |
+| `finding_acknowledged` | unverified | Declared acceptable (on both sides, in `diff`), so not a repair target | yes | yes |
+| `no_baseline` | unverified | A clean checkpoint with held assertions; nothing to compare a repair with | no | yes |
+| `finding_persists` | contradicted | Still measured on the target, including a pointer blocker that became partial or a finding silenced only afterwards | yes | no |
+| `finding_present` | contradicted | Measured in this state | no | yes |
+| `new_finding` | contradicted | Appears only in the after capture of a comparable, complete, settled pair | yes | no |
+| `target_unmounted` | contradicted | A uniquely keyed target is missing from a complete, settled after Snapshot | yes | no |
+| `target_hidden` | contradicted | The target is in the DOM but newly hidden | yes | no |
+| `behavior_assertion_failed` | contradicted | A declared assertion was executed and did not hold | pure API only | yes |
+
+`verified` needs all of: the same URL, scenario, viewport, scroll, scale and runtime version; complete and settled captures on both sides with no lost capability; an after Snapshot (not a Report); the target matched by a unique author key on the same tag and role, rendered, not newly hidden, with unchanged intent; the rule's measurement supported on it; the finding absent; **and** executed behavior evidence. **The CLI has no source of bound behavior evidence, so `anwc diff` never prints `verified`**: its best result is `unverified(behavior_not_checked)`. No flag changes that (LAUNCH L2).
+
+**DiffReport 0.1.** Each entry of `findings` has `verdict` and `reason`; `summary.verdicts` is `{ verified, unverified, contradicted }` and sums to `findings.length`. `status`, `repairIntegrityVerdict` and the exit code keep their meaning; `status: 'verified-fixed'` and `verdict: 'verified'` imply each other. Text, Markdown and HTML show both.
+
+**CheckRunResult 0.1.** Each checkpoint has `findingVerdicts` (every finding of every capture in it) and its own `verdict`, `reason`, `explanation`. `verdictSummary` holds `{ findings, checkpoints }` counts and `checkpointsNotRun` (declared checkpoints after a failure, counted as `unverified(state_not_reproduced)`). `passedAll` and the exit code are unchanged: a checkpoint can be `passed: true` and `contradicted(finding_present)`.
+
+**UI helper.** `listFindingVerdicts(before: Snapshot, after: Snapshot): FindingVerdictList` (`packages/report/src/verdict.ts`) is pure and browser-bundle safe. It takes no behavior option and never returns `verified`. `after` is `null` whenever no after box may be drawn. `findingVerdictsFromDiff(diff)` does the same for an existing DiffReport.
+
+Consumer impact: the new fields are required, so a DiffReport saved before P03 no longer validates against `diffReportSchema`; re-run `anwc diff` on the saved captures. Captures and Reports are unaffected. A pure-API `status` can now be `inconclusive` where it was `verified-fixed`: newly hidden target, removed or relaxed intent, unmeasurable property, partially blocked pointer, or a key moved to another element kind.

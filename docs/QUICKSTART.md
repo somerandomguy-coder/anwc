@@ -160,11 +160,10 @@ npx anwc inspect "http://127.0.0.1:5173/" --format json --output artifacts/after
 npx anwc diff artifacts/before.json artifacts/after.json --format markdown
 ```
 
-Diff verdicts:
-- **Verified Repair:** Finding was resolved on the declared target while the target element was retained and verified healthy.
-- **Persistent:** Finding remains unresolved.
-- **Regression:** New finding introduced by the code change.
-- **Inconclusive:** Target deleted, unmounted, or ambiguous.
+Every finding gets a verdict with a closed reason ([PROTOCOL §9](PROTOCOL.md)):
+- `verified`: resolved on the same retained, measured target, with executed behavior evidence. The CLI does not collect bound behavior evidence yet, so `anwc diff` never prints it.
+- `unverified(reason)`: the evidence cannot decide, for example `behavior_not_checked` (the finding is gone; confirm the interaction yourself), `target_ambiguous`, `coverage_reduced` or `intent_changed`.
+- `contradicted(reason)`: the claim of a fix conflicts with the evidence, for example `finding_persists`, `new_finding`, `target_unmounted` or `target_hidden`.
 
 ---
 
@@ -175,6 +174,8 @@ Replay deterministic user flows (drawers, modals, scrolled states) declared in a
 ```bash
 npx anwc check anwc.checks.json --output artifacts/check-results
 ```
+
+Each checkpoint and each measured finding carries a `verdict` and `reason`; `verdictSummary` counts them. `passedAll` only means that replay and assertions succeeded, and `check` never says `verified` because it has no before capture.
 
 Example `anwc.checks.json`:
 ```json
