@@ -13,6 +13,17 @@ const rawNpm = process.env.npm_execpath || (existsSync(defaultNpmCli) ? defaultN
 const cmd = rawNpm ? process.execPath : (process.platform === 'win32' ? 'npm.cmd' : 'npm');
 const baseArgs = rawNpm ? [rawNpm.replace(/npx-cli\.js$/, 'npm-cli.js').replace(/npx$/, 'npm')] : [];
 
+// Compile packages in dependency order first. The workspace run below is alphabetical, so in a
+// fresh clone `cli` would otherwise compile before the packages it imports exist.
+const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--build'], {
+  cwd: fileURLToPath(new URL('..', import.meta.url)),
+  stdio: 'inherit'
+});
+if (tsc.error || tsc.status !== 0) {
+  if (tsc.error) console.error(tsc.error);
+  process.exit(tsc.status ?? 1);
+}
+
 const result = spawnSync(cmd, [...baseArgs, 'run', 'build', '--workspaces', '--if-present'], {
   stdio: 'inherit',
   shell: process.platform === 'win32' && !rawNpm,
