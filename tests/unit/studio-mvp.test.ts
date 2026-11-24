@@ -1,8 +1,11 @@
+import { createHash as nodeHash } from 'node:crypto';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
-import { createReport } from '../../packages/report/src/index.js';
+import { createReport, listFindingVerdicts } from '../../packages/report/src/index.js';
 import { App, parseUploadedSnapshotJson } from '../../packages/studio/src/App.js';
+import { ComparePanel } from '../../packages/studio/src/components/ComparePanel.js';
+import { createHash as browserHash } from '../../packages/studio/src/crypto-shim.js';
 import { agentBrief, sampleCounts } from '../../packages/studio/src/components/agent-brief.js';
 import { extractFindings } from '../../packages/studio/src/components/drawer-utils.js';
 import { STUDIO_PRESETS } from '../../packages/studio/src/data/presets.js';
@@ -56,5 +59,35 @@ describe('stage', () => {
   test('loads a CLI result envelope as well as a bare capture', () => {
     const raw = JSON.stringify({ version: '0.1', ok: true, command: 'inspect', data: shop.snapshot });
     expect(parseUploadedSnapshotJson(raw).type).toBe('snapshot');
+  });
+});
+
+describe('browser hashing', () => {
+  test('is real SHA-256, equal to node:crypto', () => {
+    for (const text of ['', 'abc', 'a'.repeat(55), 'a'.repeat(56), 'a'.repeat(64), 'é☃😀'.repeat(400)]) {
+      expect(browserHash('sha256').update(text).digest('hex')).toBe(nodeHash('sha256').update(text).digest('hex'));
+    }
+    expect(() => browserHash('md5')).toThrow();
+  });
+});
+
+describe('before and after', () => {
+  const healthy = STUDIO_PRESETS.find((p) => p.id === 'clean-shop')!.snapshot;
+  const after = { ...healthy, page: { ...healthy.page, url: shop.snapshot.page.url, scenario: shop.snapshot.page.scenario } };
+  const render = (before: typeof healthy, next: typeof healthy) =>
+    renderToStaticMarkup(React.createElement(ComparePanel, { comparison: listFindingVerdicts(before, next), showing: 'after', onShow: () => {}, onClear: () => {} }));
+
+  test('a vanished finding is not shown as verified without a behavior check', () => {
+    const html = render(shop.snapshot, after);
+    expect(html).toContain('data-verdict="unverified"');
+    expect(html).not.toContain('data-verdict="verified"');
+    expect(html).toContain('declared click');
+  });
+
+  test('a deleted target is contradicted, not fixed', () => {
+    const target = shop.snapshot.findings[0]!.nodeId;
+    const removed = { ...shop.snapshot, nodes: shop.snapshot.nodes.filter((n) => n.nodeId !== target), findings: [] };
+    removed.coverage = { ...removed.coverage, discoveredNodes: removed.nodes.length, inspectedNodes: removed.nodes.length, nodesObserved: removed.nodes.length };
+    expect(render(shop.snapshot, removed)).toContain('data-verdict="contradicted"');
   });
 });

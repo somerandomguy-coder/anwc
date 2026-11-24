@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { Finding, Rect, Snapshot } from '@anwc/protocol';
-import { createReport, type Report } from '@anwc/report';
+import { createReport, listFindingVerdicts, type Report } from '@anwc/report';
 import { STUDIO_PRESETS } from './data/presets.js';
 import { VIEWPORT_PRESETS, type HoveredSampleInfo } from './types.js';
 import { Header } from './components/Header.js';
@@ -11,6 +11,7 @@ import { FindingDrawer } from './components/FindingDrawer.js';
 import { computeFitZoom } from './components/split-utils.js';
 import { computeXRayBoundingBoxes } from './components/xray-utils.js';
 import { extractFindings } from './components/drawer-utils.js';
+import { ComparePanel } from './components/ComparePanel.js';
 import { XRayLegend } from './components/XRayLegend.js';
 import { checkViewportAlignment, findingRoleBoxes, legendSentence } from './components/encoding.js';
 import { useFindingView } from './components/useFindingView.js';
@@ -120,6 +121,18 @@ export function App({
   const [snapshot, setSnapshot] = useState<Snapshot>(defaultSnapshot);
   const [activePresetId, setActivePresetId] = useState<string | null>(defaultPresetId);
 
+  // Two captures of the same page: the first stays pinned until cleared, each Inspect replaces the second.
+  const [pair, setPair] = useState<{ before: Snapshot; after: Snapshot } | null>(null);
+  const comparison = useMemo(() => {
+    if (!pair) return null;
+    try {
+      return listFindingVerdicts(pair.before, pair.after);
+    } catch {
+      return null;
+    }
+  }, [pair]);
+  const showingBefore = pair !== null && snapshot === pair.before;
+
   // State: inspection URL
   const [url, setUrl] = useState<string>(snapshot.page.url);
 
@@ -220,10 +233,10 @@ export function App({
 
   // Compute target box for ground truth highlight (none when the frame and capture viewports differ)
   const selectedFindingBox = useMemo<Rect | null>(() => {
-    if (!selectedFinding || !snapshot || !viewportAligned) return null;
+    if (!selectedFinding || !snapshot || !viewportAligned || showingBefore) return null;
     const boxes = computeXRayBoundingBoxes(snapshot, selectedFinding);
     return boxes.target ?? null;
-  }, [snapshot, selectedFinding, viewportAligned]);
+  }, [snapshot, selectedFinding, viewportAligned, showingBefore]);
 
   // Compute effective zoom scale ratio
   const effectiveZoom = useMemo<number>(() => {
@@ -242,6 +255,7 @@ export function App({
   const handleSelectPreset = (presetId: string) => {
     const preset = STUDIO_PRESETS.find((p) => p.id === presetId);
     if (preset) {
+      setPair(null);
       setSnapshot(preset.snapshot);
       setActivePresetId(preset.id);
       setUrl(preset.snapshot.page.url);
@@ -316,6 +330,12 @@ export function App({
         throw new Error(data.error ?? 'Inspection response is missing snapshot payload.');
       }
 
+      const previous = pair?.before ?? snapshot;
+      const samePage =
+        previous.page.url === data.snapshot.page.url &&
+        previous.page.viewport.width === data.snapshot.page.viewport.width &&
+        previous.page.viewport.height === data.snapshot.page.viewport.height;
+      setPair(samePage ? { before: previous, after: data.snapshot } : null);
       setSnapshot(data.snapshot);
       setActivePresetId(null);
       setUrl(trimmed);
@@ -353,6 +373,7 @@ export function App({
         const result = parseUploadedSnapshotJson(content);
 
         if (result.type === 'snapshot') {
+          setPair(null);
           setSnapshot(result.snapshot);
           setActivePresetId(null);
           setUrl(result.snapshot.page.url || '');
@@ -367,7 +388,8 @@ export function App({
         } else if (result.type === 'report') {
           const reportFindings = extractFindings(result.report);
           if (result.snapshot) {
-            setSnapshot(result.snapshot);
+            setPair(null);
+          setSnapshot(result.snapshot);
             setActivePresetId(null);
             setUrl(result.snapshot.page.url || '');
             setSelectedFindingId(reportFindings[0]?.findingId ?? null);
@@ -447,7 +469,7 @@ export function App({
               url={url}
               targetUrl={url}
               viewport={frameViewport}
-              activeFinding={viewportAligned ? selectedFinding : null}
+              activeFinding={viewportAligned && !showingBefore ? selectedFinding : null}
               activeFindingBox={selectedFindingBox}
               snapshot={snapshot}
             />
@@ -471,6 +493,23 @@ export function App({
 
       {/* Findings, beside the page they describe */}
       <div className="anwc-side">
+      {comparison && pair && (
+        <ComparePanel
+          comparison={comparison}
+          showing={showingBefore ? 'before' : 'after'}
+          onShow={(which) => {
+            const next = pair[which];
+            setSnapshot(next);
+            setSelectedFindingId(firstFindingId(next));
+            setHoveredSample(null);
+          }}
+          onClear={() => {
+            setSnapshot(pair.after);
+            setSelectedFindingId(firstFindingId(pair.after));
+            setPair(null);
+          }}
+        />
+      )}
       <FindingDrawer
         snapshot={snapshot}
         report={report}
