@@ -122,7 +122,7 @@ To minimize token usage and context window consumption for coding agents, ANWC p
 
 ### 6.1. Compact Summary Query
 
-Emits **68% fewer characters** than full page snapshots while preserving all actionable finding targets, blocker sources, and contrast evidence:
+Emits **65% fewer characters** (measured on the unit-test fixture) than full page snapshots while preserving all actionable finding targets, blocker sources, and contrast evidence:
 
 ```bash
 npx anwc report artifacts/before.json --query summary --format json
@@ -143,9 +143,10 @@ npx anwc report artifacts/before.json --query summary --code POINTER_BLOCKED_AT_
 Retrieve deep repair facts (exact sample coordinates, clipping ancestor bounding boxes, overflow pixels, source coordinates) for a specific finding:
 
 ```bash
-npx anwc report artifacts/before.json --query detail --finding-id f_n16_pointer_blocked_at_samples --format text
+npx anwc report artifacts/before.json --query detail --finding-id c_1a2b3c4d:f_n16_pointer_blocked_at_samples --format text
 ```
 
+The summary prints these references. The `c_…` part ties them to one capture: after a re-capture an old reference fails with `CAPTURE_STALE` instead of opening a different element. `--node-id` accepts only such references (`c_1a2b3c4d:n16`).
 ---
 
 ## 7. Comparing Repairs (`anwc diff`)
@@ -160,11 +161,10 @@ npx anwc inspect "http://127.0.0.1:5173/" --format json --output artifacts/after
 npx anwc diff artifacts/before.json artifacts/after.json --format markdown
 ```
 
-Diff verdicts:
-- **Verified Repair:** Finding was resolved on the declared target while the target element was retained and verified healthy.
-- **Persistent:** Finding remains unresolved.
-- **Regression:** New finding introduced by the code change.
-- **Inconclusive:** Target deleted, unmounted, or ambiguous.
+Every finding gets a verdict with a closed reason ([PROTOCOL §9](PROTOCOL.md)):
+- `verified`: resolved on the same retained, measured target, with executed behavior evidence. The CLI does not collect bound behavior evidence yet, so `anwc diff` never prints it.
+- `unverified(reason)`: the evidence cannot decide, for example `behavior_not_checked` (the finding is gone; confirm the interaction yourself), `target_ambiguous`, `coverage_reduced` or `intent_changed`.
+- `contradicted(reason)`: the claim of a fix conflicts with the evidence, for example `finding_persists`, `new_finding`, `target_unmounted` or `target_hidden`.
 
 ---
 
@@ -175,6 +175,8 @@ Replay deterministic user flows (drawers, modals, scrolled states) declared in a
 ```bash
 npx anwc check anwc.checks.json --output artifacts/check-results
 ```
+
+Each checkpoint and each measured finding carries a `verdict` and `reason`; `verdictSummary` counts them. `passedAll` only means that replay and assertions succeeded, and `check` never says `verified` because it has no before capture.
 
 Example `anwc.checks.json`:
 ```json

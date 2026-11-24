@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { snapshotSchema, type Snapshot } from '@anwc/protocol';
+import { snapshotSchema, type Measurement, type Snapshot } from '@anwc/protocol';
+import { absenceProblem } from './measurable.js';
 import { createReport } from './model.js';
 import { reportSchema, type Report, type ReportNodeRef } from './schema.js';
 import {
@@ -9,11 +10,12 @@ import {
   type DiffReport,
   type DiffSummary,
   type FindingComparison,
-  type FindingComparisonStatus,
   type TargetMatch
 } from './diff-schema.js';
+import { countVerdicts, verdictFor, type VerdictReason } from './verdict-schema.js';
 
 export interface DiffOptions {
+  /** Trusted caller signal that behavior was executed against the after state. No CLI flag sets it. */
   behaviorCheckPassed?: boolean;
 }
 
@@ -283,6 +285,12 @@ export function compareRepairs(
     });
   }
 
+  const beforeMeasurements = new Map<string, Measurement>((beforeResolved.snapshot?.nodes ?? []).map((n) => [n.nodeId, n]));
+  const afterMeasurements = new Map<string, Measurement>((afterResolved.snapshot?.nodes ?? []).map((n) => [n.nodeId, n]));
+  const coverageComplete = before.coverage.complete && after.coverage.complete;
+  const settled = before.readiness.settled && after.readiness.settled;
+  const lostCapabilities = before.coverage.capabilities.filter((c) => !after.coverage.capabilities.includes(c));
+
   // Compare findings
   const findingComparisons: FindingComparison[] = [];
 
@@ -294,6 +302,7 @@ export function compareRepairs(
       findingComparisons.push({
         comparisonId,
         status: 'non-comparable',
+        ...verdictFor('state_not_reproduced'),
         targetKey: targetMatch?.targetKey || `node:${bFinding.target.nodeId}`,
         ruleCode: bFinding.code,
         target: bFinding.target,
@@ -312,6 +321,7 @@ export function compareRepairs(
       findingComparisons.push({
         comparisonId,
         status: 'inconclusive',
+        ...verdictFor('target_ambiguous'),
         targetKey: targetMatch.targetKey,
         ruleCode: bFinding.code,
         target: bFinding.target,
@@ -325,16 +335,27 @@ export function compareRepairs(
     }
 
     if (!targetMatch || targetMatch.strategy === 'unmatched' || !targetMatch.afterNode) {
+      // Removal is established only for a unique author key missing from a complete, settled inventory.
+      const keyed = targetMatch?.targetKey.startsWith('key:') === true;
+      const reason: VerdictReason = !afterHasNodeInventory || !keyed ? 'target_retention_unknown'
+        : !after.coverage.complete ? 'coverage_reduced'
+        : !after.readiness.settled ? 'capture_not_settled'
+        : 'target_unmounted';
       findingComparisons.push({
         comparisonId,
         status: 'inconclusive',
+        ...verdictFor(reason),
         targetKey: targetMatch?.targetKey || `node:${bFinding.target.nodeId}`,
         ruleCode: bFinding.code,
         target: bFinding.target,
         beforeFinding: bFinding,
         afterFinding: null,
-        explanation: afterHasNodeInventory
+        explanation: reason === 'target_unmounted'
           ? 'Target element was removed or unmounted in after capture. Deletion cannot masquerade as a verified repair.'
+          : afterHasNodeInventory && keyed
+          ? 'Target author key is absent from the after capture, but that capture is incomplete or unsettled, so removal is not established.'
+          : afterHasNodeInventory
+          ? 'Target has no author key and no source identity matched it in the after capture. It may be removed, moved or merely unmatched, so nothing is verified.'
           : "Target is not among the after report's finding targets, and Reports omit healthy nodes, so retention is unknown. Diff the after Snapshot to check whether the target still exists.",
         targetRetained: false,
         coverageAdequate: after.coverage.complete
@@ -353,6 +374,11 @@ export function compareRepairs(
       findingComparisons.push({
         comparisonId,
         status: 'persistent',
+        // A finding acknowledged on both sides is not a repair target; one acknowledged only
+        // afterwards was silenced, not repaired, and still contradicts the claim.
+        ...verdictFor(bFinding.acknowledged && matchingAfterFinding.acknowledged ? 'finding_acknowledged'
+          : !after.readiness.settled ? 'capture_not_settled'
+          : 'finding_persists'),
         targetKey: targetMatch.targetKey,
         ruleCode: bFinding.code,
         target: afterNode,
@@ -363,52 +389,62 @@ export function compareRepairs(
         coverageAdequate: after.coverage.complete
       });
     } else {
-      // Finding is absent in after!
-      // Verify adequate coverage and behavior
-      if (!before.coverage.complete || !after.coverage.complete || !before.readiness.settled || !after.readiness.settled) {
-        findingComparisons.push({
-          comparisonId,
-          status: 'inconclusive',
-          targetKey: targetMatch.targetKey,
-          ruleCode: bFinding.code,
-          target: afterNode,
-          beforeFinding: bFinding,
-          afterFinding: null,
-          explanation: 'Finding is no longer observed, but a capture had incomplete DOM/sampling coverage or unsettled readiness. Cannot verify repair.',
-          targetRetained: true,
-          coverageAdequate: false
-        });
-      } else if (options.behaviorCheckPassed !== true || targetMatch.confidence !== 'definite') {
-        findingComparisons.push({
-          comparisonId,
-          status: 'inconclusive',
-          targetKey: targetMatch.targetKey,
-          ruleCode: bFinding.code,
-          target: afterNode,
-          beforeFinding: bFinding,
-          afterFinding: null,
-          explanation: options.behaviorCheckPassed === false
-            ? 'Finding is no longer observed, but declared behavior assertion failed. Action is not functionally verified.'
-            : options.behaviorCheckPassed !== true
-            ? 'Finding is no longer observed, but no passing behavior check was supplied. Repair remains unverified.'
-            : 'Finding is no longer observed, but target identity is heuristic. Repair remains unverified.',
-          targetRetained: true,
-          coverageAdequate: true
-        });
+      // The finding is absent. Every check below must pass before that counts as a repair.
+      const afterMeasurement = afterMeasurements.get(afterNode.nodeId) ?? null;
+      const sibling = bFinding.evidence.kind === 'pointer-blocked'
+        ? afterFindings.find((af) => af.evidence.kind === 'pointer-blocked' && af.target.nodeId === afterNode.nodeId)
+        : undefined;
+      const absence = absenceProblem(bFinding, beforeMeasurements.get(bFinding.target.nodeId) ?? null, afterMeasurement);
+      const sameElementKind = afterNode.tag === bFinding.target.tag && afterNode.role === bFinding.target.role;
+      const identityDefinite = targetMatch.confidence === 'definite' && sameElementKind;
+
+      let reason: VerdictReason;
+      let explanation: string;
+      if (!coverageComplete || !settled) {
+        reason = !coverageComplete ? 'coverage_reduced' : 'capture_not_settled';
+        explanation = 'Finding is no longer observed, but a capture had incomplete DOM/sampling coverage or unsettled readiness. Cannot verify repair.';
+      } else if (lostCapabilities.length > 0) {
+        reason = 'coverage_reduced';
+        explanation = `Finding is no longer observed, but the after capture lacks measurement capabilities of the before capture (${lostCapabilities.join(', ')}). Cannot verify repair.`;
+      } else if (sibling) {
+        reason = 'finding_persists';
+        explanation = `Finding code changed, but the target's pointer samples are still blocked ('${sibling.code}') in the after capture.`;
+      } else if (absence?.reason === 'target_hidden' && !identityDefinite) {
+        reason = 'target_identity_heuristic';
+        explanation = `${absence.explanation} The match itself is heuristic, so the target may be another element.`;
+      } else if (absence) {
+        reason = absence.reason;
+        explanation = absence.explanation;
+      } else if (options.behaviorCheckPassed === false) {
+        reason = 'behavior_assertion_failed';
+        explanation = 'Finding is no longer observed, but declared behavior assertion failed. Action is not functionally verified.';
+      } else if (options.behaviorCheckPassed !== true) {
+        reason = 'behavior_not_checked';
+        explanation = 'Finding is no longer observed, but no passing behavior check was supplied. Repair remains unverified.';
+      } else if (targetMatch.confidence !== 'definite') {
+        reason = 'target_identity_heuristic';
+        explanation = 'Finding is no longer observed, but target identity is heuristic. Repair remains unverified.';
+      } else if (!sameElementKind) {
+        reason = 'target_identity_heuristic';
+        explanation = `Finding is no longer observed, but the author key now sits on <${afterNode.tag}> role=${afterNode.role ?? 'none'} instead of <${bFinding.target.tag}> role=${bFinding.target.role ?? 'none'}. Repair remains unverified.`;
       } else {
-        findingComparisons.push({
-          comparisonId,
-          status: 'verified-fixed',
-          targetKey: targetMatch.targetKey,
-          ruleCode: bFinding.code,
-          target: afterNode,
-          beforeFinding: bFinding,
-          afterFinding: null,
-          explanation: `Finding '${bFinding.code}' resolved on target '${targetMatch.targetKey}'. Target retained and verified.`,
-          targetRetained: true,
-          coverageAdequate: true
-        });
+        reason = 'finding_absent_target_retained';
+        explanation = `Finding '${bFinding.code}' resolved on target '${targetMatch.targetKey}'. Target retained and verified.`;
       }
+
+      findingComparisons.push({
+        comparisonId,
+        status: reason === 'finding_absent_target_retained' ? 'verified-fixed' : 'inconclusive',
+        ...verdictFor(reason),
+        targetKey: targetMatch.targetKey,
+        ruleCode: bFinding.code,
+        target: afterNode,
+        beforeFinding: bFinding,
+        afterFinding: null,
+        explanation,
+        targetRetained: true,
+        coverageAdequate: coverageComplete && settled && lostCapabilities.length === 0
+      });
     }
   }
 
@@ -421,6 +457,7 @@ export function compareRepairs(
         findingComparisons.push({
           comparisonId: `comp_new_${aFinding.findingId}`,
           status: 'non-comparable',
+          ...verdictFor('state_not_reproduced'),
           targetKey: aFinding.target.semanticKey ? `key:${aFinding.target.semanticKey}` : `node:${aFinding.target.nodeId}`,
           ruleCode: aFinding.code,
           target: aFinding.target,
@@ -435,6 +472,11 @@ export function compareRepairs(
       findingComparisons.push({
         comparisonId: `comp_new_${aFinding.findingId}`,
         status: 'new-finding',
+        // An incomplete or moving capture cannot show that the finding is new.
+        ...verdictFor(aFinding.acknowledged ? 'finding_acknowledged'
+          : !before.coverage.complete ? 'coverage_reduced'
+          : !settled ? 'capture_not_settled'
+          : 'new_finding'),
         targetKey: aFinding.target.semanticKey ? `key:${aFinding.target.semanticKey}` : `node:${aFinding.target.nodeId}`,
         ruleCode: aFinding.code,
         target: aFinding.target,
@@ -483,6 +525,7 @@ export function compareRepairs(
     persistent,
     newFindings,
     inconclusive,
+    verdicts: countVerdicts(findingComparisons),
     totalBefore: beforeFindings.length,
     totalAfter: afterFindings.length,
     repairIntegrityVerdict,

@@ -4,6 +4,7 @@ import { chromium, type Browser, type Page } from 'playwright';
 import { createHash } from 'node:crypto';
 import { diagnose } from '@anwc/diagnostics';
 import { rawCaptureSchema, snapshotSchema, type RawCapture, type Snapshot } from '@anwc/protocol';
+import { checkpointVerdict, findingVerdicts, summarizeCheckVerdicts } from './check-verdicts.js';
 import {
   CHECK_MANIFEST_VERSION,
   captureNameProblem,
@@ -217,7 +218,9 @@ export async function runStateScenario(
       if (outcome === 'deadline') {
         const message = `Scenario deadline of ${deadline.totalMs}ms reached during checkpoint '${checkpoint.name}'.`;
         checkpointResults.push({
-          name: checkpoint.name, passed: false, steps: [], assertions: [], finalUrl: page.url(), finalScroll: { x: 0, y: 0 },
+          name: checkpoint.name, passed: false, steps: [], assertions: [], findingVerdicts: [],
+          ...checkpointVerdict({ name: checkpoint.name, stepsPassed: false, stepError: message, assertions: [], captures: [], findings: [] }),
+          finalUrl: page.url(), finalScroll: { x: 0, y: 0 },
           durationMs: Math.round(performance.now() - scenarioStarted), error: message
         });
         scenarioPassed = false;
@@ -315,6 +318,7 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
   let checkpointPassed = true;
   let checkpointError: string | undefined;
   let lastCapture: Snapshot | undefined;
+  const captures: Array<{ name: string; snapshot: Snapshot }> = [];
   let lastCaptureHash: string | undefined;
   let lastCaptureState: CaptureStateSummary | undefined;
 
@@ -369,6 +373,7 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
       } else if (step.action === 'capture') {
         const { snapshot, json, problem } = await captureStep(step, page, run);
         lastCapture = snapshot;
+        captures.push({ name: step.name, snapshot });
         lastCaptureHash = sha256(json);
         lastCaptureState = summarizeCaptureState(snapshot);
 
@@ -390,6 +395,9 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
       break;
     }
   }
+
+  const stepsPassed = checkpointPassed;
+  const stepError = checkpointError;
 
   // Execute behavior assertions if checkpoint steps passed
   if (checkpointPassed) {
@@ -437,6 +445,9 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
     }
   }
 
+  const findings = findingVerdicts(captures);
+  const verdict = checkpointVerdict({ name: checkpoint.name, stepsPassed, stepError, assertions: assertionResults, captures, findings });
+
   const finalUrl = page.url();
   let finalScroll = { x: 0, y: 0 };
   try {
@@ -453,6 +464,8 @@ async function runCheckpoint(checkpoint: Checkpoint, page: Page, run: RunContext
     passed: checkpointPassed,
     steps: stepRecords,
     assertions: assertionResults,
+    findingVerdicts: findings,
+    ...verdict,
     finalUrl,
     finalScroll,
     capture: lastCapture,
@@ -519,7 +532,8 @@ export async function runCheckSuite(options: CheckRunnerOptions): Promise<CheckR
     passedScenarios,
     failedScenarios,
     scenarios: scenarioResults,
-    passedAll
+    passedAll,
+    verdictSummary: summarizeCheckVerdicts(manifest, scenarioResults)
   };
 
   if (options.outputDir) {

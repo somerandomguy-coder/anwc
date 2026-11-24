@@ -21,6 +21,9 @@ export function renderDiffMarkdown(diff: DiffReport): string {
   lines.push(`- **Before**: \`${diff.before.captureId}\` (${diff.before.actionableFindings} actionable findings)`);
   lines.push(`- **After**: \`${diff.after.captureId}\` (${diff.after.actionableFindings} actionable findings)\n`);
 
+  const v = diff.summary.verdicts;
+  lines.push(`**Finding verdicts**: ${v.verified} verified, ${v.unverified} unverified, ${v.contradicted} contradicted\n`);
+
   if (!diff.compatibility.comparable) {
     lines.push('### Incompatible Comparison');
     lines.push('This comparison cannot certify repair integrity because inputs differ in execution environment:');
@@ -54,7 +57,7 @@ export function renderDiffMarkdown(diff: DiffReport): string {
     if (f.target.source) {
       lines.push(`- **Source**: \`${f.target.source.file}:${f.target.source.line}\``);
     }
-    lines.push(`- **Verdict**: ${f.explanation}`);
+    lines.push(`- **Verdict**: \`${f.verdict}\` (\`${f.reason}\`) — ${f.explanation}`);
     if (f.beforeFinding) {
       lines.push(`- **Before**: ${f.beforeFinding.message}`);
     }

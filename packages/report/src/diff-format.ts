@@ -1,4 +1,5 @@
 import type { DiffReport } from './diff-schema.js';
+import { VERDICT_REASON_TEXT } from './verdict-schema.js';
 
 export function formatDiffText(diff: DiffReport): string {
   const lines: string[] = [];
@@ -10,6 +11,9 @@ export function formatDiffText(diff: DiffReport): string {
   lines.push('----------------------------------------');
   lines.push(`Before Capture: ${diff.before.captureId} (${diff.before.viewport.width}x${diff.before.viewport.height}) - ${diff.before.actionableFindings} finding(s)`);
   lines.push(`After Capture:  ${diff.after.captureId} (${diff.after.viewport.width}x${diff.after.viewport.height}) - ${diff.after.actionableFindings} finding(s)`);
+
+  const v = diff.summary.verdicts;
+  lines.push(`Finding verdicts: ${v.verified} verified, ${v.unverified} unverified, ${v.contradicted} contradicted`);
 
   if (!diff.compatibility.comparable) {
     lines.push('\n[!] COMPARISON INCOMPATIBLE');
@@ -39,6 +43,7 @@ export function formatDiffText(diff: DiffReport): string {
         : '[NON-COMP]';
 
     lines.push(`  ${icon} ${f.ruleCode} on ${f.target.label || f.target.tag} (${f.targetKey})`);
+    lines.push(`    Verdict: ${f.verdict}(${f.reason}) - ${VERDICT_REASON_TEXT[f.reason]}`);
     lines.push(`    Explanation: ${f.explanation}`);
     if (f.beforeFinding) {
       lines.push(`    Before: ${f.beforeFinding.message}`);

@@ -40,7 +40,7 @@ Focused runs: `npx vitest run tests/unit/diff.test.ts`, `npx playwright test tes
 npx vite build --config packages/studio/vite.config.ts packages/studio
 ```
 
-Every `--format json` result (and all `check` output) is one `Envelope 0.1` on stdout: `{ version, ok:true, command, data }` or `{ version, ok:false, command, error }` ([PROTOCOL §7](docs/PROTOCOL.md)); branch on `ok` and `error.code`, not on the exit code. Files written with `--output` stay bare payloads. Exit codes: 0 ok; 1 structured error (`ok:false`) or a failed gate with `ok:true` (`inspect --fail-on` match, `check` not `passedAll`, `diff` not `verified-repair`, unhealthy `doctor`); 2 usage error (`INVALID_USAGE`); 3 `inspect` only, incomplete or unsettled evidence (`exitCode` and `run` in `packages/cli/src/index.ts`).
+Every `--format json` result (and all `check` output) is one `Envelope 0.1` on stdout: `{ version, ok:true, command, data }` or `{ version, ok:false, command, error }` ([PROTOCOL §7](docs/PROTOCOL.md)); branch on `ok` and `error.code`, not on the exit code. Files written with `--output` stay bare payloads. `diff` and `check` data carry per-finding `verdict`/`reason` pairs with summary counts ([PROTOCOL §9](docs/PROTOCOL.md)); `diff` exit 0 still needs `verified-repair`, which the CLI cannot reach without bound behavior evidence. `report --node-id` takes only capture-scoped refs (`c_<8 hex>:n34`, [PROTOCOL §10](docs/PROTOCOL.md)). Exit codes: 0 ok; 1 structured error (`ok:false`) or a failed gate with `ok:true` (`inspect --fail-on` match, `check` not `passedAll`, `diff` not `verified-repair`, unhealthy `doctor`); 2 usage error (`INVALID_USAGE`); 3 `inspect` only, incomplete or unsettled evidence (`exitCode` and `run` in `packages/cli/src/index.ts`).
 
 ### Ports
 

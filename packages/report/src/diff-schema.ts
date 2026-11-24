@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { reportFindingSchema, reportNodeRefSchema } from './schema.js';
+import { VERDICT_BY_REASON, verdictCountsSchema, verdictReasonSchema, verdictSchema } from './verdict-schema.js';
 
 export const DIFF_SCHEMA_VERSION = '0.1' as const;
 
@@ -37,6 +38,9 @@ export type FindingComparisonStatus = z.infer<typeof findingComparisonStatusSche
 export const findingComparisonSchema = z.object({
   comparisonId: z.string().min(1),
   status: findingComparisonStatusSchema,
+  /** P03: what this comparison proves about the finding, with a closed reason. */
+  verdict: verdictSchema,
+  reason: verdictReasonSchema,
   targetKey: z.string().min(1),
   ruleCode: z.string().min(1),
   target: reportNodeRefSchema,
@@ -45,7 +49,11 @@ export const findingComparisonSchema = z.object({
   explanation: z.string().min(1),
   targetRetained: z.boolean(),
   coverageAdequate: z.boolean()
-}).strict();
+}).strict().superRefine((comparison, context) => {
+  if (VERDICT_BY_REASON[comparison.reason] !== comparison.verdict) context.addIssue({ code: z.ZodIssueCode.custom, message: `reason '${comparison.reason}' implies verdict '${VERDICT_BY_REASON[comparison.reason]}'`, path: ['verdict'] });
+  if ((comparison.status === 'verified-fixed') !== (comparison.verdict === 'verified')) context.addIssue({ code: z.ZodIssueCode.custom, message: "verdict 'verified' and status 'verified-fixed' imply each other", path: ['verdict'] });
+  if (comparison.verdict === 'verified' && (!comparison.targetRetained || !comparison.coverageAdequate)) context.addIssue({ code: z.ZodIssueCode.custom, message: "'verified' requires a retained target and adequate coverage", path: ['verdict'] });
+});
 
 export type FindingComparison = z.infer<typeof findingComparisonSchema>;
 
@@ -65,6 +73,8 @@ export const diffSummarySchema = z.object({
   persistent: z.number().int().nonnegative(),
   newFindings: z.number().int().nonnegative(),
   inconclusive: z.number().int().nonnegative(),
+  /** P03: comparisons per verdict; sums to the number of finding comparisons. */
+  verdicts: verdictCountsSchema,
   totalBefore: z.number().int().nonnegative(),
   totalAfter: z.number().int().nonnegative(),
   repairIntegrityVerdict: z.enum([

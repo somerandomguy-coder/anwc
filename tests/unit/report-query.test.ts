@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { envelopeSchema, type Finding, type Measurement, type Snapshot } from '@anwc/protocol';
+import { captureScope, envelopeSchema, errorEnvelopeSchema, formatNodeRef, parseNodeRef, type Finding, type Measurement, type Snapshot } from '@anwc/protocol';
 import { validSnapshotFixture } from '../../packages/protocol/test/fixtures.js';
 import {
   createReport,
@@ -12,6 +12,7 @@ import {
   formatAgentDetailText,
   parseAgentSummary,
   parseAgentFindingDetail,
+  resolveNodeRef,
   type AgentSummary,
   type AgentFindingDetail
 } from '../../packages/report/src/index.js';
@@ -414,5 +415,116 @@ describe('Q09 Compact Agent Evidence and Drilldown Queries', () => {
     } finally {
       await rm(tmp, { recursive: true, force: true });
     }
+  });
+});
+
+describe('P02 capture-scoped references', () => {
+  const snap = makeMultiFindingSnapshot();
+  const hash = createReport(snap).input.captureHash;
+  const ref = (id: string) => formatNodeRef(hash, id)!;
+
+  async function report(input: unknown, ...args: string[]) {
+    const tmp = await mkdtemp(join(tmpdir(), 'anwc-p02-'));
+    try {
+      const file = join(tmp, 'capture.json');
+      await writeFile(file, JSON.stringify(input), 'utf8');
+      const stdout: string[] = [];
+      const exit = await run(['report', file, ...args, '--format', 'json'], { stdout: (m) => stdout.push(m), stderr: () => {} });
+      return { exit, json: JSON.parse(stdout.join('')) };
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  }
+  const refusal = (result: { exit: number; json: unknown }) => ({ exit: result.exit, ...errorEnvelopeSchema.parse(result.json).error });
+
+  test('formats and parses refs; a non-hex stored hash yields no scope', () => {
+    expect(ref('n34')).toMatch(/^c_[0-9a-f]{8}:n34$/);
+    expect(parseNodeRef(ref('n34'))).toEqual({ scope: captureScope(hash), id: 'n34' });
+    for (const bad of ['n34', 'c_12:n34', 'c_1234567G:n34', 'c_12345678:', '']) expect(parseNodeRef(bad), bad).toBeNull();
+    expect(formatNodeRef('not-a-hash', 'n34')).toBeNull();
+  });
+
+  test('summary and detail carry refs, and every printed ref drills back into the same finding', async () => {
+    const summary = queryReportSummary(snap);
+    for (const f of summary.findings) {
+      expect(f.target.nodeRef).toBe(ref(f.target.nodeId));
+      const drilled = await report(snap, '--query', 'detail', '--finding-id', f.findingRef!);
+      expect(drilled.json.data.finding.findingId).toBe(f.findingId);
+      expect(drilled.json.data.targetNode.nodeRef).toBe(f.target.nodeRef);
+    }
+    expect(formatAgentSummaryText(summary)).toContain(`--finding-id ${ref('f-overlay')}`);
+  });
+
+  test('--node-id selects by ref in summary and detail', async () => {
+    const filtered = await report(snap, '--node-id', ref('n-nav-overflow'));
+    expect(filtered.json.data.findings.map((f: { findingId: string }) => f.findingId)).toEqual(['f-overflow-nav']);
+    const detail = await report(snap, '--query', 'detail', '--node-id', ref('n-nav-overflow'));
+    expect(detail.json.data.finding.findingId).toBe('f-overflow-nav');
+    // A source site with one instance resolves too.
+    expect(resolveNodeRef(snap, ref('s_nav'))).toEqual({ status: 'resolved', id: 'n-nav-overflow' });
+  });
+
+  test('a bare node id is INVALID_USAGE, as --node-id and as a finding id', async () => {
+    expect(refusal(await report(snap, '--query', 'summary', '--node-id', 'n-nav-overflow'))).toMatchObject({ exit: 2, code: 'INVALID_USAGE', details: { kind: 'UNSCOPED_NODE_ID' }, retry: 'safe' });
+    expect(refusal(await report(snap, '--query', 'detail', '--finding-id', 'n-nav-overflow'))).toMatchObject({ exit: 2, code: 'INVALID_USAGE', details: { kind: 'FINDING_NOT_FOUND' } });
+    expect(queryFindingDetail(snap, 'n-nav-overflow')).toBeNull();
+  });
+
+  test('an unknown node is INVALID_USAGE', async () => {
+    expect(refusal(await report(snap, '--query', 'summary', '--node-id', ref('n-nope')))).toMatchObject({ exit: 2, code: 'INVALID_USAGE', details: { kind: 'NODE_NOT_FOUND' } });
+  });
+
+  test('a re-capture in which .map() instances swapped ids is CAPTURE_STALE, never a different instance', async () => {
+    const before = structuredClone(validSnapshotFixture);
+    // After HMR the list reordered: n-card-1 is now the sibling instance, with a finding of the same id.
+    const after = structuredClone(validSnapshotFixture);
+    const [first, second] = [after.nodes[1]!, after.nodes[2]!];
+    [first.semanticKey, second.semanticKey] = [second.semanticKey, first.semanticKey];
+    [first.label, second.label] = [second.label, first.label];
+    after.captureId = 'capture-after-hmr';
+    const target = queryReportSummary(before).findings[0]!;
+    expect(target.target.semanticKey).toBe('first');
+    expect(queryReportSummary(after).findings[0]!.target.semanticKey).toBe('second');
+    expect((await report(before, '--query', 'detail', '--node-id', target.target.nodeRef!)).json.data.targetNode.semanticKey).toBe('first');
+
+    for (const [option, value] of [['--node-id', target.target.nodeRef!], ['--finding-id', target.findingRef!]] as const) {
+      for (const input of [after, createReport(after)]) {
+        expect(refusal(await report(input, '--query', 'detail', option, value)), option).toMatchObject({
+          exit: 1, code: 'CAPTURE_STALE', retry: 'safe', recovery: { strategy: 'recapture', retryable: false, requiresFreshCapture: true },
+          details: { kind: 'REF_FROM_OTHER_CAPTURE', refScope: captureScope(createReport(before).input.captureHash), captureScope: captureScope(createReport(after).input.captureHash) }
+        });
+      }
+    }
+  });
+
+  test('a ref matching several live instances is AMBIGUOUS_TARGET with candidates', async () => {
+    // .map() siblings share a source site.
+    const site = refusal(await report(snap, '--query', 'detail', '--node-id', ref('s_card')));
+    expect(site).toMatchObject({ exit: 1, code: 'AMBIGUOUS_TARGET', recovery: { strategy: 'disambiguate_target' }, details: { kind: 'REF_MATCHES_MULTIPLE_INSTANCES' } });
+    expect((site.details as any).candidates.map((c: any) => [c.ref, c.semanticKey])).toEqual([[ref('n-card-1'), 'first'], [ref('n-card-2'), 'second']]);
+    // A saved Snapshot with a duplicated node id (the Snapshot schema does not forbid it).
+    const duplicated = { ...snap, nodes: [...snap.nodes, structuredClone(snap.nodes.find((n) => n.nodeId === 'n-nav-overflow')!)] };
+    const dupRef = formatNodeRef(createReport(duplicated).input.captureHash, 'n-nav-overflow')!;
+    expect(refusal(await report(duplicated, '--query', 'detail', '--node-id', dupRef))).toMatchObject({ code: 'AMBIGUOUS_TARGET' });
+  });
+
+  test('a node with several findings is refused with finding candidates', async () => {
+    const result = refusal(await report(snap, '--query', 'detail', '--node-id', ref('n-card-clipped')));
+    expect(result).toMatchObject({ exit: 1, code: 'AMBIGUOUS_TARGET', details: { kind: 'NODE_HAS_MULTIPLE_FINDINGS' } });
+    expect((result.details as any).candidates.map((c: any) => c.ref).sort()).toEqual([ref('f-card-clipped'), ref('f-card-lines')].sort());
+  });
+
+  test('old saved captures, reports and query results stay viewable', async () => {
+    const expected = queryReportSummary(snap);
+    // A Snapshot and a Report carry no ref fields, so pre-P02 files are identical in shape.
+    expect((await report(createReport(snap), '--query', 'summary')).json.data.findings[0].findingRef).toBe(expected.findings[0]!.findingRef);
+    expect((await report(snap, '--query', 'detail', '--finding-id', 'f-overlay')).exit).toBe(0);
+    const strip = (value: unknown): unknown => Array.isArray(value) ? value.map(strip)
+      : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([k]) => k !== 'nodeRef' && k !== 'findingRef').map(([k, v]) => [k, strip(v)])) : value;
+    expect(parseAgentSummary(strip(expected)).findings).toHaveLength(4);
+    expect(parseAgentFindingDetail(strip(queryFindingDetail(snap, 'f-overlay'))).finding.findingId).toBe('f-overlay');
+    const foreign = createReport(snap);
+    foreign.input.captureHash = 'legacy-hash';
+    expect((await report(foreign, '--query', 'summary')).json.data.findings[0]).not.toHaveProperty('findingRef');
   });
 });

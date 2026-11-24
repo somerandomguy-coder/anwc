@@ -30,6 +30,8 @@ Terms marked **(planned)** are named in [PHASE_4](PHASE_4.md) but not built. Do 
 
 **Source site vs instance.** A *source site* is one JSX element location in a file; the compiler stamps it as `data-anwc-site="s_…"` and records `siteId`, `file`, `line`, `column`, `tag` (`packages/compiler/src/index.ts`, `sourceRefSchema` in `packages/protocol/src/schema.ts`). An *instance* is one live DOM element, identified by `nodeId`, unique within a document session (`packages/runtime/src/index.ts`). Items rendered by `.map()` share one `siteId` and have distinct `nodeId`s ([ADR-008](DECISIONS.md)). A node can keep a `siteId` while `source` is `null`: linkage unavailable, not a made-up location.
 
+**Capture-scoped reference.** `c_<8 hex>:<id>`: a node or finding id qualified by the capture it came from, so it cannot resolve in another capture. `packages/protocol/src/node-ref.ts`; resolved by `resolveNodeRef` in `packages/report/src/query.ts` ([PROTOCOL §10](PROTOCOL.md)).
+
 **Semantic key / author key.** A stable, author-chosen name for a target: `data-anwc-key`, read into `semanticKey` (`packages/runtime/src/index.ts`). Diff matching prefers it (`'author-key'` strategy in `packages/report/src/diff-schema.ts`).
 
 ## Intent
@@ -63,7 +65,7 @@ Wrapping or scrolling without intent is an observation, not an error ([ADR-009](
 
 **Repair integrity verdict (exists).** The diff summary's single overall outcome, `summary.repairIntegrityVerdict`: `verified-repair`, `unresolved-defects`, `regressions-introduced`, `inconclusive-evidence`, `incompatible-comparison` (`packages/report/src/diff-schema.ts`).
 
-**Verdict (planned, P03).** A per-finding `verdict: verified | unverified | contradicted` with a closed `reason` enum for `diff` and `check`. Not built; see [PHASE_4 P03](PHASE_4.md). Until it lands, "verdict" in code means only `repairIntegrityVerdict`.
+**Verdict.** What `diff` and `check` evidence proves about one finding: `verified | unverified | contradicted` plus a closed `reason` (`packages/report/src/verdict-schema.ts`, [PROTOCOL §9](PROTOCOL.md)). Distinct from `repairIntegrityVerdict`, the diff's single overall outcome. The CLI cannot reach `verified` yet: it has no bound behavior evidence. `check` also gives each checkpoint a verdict (`packages/cli/src/check-verdicts.ts`).
 
 ## State replay
 

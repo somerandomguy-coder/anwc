@@ -77,7 +77,7 @@ Build:
 
 **Acceptance:** every JSON command output validates against the envelope schema; each code has a test that produces it; `retry:"safe"` appears only where re-running cannot duplicate an effect. **Evidence:** schema tests and CLI tests per code. **Handoff:** document migration from bare payloads in PROTOCOL.
 
-#### P02 — Capture-scoped node references (M)
+#### P02 — Capture-scoped node references (M) — done 2026-11-25
 
 **Own:** `packages/protocol` node id types, `packages/report` query engine, CLI `report --query detail`. **Depends:** P01.
 
@@ -85,7 +85,7 @@ Build: qualify node ids by capture (`c_<8-hex>:n34`, from the capture hash). `--
 
 **Acceptance:** a drilldown after HMR or a re-capture can never silently resolve to a different `.map()` instance. **Evidence:** unit tests for each refusal plus one re-capture test.
 
-#### P03 — Verification verdicts instead of bare "0 findings" (M)
+#### P03 — Verification verdicts instead of bare "0 findings" (M) — done 2026-11-25; `verified` unreachable from the CLI until behavior evidence is bound
 
 **Own:** `packages/report` diff engine and renderers, `packages/cli` check/diff output. **Depends:** P01.
 
