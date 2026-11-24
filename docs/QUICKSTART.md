@@ -122,7 +122,7 @@ To minimize token usage and context window consumption for coding agents, ANWC p
 
 ### 6.1. Compact Summary Query
 
-Emits **68% fewer characters** than full page snapshots while preserving all actionable finding targets, blocker sources, and contrast evidence:
+Emits **65% fewer characters** (measured on the unit-test fixture) than full page snapshots while preserving all actionable finding targets, blocker sources, and contrast evidence:
 
 ```bash
 npx anwc report artifacts/before.json --query summary --format json
@@ -143,9 +143,10 @@ npx anwc report artifacts/before.json --query summary --code POINTER_BLOCKED_AT_
 Retrieve deep repair facts (exact sample coordinates, clipping ancestor bounding boxes, overflow pixels, source coordinates) for a specific finding:
 
 ```bash
-npx anwc report artifacts/before.json --query detail --finding-id f_n16_pointer_blocked_at_samples --format text
+npx anwc report artifacts/before.json --query detail --finding-id c_1a2b3c4d:f_n16_pointer_blocked_at_samples --format text
 ```
 
+The summary prints these references. The `c_…` part ties them to one capture: after a re-capture an old reference fails with `CAPTURE_STALE` instead of opening a different element. `--node-id` accepts only such references (`c_1a2b3c4d:n16`).
 ---
 
 ## 7. Comparing Repairs (`anwc diff`)

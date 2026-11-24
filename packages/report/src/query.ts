@@ -1,4 +1,4 @@
-import type { Finding, Measurement, RawCapture, Snapshot, SourceRef } from '@anwc/protocol';
+import { captureScope, formatNodeRef, parseNodeRef, type Measurement, type Snapshot, type SourceRef } from '@anwc/protocol';
 import { createReport } from './model.js';
 import type { Report, ReportFinding, ReportNodeRef } from './schema.js';
 import {
@@ -30,9 +30,16 @@ function formatSource(source: SourceRef | null | undefined): string | null {
   return `${source.file}:${source.line}:${source.column}`;
 }
 
-function toAgentTarget(node: ReportNodeRef): AgentTarget {
+/** `{ [key]: ref }`, or nothing when the stored capture hash cannot scope a ref. */
+function scoped<K extends string>(key: K, captureHash: string, id: string): { [P in K]?: string } {
+  const ref = formatNodeRef(captureHash, id);
+  return (ref ? { [key]: ref } : {}) as { [P in K]?: string };
+}
+
+function toAgentTarget(node: ReportNodeRef | Measurement, captureHash: string): AgentTarget {
   return {
     nodeId: node.nodeId,
+    ...scoped('nodeRef', captureHash, node.nodeId),
     tag: node.tag,
     label: node.label,
     semanticKey: node.semanticKey,
@@ -43,32 +50,20 @@ function toAgentTarget(node: ReportNodeRef): AgentTarget {
   };
 }
 
-function toAgentTargetFromMeasurement(node: Measurement): AgentTarget {
-  return {
-    nodeId: node.nodeId,
-    tag: node.tag,
-    label: node.label,
-    semanticKey: node.semanticKey,
-    role: node.role,
-    source: formatSource(node.source),
-    sourceRef: node.source,
-    box: node.box
-  };
-}
-
-function toAgentFindingSummaryItem(finding: ReportFinding): AgentFindingSummaryItem {
+function toAgentFindingSummaryItem(finding: ReportFinding, captureHash: string): AgentFindingSummaryItem {
   return {
     findingId: finding.findingId,
+    ...scoped('findingRef', captureHash, finding.findingId),
     code: finding.code,
     severity: finding.severity,
-    target: toAgentTarget(finding.target),
+    target: toAgentTarget(finding.target, captureHash),
     message: finding.message,
     measuredVsExpected: {
       measured: finding.measuredVsExpected.measured,
       expected: finding.measuredVsExpected.expected
     },
-    blockers: finding.blockers.map(toAgentTarget),
-    clipAncestors: finding.clipAncestors.map(toAgentTarget),
+    blockers: finding.blockers.map((n) => toAgentTarget(n, captureHash)),
+    clipAncestors: finding.clipAncestors.map((n) => toAgentTarget(n, captureHash)),
     limitations: [...finding.limitations],
     acknowledged: finding.acknowledged,
     suggestion: finding.suggestion
@@ -108,6 +103,67 @@ function matchesFilter(finding: ReportFinding, filter?: QueryFilter): boolean {
   }
 
   return true;
+}
+
+export interface RefCandidate {
+  ref: string;
+  tag: string;
+  label: string;
+  semanticKey: string | null;
+  source: string | null;
+}
+
+export type RefResolution =
+  | { status: 'resolved'; id: string }
+  | { status: 'malformed' }
+  | { status: 'stale'; refScope: string; captureScope: string | null }
+  | { status: 'ambiguous'; candidates: RefCandidate[] }
+  | { status: 'not-found' };
+
+function checkScope(report: Report, ref: string): { id: string } | RefResolution {
+  const parsed = parseNodeRef(ref);
+  if (!parsed) return { status: 'malformed' };
+  const actual = captureScope(report.input.captureHash);
+  if (parsed.scope !== actual) return { status: 'stale', refScope: parsed.scope, captureScope: actual };
+  return { id: parsed.id };
+}
+
+/**
+ * Resolves a capture-scoped node ref (P02). The id part is a node id, or for Snapshots also a
+ * source `siteId`, which `.map()` siblings share. More than one match is refused, never guessed.
+ */
+export function resolveNodeRef(input: Report | Snapshot, ref: string): RefResolution {
+  const snapshot = isReport(input) ? null : input;
+  const report = isReport(input) ? input : createReport(input);
+  const scope = checkScope(report, ref);
+  if ('status' in scope) return scope;
+
+  const reportNodes = new Map<string, ReportNodeRef>();
+  for (const f of report.groups.flatMap((g) => g.findings)) {
+    for (const n of [f.target, ...f.blockers, ...f.clipAncestors, ...f.relatedNodes]) reportNodes.set(n.nodeId, n);
+  }
+  const nodes: Array<ReportNodeRef | Measurement> = snapshot ? snapshot.nodes : [...reportNodes.values()];
+  let matches = nodes.filter((n) => n.nodeId === scope.id);
+  // Reports omit healthy siblings, so a site id could look unique there without being so.
+  if (matches.length === 0 && snapshot) matches = snapshot.nodes.filter((n) => n.siteId === scope.id);
+  if (matches.length === 0) return { status: 'not-found' };
+  if (matches.length > 1) {
+    return {
+      status: 'ambiguous',
+      candidates: matches.map((n) => ({
+        ref: formatNodeRef(report.input.captureHash, n.nodeId)!, tag: n.tag, label: n.label, semanticKey: n.semanticKey, source: formatSource(n.source)
+      }))
+    };
+  }
+  return { status: 'resolved', id: matches[0]!.nodeId };
+}
+
+/** Resolves a capture-scoped finding ref (`c_<8 hex>:<findingId>`). */
+export function resolveFindingRef(input: Report | Snapshot, ref: string): RefResolution {
+  const report = isReport(input) ? input : createReport(input);
+  const scope = checkScope(report, ref);
+  if ('status' in scope) return scope;
+  return report.groups.some((g) => g.findings.some((f) => f.findingId === scope.id)) ? { status: 'resolved', id: scope.id } : { status: 'not-found' };
 }
 
 export function queryReportSummary(input: Report | Snapshot, filter?: QueryFilter): AgentSummary {
@@ -173,7 +229,7 @@ export function queryReportSummary(input: Report | Snapshot, filter?: QueryFilte
     },
     summary: { ...report.summary },
     scope,
-    findings: limited.map(toAgentFindingSummaryItem)
+    findings: limited.map((f) => toAgentFindingSummaryItem(f, report.input.captureHash))
   };
 
   return agentSummarySchema.parse(agentSummary);
@@ -187,7 +243,7 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
   let targetReportFinding: ReportFinding | null = null;
   for (const group of report.groups) {
     for (const f of group.findings) {
-      if (f.findingId === findingId || f.target.nodeId === findingId) {
+      if (f.findingId === findingId) {
         targetReportFinding = f;
         break;
       }
@@ -199,7 +255,8 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
     return null;
   }
 
-  const finding = toAgentFindingSummaryItem(targetReportFinding);
+  const { captureHash } = report.input;
+  const finding = toAgentFindingSummaryItem(targetReportFinding, captureHash);
 
   // Look up target node measurement if snapshot is available
   const nodeMap = snapshot ? new Map(snapshot.nodes.map((n) => [n.nodeId, n])) : null;
@@ -207,6 +264,7 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
 
   const targetNode = {
     nodeId: targetReportFinding.target.nodeId,
+    ...scoped('nodeRef', captureHash, targetReportFinding.target.nodeId),
     tag: targetReportFinding.target.tag,
     label: targetReportFinding.target.label,
     semanticKey: targetReportFinding.target.semanticKey,
@@ -237,7 +295,7 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
           y: s.y,
           result: s.result,
           blockerNodeId: s.blockerNodeId,
-          blocker: blockerNode ? toAgentTargetFromMeasurement(blockerNode) : null
+          blocker: blockerNode ? toAgentTarget(blockerNode, captureHash) : null
         };
       });
     } else {
@@ -247,7 +305,7 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
         y: targetReportFinding!.target.box ? targetReportFinding!.target.box.y + Math.round(targetReportFinding!.target.box.height / 2) : 0,
         result: 'blocked',
         blockerNodeId: b.nodeId,
-        blocker: toAgentTarget(b)
+        blocker: toAgentTarget(b, captureHash)
       }));
     }
   } else if (ev.kind === 'clipped-by-ancestor') {
@@ -258,9 +316,10 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
         const aNode = nodeMap ? nodeMap.get(a.nodeId) : null;
         return {
           node: aNode
-            ? toAgentTargetFromMeasurement(aNode)
+            ? toAgentTarget(aNode, captureHash)
             : {
               nodeId: a.nodeId,
+              ...scoped('nodeRef', captureHash, a.nodeId),
               tag: 'element',
               label: '',
               semanticKey: null,
@@ -274,7 +333,7 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
       });
     } else {
       clippingAncestors = targetReportFinding.clipAncestors.map((ca) => ({
-        node: toAgentTarget(ca),
+        node: toAgentTarget(ca, captureHash),
         axes: 'xy' as const,
         box: ca.box ?? { x: 0, y: 0, width: 0, height: 0 }
       }));
@@ -329,9 +388,9 @@ export function queryFindingDetail(input: Report | Snapshot, findingId: string):
       overflowPx,
       hiddenReasons
     },
-    blockers: targetReportFinding.blockers.map(toAgentTarget),
-    clipAncestors: targetReportFinding.clipAncestors.map(toAgentTarget),
-    relatedNodes: targetReportFinding.relatedNodes.map(toAgentTarget),
+    blockers: targetReportFinding.blockers.map((n) => toAgentTarget(n, captureHash)),
+    clipAncestors: targetReportFinding.clipAncestors.map((n) => toAgentTarget(n, captureHash)),
+    relatedNodes: targetReportFinding.relatedNodes.map((n) => toAgentTarget(n, captureHash)),
     repairContext
   };
 
@@ -375,7 +434,7 @@ export function formatAgentSummaryText(summary: AgentSummary, options?: { maxCha
       const label = f.target.label ? ` "${f.target.label}"` : (f.target.semanticKey ? ` [${f.target.semanticKey}]` : '');
       const source = f.target.source ? ` at ${f.target.source}` : ' (uninstrumented)';
 
-      lines.push(`[${i + 1}] ${f.severity.toUpperCase()} ${f.code} ${tag}${label} (node ${f.target.nodeId})`);
+      lines.push(`[${i + 1}] ${f.severity.toUpperCase()} ${f.code} ${tag}${label} (node ${f.target.nodeRef ?? f.target.nodeId})`);
       lines.push(`    source: ${source.trim()}`);
       lines.push(`    message: ${f.message}`);
       lines.push(`    measured: ${f.measuredVsExpected.measured}`);
@@ -384,20 +443,20 @@ export function formatAgentSummaryText(summary: AgentSummary, options?: { maxCha
       }
       if (f.blockers.length > 0) {
         const blockerStr = f.blockers
-          .map((b) => `<${b.tag}>${b.label ? ` "${b.label}"` : ''} (node ${b.nodeId})${b.source ? ` at ${b.source}` : ''}`)
+          .map((b) => `<${b.tag}>${b.label ? ` "${b.label}"` : ''} (node ${b.nodeRef ?? b.nodeId})${b.source ? ` at ${b.source}` : ''}`)
           .join(', ');
         lines.push(`    blockers: ${blockerStr}`);
       }
       if (f.clipAncestors.length > 0) {
         const clipStr = f.clipAncestors
-          .map((c) => `<${c.tag}>${c.label ? ` "${c.label}"` : ''} (node ${c.nodeId})${c.source ? ` at ${c.source}` : ''}`)
+          .map((c) => `<${c.tag}>${c.label ? ` "${c.label}"` : ''} (node ${c.nodeRef ?? c.nodeId})${c.source ? ` at ${c.source}` : ''}`)
           .join(', ');
         lines.push(`    clip ancestors: ${clipStr}`);
       }
       if (f.suggestion) {
         lines.push(`    suggestion: ${f.suggestion}`);
       }
-      lines.push(`    drilldown: anwc report <file> --query detail --finding-id ${f.findingId}`);
+      lines.push(`    drilldown: anwc report <file> --query detail --finding-id ${f.findingRef ?? f.findingId}`);
       lines.push('');
     }
   }
@@ -416,7 +475,7 @@ export function formatAgentDetailText(detail: AgentFindingDetail): string {
     `ANWC ${detail.schemaVersion} AGENT FINDING DETAIL | Finding: ${f.findingId}`,
     `Severity: ${f.severity.toUpperCase()} | Code: ${f.code}`,
     `Message: ${f.message}`,
-    `Target: <${t.tag}>${t.label ? ` "${t.label}"` : ''} (node ${t.nodeId})`,
+    `Target: <${t.tag}>${t.label ? ` "${t.label}"` : ''} (node ${t.nodeRef ?? t.nodeId})`,
     `  Source: ${formatSource(t.source) ?? 'unavailable'}`,
     `  Box: ${t.box ? `x:${t.box.x}, y:${t.box.y}, w:${t.box.width}, h:${t.box.height}` : 'no box'}`,
     `Measured: ${f.measuredVsExpected.measured}`,
@@ -427,7 +486,7 @@ export function formatAgentDetailText(detail: AgentFindingDetail): string {
     lines.push('Pointer Hit Samples:');
     for (const s of detail.evidenceDetails.pointerSamples) {
       const hit = s.blocker
-        ? `<${s.blocker.tag}>${s.blocker.label ? ` "${s.blocker.label}"` : ''} (node ${s.blocker.nodeId})`
+        ? `<${s.blocker.tag}>${s.blocker.label ? ` "${s.blocker.label}"` : ''} (node ${s.blocker.nodeRef ?? s.blocker.nodeId})`
         : s.result;
       lines.push(`  - sample (${s.x}, ${s.y}): ${hit}`);
     }
@@ -437,7 +496,7 @@ export function formatAgentDetailText(detail: AgentFindingDetail): string {
     lines.push('Clipping Ancestors:');
     for (const ca of detail.evidenceDetails.clippingAncestors) {
       lines.push(
-        `  - <${ca.node.tag}> (node ${ca.node.nodeId}) clip axes: ${ca.axes}, box: x:${ca.box.x}, y:${ca.box.y}, w:${ca.box.width}, h:${ca.box.height}`
+        `  - <${ca.node.tag}> (node ${ca.node.nodeRef ?? ca.node.nodeId}) clip axes: ${ca.axes}, box: x:${ca.box.x}, y:${ca.box.y}, w:${ca.box.width}, h:${ca.box.height}`
       );
     }
     if (detail.evidenceDetails.boxFraction !== undefined) {
@@ -463,7 +522,7 @@ export function formatAgentDetailText(detail: AgentFindingDetail): string {
     lines.push('Blockers:');
     for (const b of detail.blockers) {
       lines.push(
-        `  - <${b.tag}>${b.label ? ` "${b.label}"` : ''} (node ${b.nodeId})${b.source ? ` at ${b.source}` : ''}`
+        `  - <${b.tag}>${b.label ? ` "${b.label}"` : ''} (node ${b.nodeRef ?? b.nodeId})${b.source ? ` at ${b.source}` : ''}`
       );
     }
   }

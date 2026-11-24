@@ -77,7 +77,7 @@ Build:
 
 **Acceptance:** every JSON command output validates against the envelope schema; each code has a test that produces it; `retry:"safe"` appears only where re-running cannot duplicate an effect. **Evidence:** schema tests and CLI tests per code. **Handoff:** document migration from bare payloads in PROTOCOL.
 
-#### P02 — Capture-scoped node references (M)
+#### P02 — Capture-scoped node references (M) — done 2026-11-25
 
 **Own:** `packages/protocol` node id types, `packages/report` query engine, CLI `report --query detail`. **Depends:** P01.
 

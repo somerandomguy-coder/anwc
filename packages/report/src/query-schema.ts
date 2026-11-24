@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  nodeRefSchema,
   rectSchema,
   sourceRefSchema,
   type Rect,
@@ -32,6 +33,8 @@ export type AgentScope = z.infer<typeof agentScopeSchema>;
 
 export const agentTargetSchema = z.object({
   nodeId: z.string().min(1),
+  /** Capture-scoped ref to pass to `--node-id`; absent in results saved before P02. */
+  nodeRef: nodeRefSchema.optional(),
   tag: z.string().min(1),
   label: z.string(),
   semanticKey: z.string().min(1).nullable(),
@@ -45,6 +48,8 @@ export type AgentTarget = z.infer<typeof agentTargetSchema>;
 
 export const agentFindingSummaryItemSchema = z.object({
   findingId: z.string().min(1),
+  /** Capture-scoped form of `findingId` to pass to `--finding-id`; absent in results saved before P02. */
+  findingRef: nodeRefSchema.optional(),
   code: z.string().min(1),
   severity: z.enum(['error', 'warning', 'info']),
   target: agentTargetSchema,
@@ -110,6 +115,7 @@ export const agentFindingDetailSchema = z.object({
   finding: agentFindingSummaryItemSchema,
   targetNode: z.object({
     nodeId: z.string().min(1),
+    nodeRef: nodeRefSchema.optional(),
     tag: z.string().min(1),
     label: z.string(),
     semanticKey: z.string().min(1).nullable(),

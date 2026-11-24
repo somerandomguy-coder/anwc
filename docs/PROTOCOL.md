@@ -319,13 +319,13 @@ The list is closed; adding a code is a protocol change. Each code has a default 
 
 | Code | Exit | Default recovery (`strategy`, retryable, requiresFreshCapture) | Produced today by (`details.kind`) |
 | --- | --- | --- | --- |
-| `INVALID_USAGE` | 2 | `fix_input`, no, no | `USAGE`, `UNKNOWN_COMMAND`, `UNKNOWN_OPTION`, `MISSING_OPTION`, `MISSING_OPTION_VALUE`, `INVALID_OPTION_VALUE`, `INVALID_OPTIONS`, `INVALID_URL`, `MARKDOWN_URL`, `INPUT_UNREADABLE`, `INPUT_NOT_JSON`, `INPUT_SCHEMA_MISMATCH`, `INPUT_IS_ERROR_ENVELOPE`, `FINDING_NOT_FOUND` |
+| `INVALID_USAGE` | 2 | `fix_input`, no, no | `USAGE`, `UNKNOWN_COMMAND`, `UNKNOWN_OPTION`, `MISSING_OPTION`, `MISSING_OPTION_VALUE`, `INVALID_OPTION_VALUE`, `INVALID_OPTIONS`, `INVALID_URL`, `MARKDOWN_URL`, `INPUT_UNREADABLE`, `INPUT_NOT_JSON`, `INPUT_SCHEMA_MISMATCH`, `INPUT_IS_ERROR_ENVELOPE`, `FINDING_NOT_FOUND`, `UNSCOPED_NODE_ID`, `NODE_NOT_FOUND` |
 | `TARGET_UNREACHABLE` | 1 | `start_target`, yes, no | `NAVIGATION_FAILED` (inspect `page.goto` failed) |
 | `RUNTIME_MISSING` | 1 | `instrument_target`, no, no | `RUNTIME_MISSING` (no `window.__ANWC__` within the wait) |
 | `CSP_BLOCKED` | 1 | `adjust_csp`, no, no | `RUNTIME_SCRIPT_BLOCKED_BY_CSP` (`--runtime-only` injection refused, or the runtime is missing after a browser CSP violation for a script) |
 | `NOT_SETTLED` | 1 | `wait_and_retry`, yes, yes | `READY_SELECTOR_TIMEOUT` (`--ready-selector` never attached) |
-| `CAPTURE_STALE` | 1 | `recapture`, yes, yes | `DOCUMENT_REPLACED_DURING_CAPTURE` (the document navigated mid-capture and the one retry on the new document also failed) |
-| `AMBIGUOUS_TARGET` | 1 | `disambiguate_target`, no, no | none yet: `check` reports an ambiguous selector as a failed checkpoint inside `data`, not as a command error. Reserved for P02 node references. |
+| `CAPTURE_STALE` | 1 | `recapture`, yes, yes | `DOCUMENT_REPLACED_DURING_CAPTURE` (the document navigated mid-capture and the one retry on the new document also failed); `REF_FROM_OTHER_CAPTURE` (`report` ref from another capture, not retryable, §10) |
+| `AMBIGUOUS_TARGET` | 1 | `disambiguate_target`, no, no | `REF_MATCHES_MULTIPLE_INSTANCES`, `NODE_HAS_MULTIPLE_FINDINGS` (`report`, §10; `details.candidates` lists refs). `check` reports an ambiguous selector as a failed checkpoint inside `data`, not as a command error. |
 | `SOURCE_UNMAPPED` | 1 | `instrument_target`, no, no | none yet: an unmapped node is `source: null` data. Reserved for P02/P03. |
 | `BUDGET_EXCEEDED` | 1 | `increase_budget`, yes, yes | `CAPTURE_TIMEOUT` (runtime capture exceeded `--timeout-ms`) |
 | `INTERNAL` | 1 | `report_bug` (or `fix_environment`), no, no | `RUNTIME_CAPTURE_FAILED`, `BROWSER_MISSING`, `BROWSER_LAUNCH_FAILED` (both `fix_environment`), `UNCAUGHT_EXCEPTION` |
@@ -404,3 +404,21 @@ Before P01, `--format json` stdout was the bare payload and errors were `{ schem
 **UI helper.** `listFindingVerdicts(before: Snapshot, after: Snapshot): FindingVerdictList` (`packages/report/src/verdict.ts`) is pure and browser-bundle safe. It takes no behavior option and never returns `verified`. `after` is `null` whenever no after box may be drawn. `findingVerdictsFromDiff(diff)` does the same for an existing DiffReport.
 
 Consumer impact: the new fields are required, so a DiffReport saved before P03 no longer validates against `diffReportSchema`; re-run `anwc diff` on the saved captures. Captures and Reports are unaffected. A pure-API `status` can now be `inconclusive` where it was `verified-fixed`: newly hidden target, removed or relaxed intent, unmeasurable property, partially blocked pointer, or a key moved to another element kind.
+
+## 10. Capture-scoped references (P02)
+
+A bare node id (`n34`) is only meaningful inside one capture: after HMR or a re-capture the same id can belong to a different `.map()` instance. A reference is `c_<8 hex>:<id>`, where the hex is the start of the capture hash (`report.input.captureHash`). Executable source: `packages/protocol/src/node-ref.ts` (`nodeRefSchema`, `formatNodeRef`, `parseNodeRef`, `captureScope`); resolution: `resolveNodeRef` and `resolveFindingRef` in `packages/report/src/query.ts`.
+
+- AgentSummary 0.1 and AgentFindingDetail 0.1 targets, blockers, ancestors and related nodes carry `nodeRef`; findings carry `findingRef`. Both are optional, so results saved before P02 still validate, and are omitted when a stored Report's hash is not hexadecimal. `nodeId` and `findingId` stay bare. Snapshot 0.1 and Report 0.1 are unchanged, so old captures stay viewable and refs are computed on read.
+- `report --node-id REF` filters by ref, or with `--query detail` selects the node's single finding. `--finding-id` accepts a `findingRef` (what the text output prints) and, for compatibility, a bare finding id. **A bare finding id is not scoped**: it resolves in whatever file it is given. Use `findingRef` whenever the page may have been captured again.
+- The id part may also be a source `siteId` when the file is a Snapshot; `.map()` siblings share one, so that can be ambiguous.
+
+| Given | Refusal (`details.kind`) |
+| --- | --- |
+| `--node-id n34` | `INVALID_USAGE` (`UNSCOPED_NODE_ID`) |
+| A ref from another capture | `CAPTURE_STALE` (`REF_FROM_OTHER_CAPTURE`, with `refScope` and `captureScope`) |
+| A ref matching several live instances | `AMBIGUOUS_TARGET` (`REF_MATCHES_MULTIPLE_INSTANCES`, with `candidates`) |
+| `--query detail --node-id` on a node with several findings | `AMBIGUOUS_TARGET` (`NODE_HAS_MULTIPLE_FINDINGS`, with finding refs as `candidates`) |
+| A ref to a node not in the file | `INVALID_USAGE` (`NODE_NOT_FOUND`) |
+
+Consumer impact: `--node-id n34` used to filter and now fails. `--query detail --finding-id` no longer accepts a node id in place of a finding id. The hash covers the schema-parsed Snapshot, so reformatting a saved file keeps its refs valid, while any change of content does not. Refs computed in the studio's browser bundle differ from the CLI's, because its `node:crypto` alias (`packages/studio/src/crypto-shim.ts`) is not SHA-256; do not paste one into the other.

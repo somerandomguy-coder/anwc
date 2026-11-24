@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { diagnose } from '@anwc/diagnostics';
-import { inspectOptionsSchema, rawCaptureSchema, snapshotSchema, unwrapEnvelope } from '@anwc/protocol';
+import { inspectOptionsSchema, parseNodeRef, rawCaptureSchema, snapshotSchema, unwrapEnvelope } from '@anwc/protocol';
 import type { Envelope, EnvelopeCommand, ErrorEnvelope, InspectOptions, RawCapture, Snapshot } from '@anwc/protocol';
 export type { Envelope, ErrorEnvelope, InspectOptions, RawCapture, Snapshot };
 import {
@@ -20,6 +20,9 @@ import {
   renderDiffMarkdown,
   queryReportSummary,
   queryFindingDetail,
+  resolveFindingRef,
+  resolveNodeRef,
+  type RefResolution,
   formatAgentSummaryText,
   formatAgentDetailText,
   reportSchema,
@@ -184,7 +187,7 @@ export function parseReportArguments(arguments_: string[]): ReportCommandOptions
       'INVALID_USAGE',
       'Usage: anwc report CAPTURE_FILE [options]',
       'USAGE',
-      { hint: "Run 'anwc report capture.json [--query summary|detail] [--finding-id <id>] [--format html|markdown|text|json] [--output path] [--redact]'." }
+      { hint: "Run 'anwc report capture.json [--query summary|detail] [--finding-id <id>] [--node-id <ref>] [--format html|markdown|text|json] [--output path] [--redact]'." }
     );
   }
   const captureFile = arguments_[1];
@@ -253,11 +256,72 @@ export function parseReportArguments(arguments_: string[]): ReportCommandOptions
     format = 'text';
   }
 
-  if (query === 'detail' && !findingId) {
-    throw new CliError('INVALID_USAGE', '--query detail requires --finding-id <id>.', 'MISSING_OPTION');
+  if (query === 'detail' && !findingId && !nodeId) {
+    throw new CliError('INVALID_USAGE', '--query detail requires --finding-id <id> or --node-id <ref>.', 'MISSING_OPTION');
+  }
+  if (nodeId !== undefined && !parseNodeRef(nodeId)) {
+    throw new CliError('INVALID_USAGE', `--node-id '${nodeId}' is not a capture-scoped reference.`, 'UNSCOPED_NODE_ID', {
+      details: { nodeId },
+      hint: "Node ids are only valid inside one capture. Pass the full ref (c_<8 hex>:<nodeId>) printed by 'anwc report CAPTURE_FILE --query summary'."
+    });
   }
 
   return { captureFile, format, output, redact, query, findingId, code, severity, file, nodeId, actionableOnly, limit };
+}
+
+/** Turns a P02 ref into a plain id, or throws the matching refusal. `--finding-id` also accepts a bare id. */
+function resolveRef(resolution: RefResolution, ref: string, option: '--node-id' | '--finding-id'): string {
+  switch (resolution.status) {
+    case 'resolved':
+      return resolution.id;
+    case 'malformed': // --node-id is checked while parsing; a bare --finding-id never reaches here
+      throw new CliError('INVALID_USAGE', `${option} '${ref}' is not a capture-scoped reference.`, 'UNSCOPED_NODE_ID');
+    case 'stale':
+      throw new CliError('CAPTURE_STALE', `${option} '${ref}' belongs to another capture (this file is ${resolution.captureScope ?? 'unscoped'}).`, 'REF_FROM_OTHER_CAPTURE', {
+        details: { ref, refScope: resolution.refScope, captureScope: resolution.captureScope },
+        // Re-reading the same saved file cannot succeed; the caller needs refs from this capture or a new one.
+        recovery: { retryable: false },
+        hint: "The page was captured again since this ref was issued. List current refs with 'anwc report CAPTURE_FILE --query summary'."
+      });
+    case 'ambiguous':
+      throw new CliError('AMBIGUOUS_TARGET', `${option} '${ref}' matches ${resolution.candidates.length} live instances.`, 'REF_MATCHES_MULTIPLE_INSTANCES', {
+        details: { ref, candidates: resolution.candidates },
+        hint: 'Pass one of the candidate refs in details.candidates.'
+      });
+    case 'not-found':
+      throw option === '--finding-id'
+        ? findingNotFound(ref)
+        : new CliError('INVALID_USAGE', `Node '${ref}' is not in this file.`, 'NODE_NOT_FOUND', {
+          details: { ref },
+          hint: 'Reports list only nodes related to findings; query the Snapshot to reach any inspected node.'
+        });
+  }
+}
+
+function findingNotFound(findingId: string): CliError {
+  return new CliError('INVALID_USAGE', `Finding '${findingId}' was not found in report.`, 'FINDING_NOT_FOUND', {
+    details: { findingId },
+    hint: "List finding ids with 'anwc report CAPTURE_FILE --query summary'."
+  });
+}
+
+/** The one finding `--query detail` addresses. A node with several findings is refused, not guessed. */
+function selectFinding(input: Snapshot | Report, findingId: string | undefined, nodeId: string | undefined): string {
+  const onNode = nodeId === undefined ? [] : queryReportSummary(input, { nodeId }).findings;
+  if (findingId !== undefined) {
+    if (nodeId !== undefined && !onNode.some((f) => f.findingId === findingId)) {
+      throw new CliError('INVALID_USAGE', `Finding '${findingId}' is not on node '${nodeId}'.`, 'FINDING_NOT_FOUND', { details: { findingId, nodeId } });
+    }
+    return findingId;
+  }
+  if (onNode.length === 0) throw new CliError('INVALID_USAGE', `No finding on node '${nodeId}'.`, 'FINDING_NOT_FOUND', { details: { nodeId } });
+  if (onNode.length > 1) {
+    throw new CliError('AMBIGUOUS_TARGET', `Node '${nodeId}' has ${onNode.length} findings.`, 'NODE_HAS_MULTIPLE_FINDINGS', {
+      details: { nodeId, candidates: onNode.map((f) => ({ ref: f.findingRef ?? f.findingId, code: f.code, severity: f.severity })) },
+      hint: 'Pass one of the candidate refs with --finding-id.'
+    });
+  }
+  return onNode[0]!.findingId;
 }
 
 export interface CheckCommandOptions {
@@ -627,14 +691,15 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
       let data: unknown;
       let output: string;
       const inputObj = snapshot ?? report!;
+      const nodeId = reportOptions.nodeId === undefined ? undefined
+        : resolveRef(resolveNodeRef(inputObj, reportOptions.nodeId), reportOptions.nodeId, '--node-id');
+      // A bare finding id keeps working, unscoped; a scoped one is checked against this capture.
+      const findingId = reportOptions.findingId === undefined || !parseNodeRef(reportOptions.findingId) ? reportOptions.findingId
+        : resolveRef(resolveFindingRef(inputObj, reportOptions.findingId), reportOptions.findingId, '--finding-id');
       if (reportOptions.query === 'detail') {
-        const detail = queryFindingDetail(inputObj, reportOptions.findingId!);
-        if (!detail) {
-          throw new CliError('INVALID_USAGE', `Finding '${reportOptions.findingId}' was not found in report.`, 'FINDING_NOT_FOUND', {
-            details: { findingId: reportOptions.findingId },
-            hint: "List finding ids with 'anwc report CAPTURE_FILE --query summary'."
-          });
-        }
+        const selected = selectFinding(inputObj, findingId, nodeId);
+        const detail = queryFindingDetail(inputObj, selected);
+        if (!detail) throw findingNotFound(selected);
         data = detail;
         output = reportOptions.format === 'json' ? JSON.stringify(detail, null, 2) : formatAgentDetailText(detail);
       } else if (reportOptions.query === 'summary' || reportOptions.code || reportOptions.severity || reportOptions.file || reportOptions.nodeId || reportOptions.actionableOnly) {
@@ -642,8 +707,8 @@ export async function run(arguments_: string[], io: CliIo = { stdout: (message) 
           code: reportOptions.code,
           severity: reportOptions.severity,
           file: reportOptions.file,
-          nodeId: reportOptions.nodeId,
-          findingId: reportOptions.findingId,
+          nodeId,
+          findingId,
           actionableOnly: reportOptions.actionableOnly,
           limit: reportOptions.limit
         });
