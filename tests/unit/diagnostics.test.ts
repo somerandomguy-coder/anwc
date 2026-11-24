@@ -43,4 +43,11 @@ describe('pure ANWC diagnostics', () => {
     expect(findings.find((item) => item.code === 'TEXT_CLIPPED')).toMatchObject({ severity: 'info', acknowledged: true });
     expect(findings.some((item) => item.code.startsWith('POINTER_'))).toBe(false);
   });
+
+  test('never reports a zero-area box as clipped', () => {
+    const capture = captureWithFindings();
+    const card = capture.nodes.find((node) => node.nodeId === 'n-card-1')!;
+    card.box = { ...card.box!, height: 0 };
+    expect(diagnose(capture).some((item) => item.code === 'CLIPPED_BY_ANCESTOR')).toBe(false);
+  });
 });

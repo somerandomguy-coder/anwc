@@ -53,7 +53,8 @@ export function diagnose(capture: RawCapture): Finding[] {
       ));
     }
 
-    if (node.box !== null && node.clip.status === 'known' && node.clip.value.boxFraction < 1) {
+    // A zero-area box has no visible fraction to lose, so it is never reported as clipped.
+    if (node.box !== null && node.box.width > 0 && node.box.height > 0 && node.clip.status === 'known' && node.clip.value.boxFraction < 1) {
       findings.push(finding(
         node,
         'CLIPPED_BY_ANCESTOR',

@@ -39,7 +39,7 @@ export function ComparePanel({ comparison, showing, onShow, onClear }: ComparePa
             </span>
             <span className="anwc-compare-why">
               {v.reason === 'behavior_not_checked'
-                ? 'The finding is gone and the target is still there. Run anwc check with a declared click to prove it works.'
+                ? 'The finding is gone and the target is still there. Run anwc check with --baseline and a declared click to prove it works.'
                 : v.explanation}
             </span>
           </li>

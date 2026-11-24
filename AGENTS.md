@@ -31,6 +31,7 @@ Root `package.json` scripts (run from the repo root):
 | `npm run dev` | Starts the demo shop (`vite examples/shop`). Pass `-- --host 127.0.0.1 --port 4175 --strictPort`. |
 | `npm run anwc -- <command>` | Runs the CLI from source via `tsx`: `inspect`, `report`, `check`, `diff`, `doctor`, `studio`. |
 | `npm run demo` | Measures the seeded checkout defect, repairs a disposable copy under `artifacts/demo`, and runs `check --baseline`; exit 0 only for a verified repair whose independent click went from failing to working. The script header shows how to pause between steps. |
+| `npm run demo:cheat` | Same demo with a fake repair that hides the button; passes only if ANWC rejects it. |
 | `npm run bench -- <command>` | Runs the evaluator CLI (`packages/benchmark`), for example `validate`, `practice-setup`, `practice-dryrun`. See [docs/EVALUATOR_SETUP.md](docs/EVALUATOR_SETUP.md). |
 | `npm run pack:packages` | Packs the local alpha tarballs. |
 

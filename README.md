@@ -1,17 +1,30 @@
 # ANWC
 
-**Source-linked browser evidence for AI agents repairing web UIs.**
+**The check an AI coding agent has to pass before it can say a web UI bug is fixed.**
 
-ANWC adds a development-only JSX transform and browser collector to a React/Vite app. It reports overflow, supported clipping, text layout and sampled pointer blockers with source locations. Existing React and CSS remain your application; Chromium still performs layout.
+A coding agent can change your page, but it cannot tell whether the button now works. ANWC measures a React/Vite app in real Chromium, names the source line behind each layout or pointer defect, and judges a repair as verified, unverified or contradicted.
 
-Status, 2026-11-12: working React/Vite inspection alpha with source-linked text/JSON, offline HTML/Markdown reports, `anwc doctor` and an interactive studio. State replay and before/after comparison are experimental; remaining validation work is recorded in STATUS. No measured agent time/cost savings or general paint-visibility claims are made.
+See it in about ten seconds, on a disposable copy of the example shop:
+
+```powershell
+npm install
+npm run build
+npx playwright install chromium
+npm run demo
+npm run demo:cheat
+```
+
+The first demo repairs a covered checkout button and ends in **VERIFIED**, because a click that failed before now works on the same button. The second hides the button to make the error disappear and ends in **CONTRADICTED**. The bug is planted.
+
+Alpha, 2026-11-25: React and Vite, Chromium, development only, no model calls. A verified result covers one finding in one state, and currently only pointer defects proven by a click. No agent time or cost savings have been measured, and no general paint-visibility claim is made.
 
 ## Start here
 
+- [Pitch runbook](docs/PITCH.md): demo script, likely questions, and what not to claim.
 - [Launch handoff](docs/LAUNCH.md): tonight's scope, demo, founder checklist and bounded tasks for a cheaper model.
 - [STATUS](docs/STATUS.md): current capability, evidence and next task.
 - [ROADMAP](docs/ROADMAP.md): Phase 3 Q01–Q11 cards (implemented; see STATUS for open acceptance gaps).
-- [PHASE_4](docs/PHASE_4.md): proposed next phase (P01–P20 task cards for subagents) and lessons from [agent-desktop](docs/reference/AGENT_DESKTOP.md). Not started.
+- [PHASE_4](docs/PHASE_4.md): proposed next phase (P01–P20 task cards for subagents) and lessons from [agent-desktop](docs/reference/AGENT_DESKTOP.md). In progress; see STATUS.
 - [TESTING](docs/TESTING.md): try the public demos.
 - [EVALUATOR_SETUP](docs/EVALUATOR_SETUP.md): existing practice export/grade commands and limits.
 - [BENCHMARK](docs/BENCHMARK.md): fair comparison and scoring policy.

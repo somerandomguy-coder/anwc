@@ -1,6 +1,6 @@
 # Phase 4: from inspection tool to the UI verifier agents rely on
 
-Status: **proposed, not started.** Written 2026-11-12 after Phase 3 (Q01–Q11) and the interactive studio landed. Nothing in this document is implemented. [STATUS](STATUS.md) remains the source of truth for what works; [ROADMAP](ROADMAP.md) keeps the finished Phase 3 cards. Cards marked **(founder)** need a human decision before work starts.
+Status: **in progress** (card headings carry completion dates). Written 2026-11-12 after Phase 3 (Q01–Q11) and the interactive studio landed. [STATUS](STATUS.md) remains the source of truth for what works; [ROADMAP](ROADMAP.md) keeps the finished Phase 3 cards. Cards marked **(founder)** need a human decision before work starts.
 
 Read order for an agent picking up a card: §0 → the card → the files in its **Own** line → [PROTOCOL](PROTOCOL.md) and [DECISIONS](DECISIONS.md) if the card touches a contract → [reference/AGENT_DESKTOP](reference/AGENT_DESKTOP.md) if the card cites agent-desktop.
 
@@ -171,7 +171,7 @@ Build, written from scratch:
 
 **Acceptance:** a first-time viewer can say which element blocks Checkout and where it lives in source within 30 seconds (five-person hallway test, note results). **Evidence:** component tests for numbering, filtering, isolation and the mismatch refusal.
 
-#### P12 — Before/after on one stage (M)
+#### P12 — Before/after on one stage (M) — done 2026-11-25 for two live captures; loading a saved DiffReport outstanding
 
 **Own:** studio `SplitView`/`XRayPane`, new `DiffStage.tsx`, studio server `/api/diff`. **Depends:** P03, P11.
 

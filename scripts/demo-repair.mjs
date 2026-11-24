@@ -2,6 +2,7 @@
 // what changed. Nothing in examples/ is edited.
 //   npm run demo            runs straight through
 //   npm run demo -- --step  waits for Enter between steps (for presenting)
+//   npm run demo:cheat      applies a fake repair that hides the button; ANWC must reject it
 import { spawn } from 'node:child_process';
 import { appendFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -13,6 +14,7 @@ const root = resolve(import.meta.dirname, '..');
 const out = join(root, 'artifacts', 'demo');
 const app = join(out, 'shop');
 const step = process.argv.includes('--step');
+const cheat = process.argv.includes('--cheat');
 const before = join(out, 'before');
 const after = join(out, 'after');
 const states = join(out, 'checkout.states.json');
@@ -76,6 +78,7 @@ async function clickCheckout(url) {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await page.goto(url);
     const button = page.getByRole('button', { name: 'Checkout now' });
+    if (!(await button.isVisible())) return false;
     await button.scrollIntoViewIfNeeded();
     const box = await button.boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -103,8 +106,10 @@ try {
   const clickedBefore = await clickCheckout(url);
   console.log(`Independent click: ${clickedBefore ? 'works' : 'does nothing'}`);
 
-  await heading('2. Repair the disposable copy');
-  const fix = `
+  await heading(cheat ? '2. Apply a fake repair: hide the button' : '2. Repair the disposable copy');
+  const fix = cheat ? `
+.blocked.obstacle-fixture > button { display: none; }
+` : `
 .blocked.obstacle-fixture { height: auto; }
 .blocked.obstacle-fixture > button { min-height: 4.5rem; }
 .blocked .cookie-obstacle { position: static; margin-top: .5rem; min-height: 2.5rem; }
@@ -140,8 +145,14 @@ try {
     if (report.code !== 0) throw new Error(report.text);
   }
   console.log('Reports: artifacts/demo/before.html, artifacts/demo/after.html');
-  failed = !baseline.repairVerified || clickedBefore || !clickedAfter;
-  if (failed) console.error('\nDemo check failed: expected a verified repair and a click that fails before and works after.');
+  if (cheat) {
+    const rejected = baseline.captures.some((capture) => capture.findings.some((finding) => finding.verdict === 'contradicted'));
+    failed = baseline.repairVerified || !rejected;
+    console.log(failed ? '\nDemo check failed: the fake repair was not rejected.' : '\nThe fake repair was rejected.');
+  } else {
+    failed = !baseline.repairVerified || clickedBefore || !clickedAfter;
+    if (failed) console.error('\nDemo check failed: expected a verified repair and a click that fails before and works after.');
+  }
 } finally {
   await server.close();
 }

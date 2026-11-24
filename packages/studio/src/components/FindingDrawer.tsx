@@ -226,10 +226,10 @@ export function FindingDrawer({
           <div className="anwc-card-list" ref={listRef} data-testid="finding-list">
             {view.visibleFindings.length === 0 ? (
               <div className="anwc-empty">
-                <p>No findings match the active filter.</p>
+                <p>{allFindings.length === 0 ? 'No findings in this capture.' : 'No findings match the active filter.'}</p>
                 <p className="anwc-muted">
                   {allFindings.length === 0
-                    ? 'Capture settled with zero detected defects.'
+                    ? 'Nothing was reported by the rules that ran. This does not prove the whole page is correct.'
                     : `Use "Show all" to inspect all ${allFindings.length} findings.`}
                 </p>
               </div>
