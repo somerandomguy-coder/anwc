@@ -1,12 +1,13 @@
 import type { Assessment, Measurement, Rect } from '@anwc/protocol';
 
-function known<T>(value: T, maxSamples: number): Assessment<T> {
+function known<T>(value: T, maxSamples: number, extra: string[] = []): Assessment<T> {
   return {
     status: 'known', value, method: 'browser-hit-test-grid',
     limitations: [
       'Samples are limited to the target area inside the current viewport.',
       `At most ${maxSamples} deterministic interior samples were collected.`,
-      'Samples are not pixel coverage or a paint-visibility proof.'
+      'Samples are not pixel coverage or a paint-visibility proof.',
+      ...extra
     ]
   };
 }
@@ -26,16 +27,21 @@ const gridOrder: ReadonlyArray<readonly [number, number]> = [
   [1, 0], [3, 0], [0, 1], [4, 1], [0, 3], [4, 3], [1, 4], [3, 4]
 ];
 
-function samplePoints(box: Rect, limit: number, devicePixelRatio: number): Array<{ x: number; y: number }> {
-  if (box.width <= 0 || box.height <= 0) return [];
+/**
+ * Grid points inside `boxes`. With several boxes (the line fragments of a wrapped inline element)
+ * each grid position is taken from every fragment in order before the next position, so every
+ * fragment's centre comes first. One box gives the plain 5x5 sequence.
+ */
+function samplePoints(boxes: Rect[], limit: number, devicePixelRatio: number): Array<{ x: number; y: number }> {
+  const usable = boxes.filter((box) => box.width > 0 && box.height > 0);
   const unique = new Map<string, { x: number; y: number }>();
-  for (const [column, row] of gridOrder) {
+  for (const [column, row] of gridOrder) for (const box of usable) {
     const point = { x: box.x + box.width * ((column + 1) / 6), y: box.y + box.height * ((row + 1) / 6) };
     // Multiple fractional coordinates can resolve to the same physical pixel on a
     // narrow control. Keep one interior coordinate for each physical hit-test point.
     const key = `${Math.round(point.x * devicePixelRatio)},${Math.round(point.y * devicePixelRatio)}`;
     if (!unique.has(key)) unique.set(key, point);
-    if (unique.size === limit) break;
+    if (unique.size === limit) return [...unique.values()];
   }
   return [...unique.values()];
 }
@@ -58,7 +64,13 @@ export function observePointer(
       limitations: ['The target does not intersect the current viewport, so no pointer samples were collected.']
     };
   }
-  const samples = samplePoints(visibleBox, maxSamples, Math.max(1, window.devicePixelRatio || 1)).map((point) => {
+  // A wrapped inline element's bounding box also covers its neighbours; only its line fragments are its own.
+  const fragments = [...element.getClientRects()];
+  const visibleFragments = fragments
+    .map((rect) => intersection({ x: rect.x, y: rect.y, width: rect.width, height: rect.height }, viewport))
+    .filter((rect): rect is Rect => rect !== null);
+  const fragmented = fragments.length > 1 && visibleFragments.length > 0;
+  const samples = samplePoints(fragmented ? visibleFragments : [visibleBox], maxSamples, Math.max(1, window.devicePixelRatio || 1)).map((point) => {
     const hit = element.ownerDocument.elementFromPoint(point.x, point.y);
     if (!hit) return { ...point, result: 'no-target' as const, blockerNodeId: null };
     if (hit === element || element.contains(hit)) return { ...point, result: 'target-or-descendant' as const, blockerNodeId: null };
@@ -66,5 +78,6 @@ export function observePointer(
   });
   const blocked = samples.filter((sample) => sample.result === 'blocked').length;
   const noTarget = samples.filter((sample) => sample.result === 'no-target').length;
-  return known({ samples, tested: samples.length, blocked, noTarget, blockedSampleFraction: samples.length === 0 ? 0 : blocked / samples.length }, maxSamples);
+  return known({ samples, tested: samples.length, blocked, noTarget, blockedSampleFraction: samples.length === 0 ? 0 : blocked / samples.length }, maxSamples,
+    fragmented ? [`Samples were taken inside ${visibleFragments.length} separate client-rect fragment(s), not across the bounding box.`] : []);
 }

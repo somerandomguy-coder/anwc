@@ -10,9 +10,54 @@ function unknown(reason: string): Assessment<ClipValue> {
   return { status: 'unknown', value: null, method: 'client-box-ancestor-clipping', limitations: [reason] };
 }
 
-function clientBox(element: HTMLElement): Rect {
+/**
+ * Coordinate noise tolerance. Chromium layout units are 1/64 CSS px, so any real clip
+ * loses at least 0.0156px; differences below this are floating-point noise, not clipping.
+ */
+const EDGE_TOLERANCE = 0.01;
+
+/**
+ * Space a classic scrollbar takes out of the padding box on one axis.
+ * Element.clientWidth/Height exclude it but are rounded to integers, so the rounded difference
+ * from the fractional padding box recovers an integer scrollbar size. An axis that cannot have a
+ * scrollbar has no gutter, whatever the rounding says.
+ */
+function scrollbarSize(padding: number, client: number, possible: boolean): number {
+  if (!possible) return 0;
+  const size = Math.round(padding - client);
+  // A 1px difference is indistinguishable from pixel snapping of the integer client size.
+  return size > 1 ? size : 0;
+}
+
+function canScroll(overflow: string): boolean {
+  return overflow === 'scroll' || overflow === 'auto';
+}
+
+/** The fractional padding box minus scrollbars: the rectangle an overflow clip cuts to. */
+function clipBox(element: HTMLElement): Rect {
   const rect = element.getBoundingClientRect();
-  return { x: rect.left + element.clientLeft, y: rect.top + element.clientTop, width: element.clientWidth, height: element.clientHeight };
+  if (element === element.ownerDocument.documentElement) {
+    // The root's client size is the viewport's, not the root box's.
+    return { x: rect.left + element.clientLeft, y: rect.top + element.clientTop, width: element.clientWidth, height: element.clientHeight };
+  }
+  const style = getComputedStyle(element);
+  const zoom = (element as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ?? 1;
+  const border = (value: string) => (parseFloat(value) || 0) * zoom;
+  const borderLeft = border(style.borderLeftWidth);
+  const borderTop = border(style.borderTopWidth);
+  const paddingWidth = Math.max(0, rect.width - borderLeft - border(style.borderRightWidth));
+  const paddingHeight = Math.max(0, rect.height - borderTop - border(style.borderBottomWidth));
+  const vertical = scrollbarSize(paddingWidth, element.clientWidth * zoom, canScroll(style.overflowY));
+  const horizontal = scrollbarSize(paddingHeight, element.clientHeight * zoom, canScroll(style.overflowX));
+  // clientLeft includes a scrollbar on the left edge (RTL). A reserved gutter without a scrollbar
+  // (`overflow: hidden; scrollbar-gutter: stable`) is not cut: Chromium clips at the padding edge.
+  const left = Math.min(vertical, Math.max(0, Math.round(element.clientLeft * zoom - borderLeft)));
+  return {
+    x: rect.left + borderLeft + left,
+    y: rect.top + borderTop,
+    width: Math.max(0, paddingWidth - vertical),
+    height: Math.max(0, paddingHeight - horizontal)
+  };
 }
 
 function clipAxis(value: string): boolean {
@@ -29,18 +74,28 @@ function unsupported(element: Element): string | null {
 }
 
 function applyAxis(rect: Rect, clip: Rect, x: boolean, y: boolean): Rect | null {
-  const left = x ? Math.max(rect.x, clip.x) : rect.x;
-  const right = x ? Math.min(rect.x + rect.width, clip.x + clip.width) : rect.x + rect.width;
-  const top = y ? Math.max(rect.y, clip.y) : rect.y;
-  const bottom = y ? Math.min(rect.y + rect.height, clip.y + clip.height) : rect.y + rect.height;
+  const rectRight = rect.x + rect.width;
+  const rectBottom = rect.y + rect.height;
+  const clipRight = clip.x + clip.width;
+  const clipBottom = clip.y + clip.height;
+  const cutLeft = x && clip.x - rect.x > EDGE_TOLERANCE;
+  const cutRight = x && rectRight - clipRight > EDGE_TOLERANCE;
+  const cutTop = y && clip.y - rect.y > EDGE_TOLERANCE;
+  const cutBottom = y && rectBottom - clipBottom > EDGE_TOLERANCE;
+  const left = cutLeft ? clip.x : rect.x;
+  const right = cutRight ? clipRight : rectRight;
+  const top = cutTop ? clip.y : rect.y;
+  const bottom = cutBottom ? clipBottom : rectBottom;
   if (right <= left || bottom <= top) return null;
+  // Nothing is cut: keep the exact rectangle so callers see no clipping at all.
+  if (!cutLeft && !cutRight && !cutTop && !cutBottom) return rect;
   return { x: left, y: top, width: right - left, height: bottom - top };
 }
 
 function fraction(original: Rect, clipped: Rect | null): number {
   const total = original.width * original.height;
   if (total <= 0 || clipped === null) return 0;
-  return (clipped.width * clipped.height) / total;
+  return Math.min(1, (clipped.width * clipped.height) / total);
 }
 
 export function observeAncestorClip(element: Element, box: Rect | null, nodeIdFor: (element: Element) => string | null): Assessment<ClipValue> {
@@ -67,7 +122,7 @@ export function observeAncestorClip(element: Element, box: Rect | null, nodeIdFo
     const x = clipAxis(style.overflowX);
     const y = clipAxis(style.overflowY);
     if (x || y) {
-      const clip = clientBox(current);
+      const clip = clipBox(current);
       visible = visible && applyAxis(visible, clip, x, y);
       const nodeId = nodeIdFor(current);
       if (nodeId) ancestors.push({ nodeId, axes: x && y ? 'xy' : x ? 'x' : 'y', box: clip });
@@ -94,7 +149,7 @@ export function observeOwnTextClip(element: Element, fragment: Rect, ancestorCli
     const style = getComputedStyle(element);
     const x = clipAxis(style.overflowX);
     const y = clipAxis(style.overflowY);
-    if (x || y) visible = visible && applyAxis(visible, clientBox(element), x, y);
+    if (x || y) visible = visible && applyAxis(visible, clipBox(element), x, y);
   }
   return { status: 'known', value: visible, method: 'text-fragment-clip', limitations: ['Text clipping uses supported rectangular clips only.'] };
 }

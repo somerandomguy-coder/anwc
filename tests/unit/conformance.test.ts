@@ -12,7 +12,7 @@ describe('Q05 Conformance Matrix Specification', () => {
     // Actual counts by role; these are cases, not pairs.
     const byRole = (role: string) => conformanceCases.filter((c) => c.role === role).length;
     expect({ total: conformanceCases.length, defective: byRole('defective'), healthy: byRole('healthy'), boundary: byRole('boundary') })
-      .toEqual({ total: 34, defective: 12, healthy: 13, boundary: 9 });
+      .toEqual({ total: 36, defective: 13, healthy: 14, boundary: 9 });
 
     const families = new Set(conformanceCases.map((c) => c.family));
     expect(families).toEqual(new Set([
@@ -191,12 +191,9 @@ describe('P15 rule gates: every detector rule has an independent oracle gate', (
     }
   });
 
-  test('recorded oracle/ANWC disagreements are exactly the P15 findings', () => {
+  test('recorded oracle/ANWC disagreements are exactly the remaining P15 findings', () => {
     const recorded = ruleGates.flatMap((gate) => gate.cases.filter((c) => c.knownDisagreement).map((c) => `${gate.rule}/${c.id}`));
     expect(recorded).toEqual([
-      'CLIPPED_BY_ANCESTOR/clip-subpixel-fit',
-      'TEXT_CLIPPED/text-clip-exact-fit',
-      'EXPECTED_VISIBLE_BUT_HIDDEN/hidden-content-visibility',
       'POINTER_PARTIALLY_BLOCKED/partial-thin-strip'
     ]);
   });

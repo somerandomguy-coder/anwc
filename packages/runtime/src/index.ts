@@ -102,6 +102,12 @@ function labelFor(element: Element, limit: number): Pick<Measurement, 'label' | 
   return { label: text.label, textTruncated: text.truncated, labelMethod: text.label ? 'text' : 'none' };
 }
 
+/** Whether `content-visibility` applies: it needs a principal box that size containment applies to. */
+function contentVisibilityApplies(display: string): boolean {
+  if (display === 'none' || display === 'contents' || display === 'inline' || display.startsWith('ruby')) return false;
+  return !display.startsWith('table-') || display === 'table-cell' || display === 'table-caption';
+}
+
 function renderState(element: Element): Measurement['render'] {
   const hidden: string[] = [];
   let opacityZero = false;
@@ -109,6 +115,8 @@ function renderState(element: Element): Measurement['render'] {
     const style = getComputedStyle(current);
     if (style.display === 'none') hidden.push('display:none');
     if (Number(style.opacity) === 0) opacityZero = true;
+    // Skips the contents of a box, never the box itself. Not inherited, so a descendant cannot undo it.
+    if (current !== element && style.contentVisibility === 'hidden' && contentVisibilityApplies(style.display)) hidden.push('content-visibility:hidden');
   }
   // `visibility` inherits, but a descendant can explicitly restore `visible`.
   // The target's computed value already reflects that CSS inheritance/override rule.

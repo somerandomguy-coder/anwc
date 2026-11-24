@@ -437,6 +437,83 @@ export const conformanceCases: ConformanceCase[] = [
     }
   },
   {
+    id: 'pointer-wrapped-link-healthy',
+    family: 'pointer-layers',
+    role: 'healthy',
+    title: 'Wrapped Inline Link',
+    description: 'A link wraps over several lines between sibling links. Its bounding box covers the neighbours, but nothing is over its own line fragments.',
+    expectedRule: null,
+    expectedClassification: 'healthy-pass',
+    html: `
+      <style>
+        .flow { position: relative; width: 200px; margin: 0; font: 16px/24px sans-serif; }
+        .cover { position: absolute; z-index: 5; background: rgba(0,0,0,0.2); }
+      </style>
+      <p class="flow"><a href="#one">first neighbour link</a> <a href="#two" data-anwc-key="wrapped-link">link that wraps onto another line</a> <a href="#three">last neighbour link</a></p>
+    `,
+    oracle: async (page) => {
+      const details = await page.evaluate(() => {
+        const link = document.querySelector('[data-anwc-key="wrapped-link"]') as HTMLElement;
+        const fragments = Array.from(link.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
+        const perFragment = fragments.map((r) => {
+          let points = 0, blocked = 0;
+          for (let y = r.top + 1; y < r.bottom - 1; y += 2) for (let x = r.left + 1; x < r.right - 1; x += 2) {
+            points++;
+            const hit = document.elementFromPoint(x, y);
+            if (hit !== link && !(hit && link.contains(hit))) blocked++;
+          }
+          return { points, blocked };
+        });
+        return { perFragment };
+      });
+      const fragments: Array<{ points: number; blocked: number }> = details.perFragment;
+      return { pass: fragments.length > 1 && fragments.every((f) => f.points > 0 && f.blocked === 0), details };
+    }
+  },
+  {
+    id: 'pointer-wrapped-link-covered-defective',
+    family: 'pointer-layers',
+    role: 'defective',
+    title: 'Wrapped Inline Link Covered On One Fragment',
+    description: 'An overlay covers one line fragment of a wrapped link and leaves the others reachable.',
+    expectedRule: 'POINTER_PARTIALLY_BLOCKED',
+    expectedClassification: 'detected-defect',
+    html: `
+      <style>
+        .flow { position: relative; width: 200px; margin: 0; font: 16px/24px sans-serif; }
+        .cover { position: absolute; z-index: 5; background: rgba(0,0,0,0.2); }
+      </style>
+      <p class="flow"><a href="#one">first neighbour link</a> <a href="#two" data-anwc-key="covered-link">link that wraps onto another line</a> <a href="#three">last neighbour link</a><span class="cover"></span></p>
+    `,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const link = document.querySelector('[data-anwc-key="covered-link"]') as HTMLElement;
+        const cover = document.querySelector('.cover') as HTMLElement;
+        const origin = (link.parentElement as HTMLElement).getBoundingClientRect();
+        const last = Array.from(link.getClientRects()).at(-1)!;
+        Object.assign(cover.style, { left: `${last.left - origin.left}px`, top: `${last.top - origin.top}px`, width: `${last.width}px`, height: `${last.height}px` });
+      });
+    },
+    oracle: async (page) => {
+      const details = await page.evaluate(() => {
+        const link = document.querySelector('[data-anwc-key="covered-link"]') as HTMLElement;
+        const fragments = Array.from(link.getClientRects()).filter((r) => r.width > 0 && r.height > 0);
+        const perFragment = fragments.map((r) => {
+          let points = 0, blocked = 0;
+          for (let y = r.top + 1; y < r.bottom - 1; y += 2) for (let x = r.left + 1; x < r.right - 1; x += 2) {
+            points++;
+            const hit = document.elementFromPoint(x, y);
+            if (hit !== link && !(hit && link.contains(hit))) blocked++;
+          }
+          return { points, blocked };
+        });
+        return { perFragment };
+      });
+      const fragments: Array<{ points: number; blocked: number }> = details.perFragment;
+      return { pass: fragments.length > 1 && fragments.at(-1)!.blocked === fragments.at(-1)!.points && fragments.slice(0, -1).every((f) => f.blocked === 0), details };
+    }
+  },
+  {
     id: 'pointer-passthrough-healthy',
     family: 'pointer-layers',
     role: 'healthy',

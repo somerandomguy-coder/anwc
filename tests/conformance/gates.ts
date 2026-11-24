@@ -76,13 +76,42 @@ export const ruleGates: RuleGate[] = [
       {
         id: 'clip-subpixel-fit', role: 'boundary', key: 'clip-subpixel', oracleExpects: false,
         html: `<div style="width: 100.4px; height: 40px; overflow: hidden;"><div data-anwc-key="clip-subpixel" style="width: 100.4px; height: 40px;"></div></div>`,
-        note: 'Child exactly fills a fractional-width (100.4px) overflow: hidden parent.',
-        knownDisagreement: 'P15 finding: ANWC reports CLIPPED_BY_ANCESTOR (false positive). The runtime clip box uses integer clientWidth (100) while the child box is 100.39px; the fractional padding box clips nothing.'
+        note: 'Child exactly fills a fractional-width (100.4px) overflow: hidden parent.'
       },
       {
         id: 'clip-one-pixel', role: 'boundary', key: 'clip-one', oracleExpects: true,
         html: `<div style="width: 100px; height: 40px; overflow: hidden;"><div data-anwc-key="clip-one" style="width: 101px; height: 40px;"></div></div>`,
         note: 'Child one pixel wider than an overflow: hidden parent.'
+      },
+      {
+        id: 'clip-subpixel-over', role: 'boundary', key: 'clip-sub-over', oracleExpects: true,
+        html: `<div style="width: 100.25px; height: 40px; overflow: hidden;"><div data-anwc-key="clip-sub-over" style="width: 100.5px; height: 40px;"></div></div>`,
+        note: 'A real quarter-pixel clip.'
+      },
+      {
+        id: 'clip-subpixel-y-over', role: 'boundary', key: 'clip-sub-y', oracleExpects: true,
+        html: `<div style="width: 100px; height: 40.5px; overflow: hidden;"><div data-anwc-key="clip-sub-y" style="width: 100px; height: 41.25px;"></div></div>`,
+        note: 'A real 0.75px clip on the y axis.'
+      },
+      {
+        id: 'clip-fractional-up', role: 'boundary', key: 'clip-frac-up', oracleExpects: true,
+        html: `<div style="width: 100.6px; height: 40px; overflow: hidden;"><div data-anwc-key="clip-frac-up" style="width: 101px; height: 40px;"></div></div>`,
+        note: 'A 0.4px clip that integer rounding hides: 100.6px rounds up to a 101px client width.'
+      },
+      {
+        id: 'clip-fractional-offset', role: 'boundary', key: 'clip-offset', oracleExpects: false,
+        html: `<div style="margin: 3.7px 0 0 8.3px; width: 100.4px; height: 40.6px; overflow: hidden;"><div data-anwc-key="clip-offset" style="width: 100%; height: 100%;"></div></div>`,
+        note: 'Exact fit at a fractional page position, both axes.'
+      },
+      {
+        id: 'clip-border-fit', role: 'boundary', key: 'clip-border', oracleExpects: false,
+        html: `<div style="width: 100.4px; height: 40.4px; border: 3px solid; border-left-width: 7px; overflow: hidden;"><div data-anwc-key="clip-border" style="width: 100.4px; height: 40.4px;"></div></div>`,
+        note: 'Exact fit inside uneven borders: the clip is the padding box.'
+      },
+      {
+        id: 'clip-border-over', role: 'boundary', key: 'clip-border-over', oracleExpects: true,
+        html: `<div style="width: 100.4px; height: 40px; border: 3px solid; overflow: hidden;"><div data-anwc-key="clip-border-over" style="width: 102px; height: 40px;"></div></div>`,
+        note: 'Child reaches under the right border: it fits the border box but not the padding box.'
       }
     ]
   },
@@ -103,8 +132,21 @@ export const ruleGates: RuleGate[] = [
       {
         id: 'text-clip-exact-fit', role: 'boundary', key: 'tc-exact', oracleExpects: false,
         html: `<span data-anwc-key="tc-exact" style="display: inline-block; overflow: hidden; white-space: nowrap; font: 16px/2 sans-serif;">Shrink-wrapped label</span>`,
-        note: 'overflow: hidden box shrink-wrapped to exactly its text width.',
-        knownDisagreement: 'P15 finding: ANWC reports TEXT_CLIPPED (false positive). The own-clip box uses integer clientWidth (150) while the text Range rect is 150.31px wide inside a 150.31px box.'
+        note: 'overflow: hidden box shrink-wrapped to exactly its text width.'
+      },
+      {
+        id: 'text-clip-half-pixel', role: 'boundary', key: 'tc-half', oracleExpects: true,
+        html: `<span data-anwc-key="tc-half" style="display: inline-block; overflow: hidden; white-space: nowrap; font: 16px/2 sans-serif;">Shrink-wrapped label</span>`,
+        setup: async (page) => page.evaluate(() => {
+          const el = document.querySelector('[data-anwc-key="tc-half"]') as HTMLElement;
+          el.style.width = `${el.getBoundingClientRect().width - 0.5}px`;
+        }),
+        note: 'The same shrink-wrapped box narrowed by half a pixel: a real clip.'
+      },
+      {
+        id: 'text-clip-border-fit', role: 'boundary', key: 'tc-border', oracleExpects: false,
+        html: `<span data-anwc-key="tc-border" style="display: inline-block; overflow: hidden; border: 2px solid; white-space: nowrap; font: 16px/2 sans-serif;">Shrink-wrapped label</span>`,
+        note: 'Shrink-wrapped text inside a bordered overflow: hidden box.'
       }
     ]
   },
@@ -154,8 +196,27 @@ export const ruleGates: RuleGate[] = [
       {
         id: 'hidden-content-visibility', role: 'boundary', key: 'skipped', oracleExpects: true,
         html: `<div style="content-visibility: hidden; width: 200px; height: 50px;"><button data-anwc-key="skipped" data-anwc-expect="visible">Skipped</button></div>`,
-        note: 'Ancestor content-visibility: hidden skips rendering of the target.',
-        knownDisagreement: 'P15 finding: ANWC does not report EXPECTED_VISIBLE_BUT_HIDDEN (false negative). The runtime render state checks display, visibility and opacity only; checkVisibility() is false under content-visibility: hidden.'
+        note: 'Ancestor content-visibility: hidden skips rendering of the target.'
+      },
+      {
+        id: 'hidden-content-visibility-deep', role: 'boundary', key: 'skipped-deep', oracleExpects: true,
+        html: `<div style="content-visibility: hidden; width: 200px; height: 50px;"><div style="content-visibility: visible;"><button data-anwc-key="skipped-deep" data-anwc-expect="visible" style="content-visibility: visible; visibility: visible;">Skipped</button></div></div>`,
+        note: 'A descendant cannot undo an ancestor content-visibility: hidden.'
+      },
+      {
+        id: 'hidden-content-visibility-self', role: 'boundary', key: 'cv-self', oracleExpects: false,
+        html: `<div data-anwc-key="cv-self" data-anwc-expect="visible" style="content-visibility: hidden; width: 200px; height: 50px;">Own contents skipped</div>`,
+        note: 'content-visibility: hidden on the target itself skips its contents, not its box.'
+      },
+      {
+        id: 'hidden-content-visibility-inline', role: 'boundary', key: 'cv-inline', oracleExpects: false,
+        html: `<span style="content-visibility: hidden;"><button data-anwc-key="cv-inline" data-anwc-expect="visible">Shown</button></span>`,
+        note: 'content-visibility does not apply to a non-atomic inline ancestor.'
+      },
+      {
+        id: 'hidden-content-visibility-auto', role: 'boundary', key: 'cv-auto', oracleExpects: false,
+        html: `<div style="content-visibility: auto; width: 200px; height: 50px;"><button data-anwc-key="cv-auto" data-anwc-expect="visible">Shown</button></div>`,
+        note: 'content-visibility: auto on screen is rendered.'
       }
     ]
   },
@@ -233,6 +294,7 @@ export const ruleGates: RuleGate[] = [
     rule: 'POINTER_PARTIALLY_BLOCKED',
     cases: [
       { id: 'partial-defect', role: 'defect', key: 'half-blocked', oracleExpects: true, fromCase: 'pointer-partial-defective', note: 'Overlay covers the left half.' },
+      { id: 'partial-defect-fragment', role: 'defect', key: 'covered-link', oracleExpects: true, fromCase: 'pointer-wrapped-link-covered-defective', note: 'One line fragment of a wrapped link is covered. (The healthy wrapped link is a matrix case with a per-fragment oracle: the scan here covers the bounding box, which includes neighbours.)' },
       { id: 'partial-healthy', role: 'healthy', key: 'nested-btn', oracleExpects: false, fromCase: 'pointer-nested-child-healthy', note: 'No overlay.' },
       { id: 'partial-fully-covered', role: 'boundary', key: 'blocked-action', oracleExpects: false, fromCase: 'pointer-transparent-defective', note: 'Fully covered is the other rule, not partial.' },
       {
@@ -244,7 +306,7 @@ export const ruleGates: RuleGate[] = [
         id: 'partial-thin-strip', role: 'boundary', key: 'strip-thin', oracleExpects: true,
         html: `<div style="position: relative; width: 140px; height: 44px;"><button data-anwc-key="strip-thin" style="width: 140px; height: 44px; padding: 0; border: 0;">Strip</button><div style="position: absolute; left: 0; top: 0; width: 8px; height: 44px; background: #0002;"></div></div>`,
         note: 'Overlay covers an 8px strip on the left edge (about 6% of the area).',
-        knownDisagreement: 'P15 finding: ANWC does not report POINTER_PARTIALLY_BLOCKED (false negative). Its 5x5 grid starts 1/6 of the width (23px) in, so an 8px edge strip is never sampled; the 2px scan finds 88/1540 points blocked. This is the documented sampling limitation, not a regression.'
+        knownDisagreement: 'P15 finding: ANWC does not report POINTER_PARTIALLY_BLOCKED (false negative). Its 5x5 grid starts 1/6 of the width (23px) in, so an 8px edge strip is never sampled; the 2px scan finds 88/1540 points blocked. Kept on purpose as a documented sampling limit (at most 25 interior samples, PROTOCOL section 2): adding edge samples would change that contract.'
       }
     ]
   }
