@@ -32,7 +32,7 @@ npm run dev -- --host 127.0.0.1 --port 4175 --strictPort
 npm run anwc -- studio --port 4180
 ```
 
-Set the terminal font to at least 18 pt. Close anything else on ports 4175 and 4180. Everything runs offline after installation, so no network is needed on stage.
+Set the terminal font to at least 18 pt. Close anything else on ports 4175 and 4180. Both repairs in the demo are scripted, not made by an agent; say so. Everything runs offline after installation, so no network is needed on stage.
 
 **If a live step fails:** open `artifacts/demo/before.html` and `artifacts/demo/after.html` from your rehearsal. They are single offline files.
 
@@ -43,7 +43,7 @@ Set the terminal font to at least 18 pt. Close anything else on ports 4175 and 4
 | 0:00 | Studio open on "Shop: checkout covered" | "This checkout button is covered by a cookie notice. The fault is planted so you can see it." |
 | 0:20 | Point at the red marks, then the panel | "ANWC tried 25 points on that button. All 25 hit the notice. Here is the button's source line, and here is the line that covers it." |
 | 0:45 | Click **X-Ray Overlay**, then **Copy brief for agent** | "That is drawn on the live page. This copies the evidence straight to a coding agent." |
-| 1:05 | Run `npm run demo:cheat` | "Now a bad agent. It hides the button, so the original error disappears. Most checks would call that clean." |
+| 1:05 | Run `npm run demo:cheat` | "Now a fake repair, scripted. It hides the button, so the original error disappears. Most checks would call that clean." |
 | 1:25 | Point at **CONTRADICTED** | "ANWC rejects it: hiding the target is not a repair." |
 | 1:40 | Run `npm run demo` | "Now the real fix. Same page, same size. The error is gone, and a real click that failed before now works." |
 | 2:05 | Point at **VERIFIED** | "It only says verified because the click was executed on that same button and changed the result." |
