@@ -20,7 +20,8 @@ Alpha, 2026-11-25: React and Vite, Chromium, development only, no model calls. A
 
 ## Start here
 
-- [Pitch runbook](docs/PITCH.md): demo script, likely questions, and what not to claim.
+- [Pitch runbook](docs/PITCH.md): demo script, likely questions, and what not to claim. [Study notes](docs/PITCH_STUDY_NOTES.md) explain the nine checks in plain words.
+- [Try with an agent](docs/TRY_WITH_AN_AGENT.md): copy-paste prompts and the ANWC instructions for building a demo app with a coding agent.
 - [Launch handoff](docs/LAUNCH.md): tonight's scope, demo, founder checklist and bounded tasks for a cheaper model.
 - [STATUS](docs/STATUS.md): current capability, evidence and next task.
 - [ROADMAP](docs/ROADMAP.md): Phase 3 Q01–Q11 cards (implemented; see STATUS for open acceptance gaps).
