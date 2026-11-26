@@ -702,3 +702,8 @@ Branch `phase4/p05-and-detectors` from `2f64109`. Windows, PowerShell, Node 24; 
 
 - CI on `259677d`: both Windows jobs passed; both Ubuntu jobs passed unit tests and failed 3 of 57 browser tests. Fixed: a below-the-fold pointer fixture now scrolls to its target; the dashboard's healthy title wrapped to a third line in Linux fonts (ANWC reported it correctly; the fixture was tight); the clip box under CSS `zoom` with a classic scrollbar could be 1 px too small (now takes the smallest consistent scrollbar, so clips under two pixels inside a zoomed scroller can be missed).
 - Windows, local, final code: typecheck 0, build 0, `$env:CI='1'; npx playwright test` 0 (57 passed), full `npx vitest run` 0 (418 passed, 28 files).
+
+## 2026-11-26 — Demo failed on Linux
+
+- On a Linux laptop (Node 22.22) `npm run demo` stopped with `SyntaxError: Expected double-quoted property name in JSON at position 146152`. The demo script appended the CLI's stderr to its stdout, so a warning printed while a ~146 KB JSON result was being written landed inside the JSON. The script now parses stdout alone and prints stderr separately; the CLI flushes stdout and stderr before exiting, so a long result can't be cut off on platforms where pipe writes are queued. CI now runs `npm run demo` and `npm run demo:cheat`.
+- Windows, local: typecheck 0, build 0, `npm run demo` 0 (VERIFIED), `npm run demo:cheat` 0 (rejected), cli + envelope + doc-drift Vitest 30/30, check + check-baseline Playwright 9/9. Linux evidence: the CI run on this commit.

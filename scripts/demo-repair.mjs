@@ -23,11 +23,13 @@ const states = join(out, 'checkout.states.json');
 function anwc(...args) {
   return new Promise((resolveRun, reject) => {
     const child = spawn(process.execPath, ['--import', 'tsx', join(root, 'packages/cli/src/main.ts'), ...args], { cwd: root });
-    let text = '';
-    child.stdout.on('data', (chunk) => { text += chunk; });
-    child.stderr.on('data', (chunk) => { text += chunk; });
+    // Keep the streams apart: a warning on stderr must never land inside the JSON on stdout.
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
     child.on('error', reject);
-    child.on('close', (code) => resolveRun({ code, text: text.trim() }));
+    child.on('close', (code) => resolveRun({ code, stdout: stdout.trim(), stderr: stderr.trim(), text: `${stdout}${stderr}`.trim() }));
   });
 }
 
@@ -42,8 +44,14 @@ async function heading(text) {
 
 /** Replays the committed states; check is JSON-only, so this returns its data. A failed gate is data. */
 async function check(directory, ...args) {
-  const { text } = await anwc('check', states, '--output', directory, ...args);
-  const envelope = JSON.parse(text);
+  const { stdout, stderr } = await anwc('check', states, '--output', directory, ...args);
+  let envelope;
+  try {
+    envelope = JSON.parse(stdout);
+  } catch {
+    throw new Error(`anwc check did not print a JSON result.\n--- stdout (start) ---\n${stdout.slice(0, 600)}\n--- stderr ---\n${stderr}`);
+  }
+  if (stderr) console.error(`(anwc warnings)\n${stderr}`);
   if (!envelope.ok) throw new Error(`check failed: ${envelope.error.message}`);
   return envelope.data;
 }
