@@ -20,6 +20,7 @@ Alpha, 2026-11-25: React and Vite, Chromium, development only, no model calls. A
 
 ## Start here
 
+- [Train read](docs/TRAIN_READ.md): everything for the pitch in one document.
 - [Pitch runbook](docs/PITCH.md): demo script, likely questions, and what not to claim. [Study notes](docs/PITCH_STUDY_NOTES.md) explain the nine checks in plain words.
 - [Try with an agent](docs/TRY_WITH_AN_AGENT.md): copy-paste prompts and the ANWC instructions for building a demo app with a coding agent.
 - [Launch handoff](docs/LAUNCH.md): tonight's scope, demo, founder checklist and bounded tasks for a cheaper model.
